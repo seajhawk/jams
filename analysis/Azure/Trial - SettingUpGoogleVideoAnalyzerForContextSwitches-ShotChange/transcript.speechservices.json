@@ -1,0 +1,2680 @@
+{
+    "Locale": "en-US",
+    "Source": "https://breakdown.blob.core.windows.net/account-a22b799f-75a4-4d68-90ee-2003bdf5ed60/videos/63132f2465/settingupgooglevideoanalyzerforcontextswitches-shotchange.cris_mono.wav",
+    "Timestamp": "2023-08-31T13:19:20Z",
+    "DurationInTicks": 1245300000,
+    "Duration": "PT2M4.53S",
+    "CombinedRecognizedPhrases": [
+        {
+            "Channel": 0,
+            "Lexical": "alright so this is feeling a bit like a meta experience here i'm going to capture the experience of going through this shot change tutorial at google cloud because what i'm trying to learn is whether or not their api some of their video intelligence api can capture screenshot changes or the context switches so like right now i have one context but if i click and i open up something different that's another context so what i'm curious is can it detect these both context switches in this nature or if i were to drag something else in here does it know that this is a context switch so let's capture the experience here and then we'll use it and analyze it with tool so first thing i need to do is i need to set up a project and i haven't done this before so i started doing part of it decided to record it i need to authenticate and first i need to enable the api i do have a cloud project but let's go to i'm going to control click this to go to the project selector and we're going to select my jams project bingo and then back here now i need to enable the api i'm going to control click that again and intelligent what did it say the api was cloud video intelligence api video intelligence video intelligence api click that would be enabling it",
+            "ITN": "alright so this is feeling a bit like a like a meta experience here i'm going to capture i'm going to capture the experience of of going through this shot change tutorial at google cloud google cloud because what i'm trying to learn is whether or not not their api api some of their video intelligence intelligence api can can capture screenshot changes or the context switches can capture screenshot changes or the context switches so like right now i have one context like right now i have one context but if i click and and i open up something different that's another context another context so what i'm curious is can it detect can it detect these both context switches in this nature or if i were to drag something else in here does it know that this is a context switch so let's capture the experience here and here and then we'll use it and analyze it with tool here and then we'll use it and analyze it with tool so first thing i need to do first thing i need to do is i need to set up a project and i haven't and i haven't done this before so i started doing part of it decided to record it i need to authenticate i need to authenticate and 1st i need to enable the api i do have a cloud i do have a cloud project but let's go to i'm going to control click this to go to the project selector and we're going to select my jams project click this to go to the project selector and we're going to select my jams project bingo and then back here now i need to enable the api i'm back here now i need to enable the api i'm going to control click that again and that again and intelligent what did it say the api was cloud video cloud video intelligence api video intelligence video video intelligence api click that would be enabling it",
+            "MaskedITN": "",
+            "Display": "Alright, so this is feeling a bit. Like a meta experience here. I'm going to capture the experience. Of going through this shot change tutorial at. Google Cloud, because what I'm trying to learn is whether or. Not their. API some of their video. Intelligence API. Can capture screenshot changes or the context switches, so. Like right now I have one context but if I click. And I open up something different, that's. Another context. So what I'm curious is. Can it detect these both context switches in this nature? Or if I were to drag something else in here, does it know that this is a context switch? So let's capture the experience. Here and then we'll use it and analyze it with tool so. First thing I need to do is I need to set up a project. And I haven't done this before, so I started doing part of it, decided to record it. I need to authenticate and 1st. I need to enable the API. I do have a cloud project, but let's go to. I'm going to Control. Click this to go to the project selector and we're going to select My JAMS project. Bingo. And then. Back here, now I need to enable the API I'm going to control click. That again and intelligent. What did it say the API was? Cloud Video Intelligence API. Video Intelligence. Video Intelligence API Click. That would be enabling it."
+        }
+    ],
+    "RecognizedPhrases": [
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT0.24S",
+            "Duration": "PT1.52S",
+            "OffsetInTicks": 2400000,
+            "DurationInTicks": 15200000,
+            "NBest": [
+                {
+                    "Confidence": 0.9352198,
+                    "Lexical": "alright so this is feeling a bit",
+                    "ITN": "alright so this is feeling a bit",
+                    "MaskedITN": "",
+                    "Display": "Alright, so this is feeling a bit.",
+                    "Words": [
+                        {
+                            "Word": "alright",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT0.24S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 2400000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "so",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT0.72S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 7200000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "this",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT0.84S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 8400000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "is",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT1S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 10000000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "feeling",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT1.12S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 11200000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "a",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT1.48S",
+                            "Duration": "PT0.04S",
+                            "OffsetInTicks": 14800000.0,
+                            "DurationInTicks": 400000.0
+                        },
+                        {
+                            "Word": "bit",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT1.52S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 15200000.0,
+                            "DurationInTicks": 2400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1.76S",
+            "Duration": "PT2.44S",
+            "OffsetInTicks": 17600000,
+            "DurationInTicks": 24400000,
+            "NBest": [
+                {
+                    "Confidence": 0.93119526,
+                    "Lexical": "like a meta experience here",
+                    "ITN": "like a like a meta experience here",
+                    "MaskedITN": "",
+                    "Display": "Like a meta experience here.",
+                    "Words": [
+                        {
+                            "Word": "like",
+                            "Confidence": 0.94025356,
+                            "Offset": "PT1.76S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 17600000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "a",
+                            "Confidence": 0.9100633,
+                            "Offset": "PT2.24S",
+                            "Duration": "PT0.04S",
+                            "OffsetInTicks": 22400000.0,
+                            "DurationInTicks": 400000.0
+                        },
+                        {
+                            "Word": "meta",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT2.76S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 27600000.0,
+                            "DurationInTicks": 5200000.0
+                        },
+                        {
+                            "Word": "experience",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT3.28S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 32800000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "here",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT3.88S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 38800000.0,
+                            "DurationInTicks": 3200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT5.28S",
+            "Duration": "PT2.72S",
+            "OffsetInTicks": 52800000,
+            "DurationInTicks": 27200000,
+            "NBest": [
+                {
+                    "Confidence": 0.92044556,
+                    "Lexical": "i'm going to capture the experience",
+                    "ITN": "i'm going to capture i'm going to capture the experience",
+                    "MaskedITN": "",
+                    "Display": "I'm going to capture the experience.",
+                    "Words": [
+                        {
+                            "Word": "i'm",
+                            "Confidence": 0.8113463,
+                            "Offset": "PT5.28S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 52800000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "going",
+                            "Confidence": 0.9503169,
+                            "Offset": "PT5.72S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 57200000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.92012674,
+                            "Offset": "PT6.04S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 60400000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "capture",
+                            "Confidence": 0.9704437,
+                            "Offset": "PT6.32S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 63200000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT6.92S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 69200000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "experience",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT7.08S",
+                            "Duration": "PT0.92S",
+                            "OffsetInTicks": 70800000.0,
+                            "DurationInTicks": 9200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT8.64S",
+            "Duration": "PT2.96S",
+            "OffsetInTicks": 86400000,
+            "DurationInTicks": 29600000,
+            "NBest": [
+                {
+                    "Confidence": 0.93333316,
+                    "Lexical": "of going through this shot change tutorial at",
+                    "ITN": "of of going through this shot change tutorial at",
+                    "MaskedITN": "",
+                    "Display": "Of going through this shot change tutorial at.",
+                    "Words": [
+                        {
+                            "Word": "of",
+                            "Confidence": 0.92012674,
+                            "Offset": "PT8.64S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 86400000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "going",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT8.76S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 87600000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "through",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT9.2S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 92000000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "this",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT9.48S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 94800000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "shot",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT9.88S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 98800000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "change",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT10.28S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 102800000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "tutorial",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT10.72S",
+                            "Duration": "PT0.8S",
+                            "OffsetInTicks": 107200000.0,
+                            "DurationInTicks": 8000000.0
+                        },
+                        {
+                            "Word": "at",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT11.52S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 115200000.0,
+                            "DurationInTicks": 800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT11.84S",
+            "Duration": "PT4.44S",
+            "OffsetInTicks": 118400000,
+            "DurationInTicks": 44400000,
+            "NBest": [
+                {
+                    "Confidence": 0.9388796,
+                    "Lexical": "google cloud because what i'm trying to learn is whether or",
+                    "ITN": "google cloud google cloud because what i'm trying to learn is whether or",
+                    "MaskedITN": "",
+                    "Display": "Google Cloud, because what I'm trying to learn is whether or.",
+                    "Words": [
+                        {
+                            "Word": "google",
+                            "Confidence": 0.9603803,
+                            "Offset": "PT11.84S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 118400000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "cloud",
+                            "Confidence": 0.9503169,
+                            "Offset": "PT12.2S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 122000000.0,
+                            "DurationInTicks": 5600000.0
+                        },
+                        {
+                            "Word": "because",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT13.8S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 138000000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "what",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT14.2S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 142000000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "i'm",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT14.36S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 143600000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "trying",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT14.44S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 144400000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT14.72S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 147200000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "learn",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT14.84S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 148400000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "is",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT15.24S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 152400000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "whether",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT15.56S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 155600000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "or",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT16.16S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 161600000.0,
+                            "DurationInTicks": 1200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT16.28S",
+            "Duration": "PT1.64S",
+            "OffsetInTicks": 162800000,
+            "DurationInTicks": 16400000,
+            "NBest": [
+                {
+                    "Confidence": 0.932705,
+                    "Lexical": "not their",
+                    "ITN": "not not their",
+                    "MaskedITN": "",
+                    "Display": "Not their.",
+                    "Words": [
+                        {
+                            "Word": "not",
+                            "Confidence": 0.93019015,
+                            "Offset": "PT16.28S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 162800000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "their",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT17.4S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 174000000.0,
+                            "DurationInTicks": 5200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT17.92S",
+            "Duration": "PT1.96S",
+            "OffsetInTicks": 179200000,
+            "DurationInTicks": 19600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9342139,
+                    "Lexical": "api some of their video",
+                    "ITN": "api api some of their video",
+                    "MaskedITN": "",
+                    "Display": "API some of their video.",
+                    "Words": [
+                        {
+                            "Word": "api",
+                            "Confidence": 0.93019015,
+                            "Offset": "PT17.92S",
+                            "Duration": "PT1S",
+                            "OffsetInTicks": 179200000.0,
+                            "DurationInTicks": 10000000.0
+                        },
+                        {
+                            "Word": "some",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT19.2S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 192000000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "of",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT19.36S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 193600000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "their",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT19.44S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 194400000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "video",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT19.6S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 196000000.0,
+                            "DurationInTicks": 2800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 2,
+            "Offset": "PT19.88S",
+            "Duration": "PT0.56S",
+            "OffsetInTicks": 198800000,
+            "DurationInTicks": 5600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9352198,
+                    "Lexical": "intelligence",
+                    "ITN": "intelligence",
+                    "MaskedITN": "",
+                    "Display": "Intelligence API.",
+                    "Words": [
+                        {
+                            "Word": "intelligence",
+                            "Confidence": 0.9352198,
+                            "Offset": "PT19.88S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 198800000.0,
+                            "DurationInTicks": 5600000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT20.44S",
+            "Duration": "PT8.37S",
+            "OffsetInTicks": 204400000,
+            "DurationInTicks": 83700000,
+            "NBest": [
+                {
+                    "Confidence": 0.9532225,
+                    "Lexical": "api can capture screenshot changes or the context switches so",
+                    "ITN": "intelligence api can can capture screenshot changes or the context switches can capture screenshot changes or the context switches so",
+                    "MaskedITN": "",
+                    "Display": "Can capture screenshot changes or the context switches, so.",
+                    "Words": [
+                        {
+                            "Word": "api",
+                            "Confidence": 0.93019015,
+                            "Offset": "PT20.44S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 204400000.0,
+                            "DurationInTicks": 5600000.0
+                        },
+                        {
+                            "Word": "can",
+                            "Confidence": 0.93019015,
+                            "Offset": "PT21.48S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 214800000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "capture",
+                            "Confidence": 0.9704437,
+                            "Offset": "PT21.72S",
+                            "Duration": "PT0.8S",
+                            "OffsetInTicks": 217200000.0,
+                            "DurationInTicks": 8000000.0
+                        },
+                        {
+                            "Word": "screenshot",
+                            "Confidence": 0.99057055,
+                            "Offset": "PT24.6S",
+                            "Duration": "PT0.8S",
+                            "OffsetInTicks": 246000000.0,
+                            "DurationInTicks": 8000000.0
+                        },
+                        {
+                            "Word": "changes",
+                            "Confidence": 0.9704437,
+                            "Offset": "PT25.4S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 254000000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "or",
+                            "Confidence": 0.92012674,
+                            "Offset": "PT25.88S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 258800000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.93019015,
+                            "Offset": "PT26.16S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 261600000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "context",
+                            "Confidence": 0.9704437,
+                            "Offset": "PT27.04S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 270400000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "switches",
+                            "Confidence": 0.98050714,
+                            "Offset": "PT27.52S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 275200000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "so",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT28.53S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 285300000.0,
+                            "DurationInTicks": 2800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT28.81S",
+            "Duration": "PT3.8S",
+            "OffsetInTicks": 288100000,
+            "DurationInTicks": 38000000,
+            "NBest": [
+                {
+                    "Confidence": 0.9279431,
+                    "Lexical": "like right now i have one context but if i click",
+                    "ITN": "like right now i have one context like right now i have one context but if i click",
+                    "MaskedITN": "",
+                    "Display": "Like right now I have one context but if I click.",
+                    "Words": [
+                        {
+                            "Word": "like",
+                            "Confidence": 0.8194387,
+                            "Offset": "PT28.81S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 288100000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "right",
+                            "Confidence": 0.950317,
+                            "Offset": "PT29.09S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 290900000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "now",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT29.29S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 292900000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9100634,
+                            "Offset": "PT29.61S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 296100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "have",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT29.73S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 297300000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "one",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT30.05S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 300500000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "context",
+                            "Confidence": 0.9704438,
+                            "Offset": "PT30.41S",
+                            "Duration": "PT0.76S",
+                            "OffsetInTicks": 304100000.0,
+                            "DurationInTicks": 7600000.0
+                        },
+                        {
+                            "Word": "but",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT31.65S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 316500000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "if",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT31.85S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 318500000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT31.97S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 319700000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "click",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT32.09S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 320900000.0,
+                            "DurationInTicks": 5200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT32.65S",
+            "Duration": "PT1.76S",
+            "OffsetInTicks": 326500000,
+            "DurationInTicks": 17600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9378437,
+                    "Lexical": "and i open up something different that's",
+                    "ITN": "and and i open up something different that's",
+                    "MaskedITN": "",
+                    "Display": "And I open up something different, that's.",
+                    "Words": [
+                        {
+                            "Word": "and",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT32.65S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 326500000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT32.85S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 328500000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "open",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT32.93S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 329300000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "up",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT33.21S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 332100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "something",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT33.33S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 333300000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "different",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT33.73S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 337300000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "that's",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT34.17S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 341700000.0,
+                            "DurationInTicks": 2400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 2,
+            "Offset": "PT34.41S",
+            "Duration": "PT1.28S",
+            "OffsetInTicks": 344100000,
+            "DurationInTicks": 12800000,
+            "NBest": [
+                {
+                    "Confidence": 0.9391193,
+                    "Lexical": "another context",
+                    "ITN": "another context",
+                    "MaskedITN": "",
+                    "Display": "Another context.",
+                    "Words": [
+                        {
+                            "Word": "another",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT34.41S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 344100000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "context",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT34.89S",
+                            "Duration": "PT0.8S",
+                            "OffsetInTicks": 348900000.0,
+                            "DurationInTicks": 8000000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT36.45S",
+            "Duration": "PT1.2S",
+            "OffsetInTicks": 364500000,
+            "DurationInTicks": 12000000,
+            "NBest": [
+                {
+                    "Confidence": 0.9391193,
+                    "Lexical": "so what i'm curious is",
+                    "ITN": "another context so what i'm curious is",
+                    "MaskedITN": "",
+                    "Display": "So what I'm curious is.",
+                    "Words": [
+                        {
+                            "Word": "so",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT36.45S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 364500000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "what",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT36.69S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 366900000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "i'm",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT36.85S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 368500000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "curious",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT36.97S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 369700000.0,
+                            "DurationInTicks": 5200000.0
+                        },
+                        {
+                            "Word": "is",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT37.49S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 374900000.0,
+                            "DurationInTicks": 1600000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT37.65S",
+            "Duration": "PT4.72S",
+            "OffsetInTicks": 376500000,
+            "DurationInTicks": 47200000,
+            "NBest": [
+                {
+                    "Confidence": 0.93845326,
+                    "Lexical": "can it detect these both context switches in this nature",
+                    "ITN": "can it detect can it detect these both context switches in this nature",
+                    "MaskedITN": "",
+                    "Display": "Can it detect these both context switches in this nature?",
+                    "Words": [
+                        {
+                            "Word": "can",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT37.65S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 376500000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9201268,
+                            "Offset": "PT38.01S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 380100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "detect",
+                            "Confidence": 0.9603804,
+                            "Offset": "PT38.13S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 381300000.0,
+                            "DurationInTicks": 5200000.0
+                        },
+                        {
+                            "Word": "these",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT38.65S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 386500000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "both",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT39.21S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 392100000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "context",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT39.61S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 396100000.0,
+                            "DurationInTicks": 6400000.0
+                        },
+                        {
+                            "Word": "switches",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT40.25S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 402500000.0,
+                            "DurationInTicks": 6400000.0
+                        },
+                        {
+                            "Word": "in",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT41.09S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 410900000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "this",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT41.37S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 413700000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "nature",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT41.73S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 417300000.0,
+                            "DurationInTicks": 6400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT43.41S",
+            "Duration": "PT6.68S",
+            "OffsetInTicks": 434100000,
+            "DurationInTicks": 66800000,
+            "NBest": [
+                {
+                    "Confidence": 0.9391193,
+                    "Lexical": "or if i were to drag something else in here does it know that this is a context switch",
+                    "ITN": "or if i were to drag something else in here does it know that this is a context switch",
+                    "MaskedITN": "",
+                    "Display": "Or if I were to drag something else in here, does it know that this is a context switch?",
+                    "Words": [
+                        {
+                            "Word": "or",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT43.41S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 434100000.0,
+                            "DurationInTicks": 5600000.0
+                        },
+                        {
+                            "Word": "if",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT44.41S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 444100000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT44.65S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 446500000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "were",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT44.81S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 448100000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT45.01S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 450100000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "drag",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT45.37S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 453700000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "something",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT45.85S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 458500000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "else",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT46.25S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 462500000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "in",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT46.53S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 465300000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "here",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT46.65S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 466500000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "does",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT47.01S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 470100000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT47.17S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 471700000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "know",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT47.29S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 472900000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "that",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT47.81S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 478100000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "this",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT47.97S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 479700000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "is",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT48.17S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 481700000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "a",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT48.37S",
+                            "Duration": "PT0.04S",
+                            "OffsetInTicks": 483700000.0,
+                            "DurationInTicks": 400000.0
+                        },
+                        {
+                            "Word": "context",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT48.41S",
+                            "Duration": "PT0.88S",
+                            "OffsetInTicks": 484100000.0,
+                            "DurationInTicks": 8800000.0
+                        },
+                        {
+                            "Word": "switch",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT49.53S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 495300000.0,
+                            "DurationInTicks": 5600000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT50.53S",
+            "Duration": "PT2.56S",
+            "OffsetInTicks": 505300000,
+            "DurationInTicks": 25600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9391193,
+                    "Lexical": "so let's capture the experience",
+                    "ITN": "so let's capture the experience",
+                    "MaskedITN": "",
+                    "Display": "So let's capture the experience.",
+                    "Words": [
+                        {
+                            "Word": "so",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT50.53S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 505300000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "let's",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT51.53S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 515300000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "capture",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT51.85S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 518500000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT52.29S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 522900000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "experience",
+                            "Confidence": 0.9391193,
+                            "Offset": "PT52.41S",
+                            "Duration": "PT0.68S",
+                            "OffsetInTicks": 524100000.0,
+                            "DurationInTicks": 6800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT53.09S",
+            "Duration": "PT5.96S",
+            "OffsetInTicks": 530900000,
+            "DurationInTicks": 59600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9372998,
+                    "Lexical": "here and then we'll use it and analyze it with tool so",
+                    "ITN": "here and here and then we'll use it and analyze it with tool here and then we'll use it and analyze it with tool so",
+                    "MaskedITN": "",
+                    "Display": "Here and then we'll use it and analyze it with tool so.",
+                    "Words": [
+                        {
+                            "Word": "here",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT53.09S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 530900000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "and",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT53.61S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 536100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "then",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT53.73S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 537300000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "we'll",
+                            "Confidence": 0.950317,
+                            "Offset": "PT53.85S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 538500000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "use",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT53.97S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 539700000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9201268,
+                            "Offset": "PT54.25S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 542500000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "and",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT54.61S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 546100000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "analyze",
+                            "Confidence": 0.9704438,
+                            "Offset": "PT54.89S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 548900000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9201268,
+                            "Offset": "PT55.49S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 554900000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "with",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT55.81S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 558100000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "tool",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT56.13S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 561300000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "so",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT58.41S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 584100000.0,
+                            "DurationInTicks": 6400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT59.05S",
+            "Duration": "PT4.08S",
+            "OffsetInTicks": 590500000,
+            "DurationInTicks": 40800000,
+            "NBest": [
+                {
+                    "Confidence": 0.9336565,
+                    "Lexical": "first thing i need to do is i need to set up a project",
+                    "ITN": "first thing i need to do first thing i need to do is i need to set up a project",
+                    "MaskedITN": "",
+                    "Display": "First thing I need to do is I need to set up a project.",
+                    "Words": [
+                        {
+                            "Word": "first",
+                            "Confidence": 0.95031714,
+                            "Offset": "PT59.05S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 590500000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "thing",
+                            "Confidence": 0.95031714,
+                            "Offset": "PT59.29S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 592900000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9100635,
+                            "Offset": "PT59.49S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 594900000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "need",
+                            "Confidence": 0.94025373,
+                            "Offset": "PT59.57S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 595700000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9201269,
+                            "Offset": "PT59.77S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 597700000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "do",
+                            "Confidence": 0.9201269,
+                            "Offset": "PT59.85S",
+                            "Duration": "PT0.88S",
+                            "OffsetInTicks": 598500000.0,
+                            "DurationInTicks": 8800000.0
+                        },
+                        {
+                            "Word": "is",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M0.81S",
+                            "Duration": "PT0.72S",
+                            "OffsetInTicks": 608100000.0,
+                            "DurationInTicks": 7200000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M1.57S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 615700000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "need",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M1.65S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 616500000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M1.89S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 618900000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "set",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M1.97S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 619700000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "up",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M2.21S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 622100000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "a",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M2.37S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 623700000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "project",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M2.45S",
+                            "Duration": "PT0.68S",
+                            "OffsetInTicks": 624500000.0,
+                            "DurationInTicks": 6800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M4.21S",
+            "Duration": "PT3.8S",
+            "OffsetInTicks": 642100000,
+            "DurationInTicks": 38000000,
+            "NBest": [
+                {
+                    "Confidence": 0.9353337,
+                    "Lexical": "and i haven't done this before so i started doing part of it decided to record it",
+                    "ITN": "and i haven't and i haven't done this before so i started doing part of it decided to record it",
+                    "MaskedITN": "",
+                    "Display": "And I haven't done this before, so I started doing part of it, decided to record it.",
+                    "Words": [
+                        {
+                            "Word": "and",
+                            "Confidence": 0.9301903,
+                            "Offset": "PT1M4.21S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 642100000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9100635,
+                            "Offset": "PT1M4.41S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 644100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "haven't",
+                            "Confidence": 0.9704439,
+                            "Offset": "PT1M4.53S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 645300000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "done",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M4.81S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 648100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "this",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M4.93S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 649300000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "before",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M5.13S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 651300000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "so",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M5.53S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 655300000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M5.89S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 658900000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "started",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M6.01S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 660100000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "doing",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M6.37S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 663700000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "part",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M6.61S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 666100000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "of",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M6.85S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 668500000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M6.93S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 669300000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "decided",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M7.09S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 670900000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M7.49S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 674900000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "record",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M7.57S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 675700000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M7.89S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 678900000.0,
+                            "DurationInTicks": 1200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M9.81S",
+            "Duration": "PT2.64S",
+            "OffsetInTicks": 698100000,
+            "DurationInTicks": 26400000,
+            "NBest": [
+                {
+                    "Confidence": 0.9385019,
+                    "Lexical": "i need to authenticate and first",
+                    "ITN": "i need to authenticate i need to authenticate and 1st",
+                    "MaskedITN": "",
+                    "Display": "I need to authenticate and 1st.",
+                    "Words": [
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9100635,
+                            "Offset": "PT1M9.81S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 698100000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "need",
+                            "Confidence": 0.94025373,
+                            "Offset": "PT1M9.89S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 698900000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9201269,
+                            "Offset": "PT1M10.13S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 701300000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "authenticate",
+                            "Confidence": 0.9905707,
+                            "Offset": "PT1M10.21S",
+                            "Duration": "PT0.68S",
+                            "OffsetInTicks": 702100000.0,
+                            "DurationInTicks": 6800000.0
+                        },
+                        {
+                            "Word": "and",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M11.57S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 715700000.0,
+                            "DurationInTicks": 5600000.0
+                        },
+                        {
+                            "Word": "first",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M12.13S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 721300000.0,
+                            "DurationInTicks": 3200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 2,
+            "Offset": "PT1M12.45S",
+            "Duration": "PT1.76S",
+            "OffsetInTicks": 724500000,
+            "DurationInTicks": 17600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9349983,
+                    "Lexical": "i need to enable the api",
+                    "ITN": "i need to enable the api",
+                    "MaskedITN": "",
+                    "Display": "I need to enable the API.",
+                    "Words": [
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M12.45S",
+                            "Duration": "PT0.04S",
+                            "OffsetInTicks": 724500000.0,
+                            "DurationInTicks": 400000.0
+                        },
+                        {
+                            "Word": "need",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M12.49S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 724900000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M12.69S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 726900000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "enable",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M12.85S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 728500000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M13.33S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 733300000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "api",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M13.45S",
+                            "Duration": "PT0.76S",
+                            "OffsetInTicks": 734500000.0,
+                            "DurationInTicks": 7600000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M14.89S",
+            "Duration": "PT4.96S",
+            "OffsetInTicks": 748900000,
+            "DurationInTicks": 49600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9349983,
+                    "Lexical": "i do have a cloud project but let's go to",
+                    "ITN": "i do have a cloud i do have a cloud project but let's go to",
+                    "MaskedITN": "",
+                    "Display": "I do have a cloud project, but let's go to.",
+                    "Words": [
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M14.89S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 748900000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "do",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M15.05S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 750500000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "have",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M15.53S",
+                            "Duration": "PT0.56S",
+                            "OffsetInTicks": 755300000.0,
+                            "DurationInTicks": 5600000.0
+                        },
+                        {
+                            "Word": "a",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M16.13S",
+                            "Duration": "PT0.04S",
+                            "OffsetInTicks": 761300000.0,
+                            "DurationInTicks": 400000.0
+                        },
+                        {
+                            "Word": "cloud",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M16.29S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 762900000.0,
+                            "DurationInTicks": 6400000.0
+                        },
+                        {
+                            "Word": "project",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M16.97S",
+                            "Duration": "PT0.92S",
+                            "OffsetInTicks": 769700000.0,
+                            "DurationInTicks": 9200000.0
+                        },
+                        {
+                            "Word": "but",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M18.17S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 781700000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "let's",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M18.89S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 788900000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "go",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M19.33S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 793300000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M19.69S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 796900000.0,
+                            "DurationInTicks": 1600000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M19.85S",
+            "Duration": "PT1.2S",
+            "OffsetInTicks": 798500000,
+            "DurationInTicks": 12000000,
+            "NBest": [
+                {
+                    "Confidence": 0.9349983,
+                    "Lexical": "i'm going to control",
+                    "ITN": "i'm going to control",
+                    "MaskedITN": "",
+                    "Display": "I'm going to Control.",
+                    "Words": [
+                        {
+                            "Word": "i'm",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M19.85S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 798500000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "going",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M19.93S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 799300000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M20.09S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 800900000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "control",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M20.57S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 805700000.0,
+                            "DurationInTicks": 4800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M21.05S",
+            "Duration": "PT5.08S",
+            "OffsetInTicks": 810500000,
+            "DurationInTicks": 50800000,
+            "NBest": [
+                {
+                    "Confidence": 0.9349983,
+                    "Lexical": "click this to go to the project selector and we're going to select my jams project",
+                    "ITN": "click this to go to the project selector and we're going to select my jams project",
+                    "MaskedITN": "",
+                    "Display": "Click this to go to the project selector and we're going to select My JAMS project.",
+                    "Words": [
+                        {
+                            "Word": "click",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M21.05S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 810500000.0,
+                            "DurationInTicks": 3200000.0
+                        },
+                        {
+                            "Word": "this",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M21.37S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 813700000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M21.61S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 816100000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "go",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M21.77S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 817700000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M21.93S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 819300000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M22.01S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 820100000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "project",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M22.33S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 823300000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "selector",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M22.81S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 828100000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "and",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M24.21S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 842100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "we're",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M24.33S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 843300000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "going",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M24.45S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 844500000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M24.61S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 846100000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "select",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M24.69S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 846900000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "my",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M24.93S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 849300000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "jams",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M25.01S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 850100000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "project",
+                            "Confidence": 0.9349983,
+                            "Offset": "PT1M25.49S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 854900000.0,
+                            "DurationInTicks": 6400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M27.26S",
+            "Duration": "PT0.52S",
+            "OffsetInTicks": 872600000,
+            "DurationInTicks": 5200000,
+            "NBest": [
+                {
+                    "Confidence": 0.91795456,
+                    "Lexical": "bingo",
+                    "ITN": "click this to go to the project selector and we're going to select my jams project bingo",
+                    "MaskedITN": "",
+                    "Display": "Bingo.",
+                    "Words": [
+                        {
+                            "Word": "bingo",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M27.26S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 872600000.0,
+                            "DurationInTicks": 5200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M29.26S",
+            "Duration": "PT0.8S",
+            "OffsetInTicks": 892600000,
+            "DurationInTicks": 8000000,
+            "NBest": [
+                {
+                    "Confidence": 0.91795456,
+                    "Lexical": "and then",
+                    "ITN": "and then",
+                    "MaskedITN": "",
+                    "Display": "And then.",
+                    "Words": [
+                        {
+                            "Word": "and",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M29.26S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 892600000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "then",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M29.86S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 898600000.0,
+                            "DurationInTicks": 2000000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M30.06S",
+            "Duration": "PT4.24S",
+            "OffsetInTicks": 900600000,
+            "DurationInTicks": 42400000,
+            "NBest": [
+                {
+                    "Confidence": 0.92885077,
+                    "Lexical": "back here now i need to enable the api i'm going to control click",
+                    "ITN": "back here now i need to enable the api i'm back here now i need to enable the api i'm going to control click",
+                    "MaskedITN": "",
+                    "Display": "Back here, now I need to enable the API I'm going to control click.",
+                    "Words": [
+                        {
+                            "Word": "back",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT1M30.06S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 900600000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "here",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT1M30.42S",
+                            "Duration": "PT0.28S",
+                            "OffsetInTicks": 904200000.0,
+                            "DurationInTicks": 2800000.0
+                        },
+                        {
+                            "Word": "now",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT1M30.7S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 907000000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "i",
+                            "Confidence": 0.9100634,
+                            "Offset": "PT1M30.82S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 908200000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "need",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT1M30.98S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 909800000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.9201268,
+                            "Offset": "PT1M31.18S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 911800000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "enable",
+                            "Confidence": 0.9603804,
+                            "Offset": "PT1M31.46S",
+                            "Duration": "PT0.72S",
+                            "OffsetInTicks": 914600000.0,
+                            "DurationInTicks": 7200000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT1M32.18S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 921800000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "api",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT1M32.34S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 923400000.0,
+                            "DurationInTicks": 5200000.0
+                        },
+                        {
+                            "Word": "i'm",
+                            "Confidence": 0.9301902,
+                            "Offset": "PT1M32.86S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 928600000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "going",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M33.26S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 932600000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "to",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M33.42S",
+                            "Duration": "PT0.08S",
+                            "OffsetInTicks": 934200000.0,
+                            "DurationInTicks": 800000.0
+                        },
+                        {
+                            "Word": "control",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M33.5S",
+                            "Duration": "PT0.48S",
+                            "OffsetInTicks": 935000000.0,
+                            "DurationInTicks": 4800000.0
+                        },
+                        {
+                            "Word": "click",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M33.98S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 939800000.0,
+                            "DurationInTicks": 3200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M34.3S",
+            "Duration": "PT8.84S",
+            "OffsetInTicks": 943000000,
+            "DurationInTicks": 88400000,
+            "NBest": [
+                {
+                    "Confidence": 0.9070817,
+                    "Lexical": "that again and intelligent",
+                    "ITN": "that again and that again and intelligent",
+                    "MaskedITN": "",
+                    "Display": "That again and intelligent.",
+                    "Words": [
+                        {
+                            "Word": "that",
+                            "Confidence": 0.9402536,
+                            "Offset": "PT1M34.3S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 943000000.0,
+                            "DurationInTicks": 2400000.0
+                        },
+                        {
+                            "Word": "again",
+                            "Confidence": 0.950317,
+                            "Offset": "PT1M34.54S",
+                            "Duration": "PT0.64S",
+                            "OffsetInTicks": 945400000.0,
+                            "DurationInTicks": 6400000.0
+                        },
+                        {
+                            "Word": "and",
+                            "Confidence": 0.8198017,
+                            "Offset": "PT1M37.06S",
+                            "Duration": "PT1.76S",
+                            "OffsetInTicks": 970600000.0,
+                            "DurationInTicks": 17600000.0
+                        },
+                        {
+                            "Word": "intelligent",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M41.9S",
+                            "Duration": "PT1.24S",
+                            "OffsetInTicks": 1019000000.0,
+                            "DurationInTicks": 12400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M43.14S",
+            "Duration": "PT3.12S",
+            "OffsetInTicks": 1031400000,
+            "DurationInTicks": 31200000,
+            "NBest": [
+                {
+                    "Confidence": 0.91795456,
+                    "Lexical": "what did it say the api was",
+                    "ITN": "what did it say the api was",
+                    "MaskedITN": "",
+                    "Display": "What did it say the API was?",
+                    "Words": [
+                        {
+                            "Word": "what",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M43.14S",
+                            "Duration": "PT0.16S",
+                            "OffsetInTicks": 1031400000.0,
+                            "DurationInTicks": 1600000.0
+                        },
+                        {
+                            "Word": "did",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M44.82S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 1048200000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M44.94S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 1049400000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "say",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M45.06S",
+                            "Duration": "PT0.2S",
+                            "OffsetInTicks": 1050600000.0,
+                            "DurationInTicks": 2000000.0
+                        },
+                        {
+                            "Word": "the",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M45.26S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 1052600000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "api",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M45.38S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 1053800000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "was",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M45.82S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 1058200000.0,
+                            "DurationInTicks": 4400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M49.26S",
+            "Duration": "PT1.96S",
+            "OffsetInTicks": 1092600000,
+            "DurationInTicks": 19600000,
+            "NBest": [
+                {
+                    "Confidence": 0.9341358,
+                    "Lexical": "cloud video intelligence api",
+                    "ITN": "cloud video cloud video intelligence api",
+                    "MaskedITN": "",
+                    "Display": "Cloud Video Intelligence API.",
+                    "Words": [
+                        {
+                            "Word": "cloud",
+                            "Confidence": 0.950317,
+                            "Offset": "PT1M49.26S",
+                            "Duration": "PT0.52S",
+                            "OffsetInTicks": 1092600000.0,
+                            "DurationInTicks": 5200000.0
+                        },
+                        {
+                            "Word": "video",
+                            "Confidence": 0.950317,
+                            "Offset": "PT1M49.78S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 1097800000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "intelligence",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M50.22S",
+                            "Duration": "PT0.68S",
+                            "OffsetInTicks": 1102200000.0,
+                            "DurationInTicks": 6800000.0
+                        },
+                        {
+                            "Word": "api",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M50.9S",
+                            "Duration": "PT0.32S",
+                            "OffsetInTicks": 1109000000.0,
+                            "DurationInTicks": 3200000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 2,
+            "Offset": "PT1M51.42S",
+            "Duration": "PT1.28S",
+            "OffsetInTicks": 1114200000,
+            "DurationInTicks": 12800000,
+            "NBest": [
+                {
+                    "Confidence": 0.91795456,
+                    "Lexical": "video intelligence",
+                    "ITN": "video intelligence",
+                    "MaskedITN": "",
+                    "Display": "Video Intelligence.",
+                    "Words": [
+                        {
+                            "Word": "video",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M51.42S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 1114200000.0,
+                            "DurationInTicks": 4000000.0
+                        },
+                        {
+                            "Word": "intelligence",
+                            "Confidence": 0.91795456,
+                            "Offset": "PT1M51.82S",
+                            "Duration": "PT0.88S",
+                            "OffsetInTicks": 1118200000.0,
+                            "DurationInTicks": 8800000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 1,
+            "Offset": "PT1M56.01S",
+            "Duration": "PT4.8S",
+            "OffsetInTicks": 1160100000,
+            "DurationInTicks": 48000000,
+            "NBest": [
+                {
+                    "Confidence": 0.94863975,
+                    "Lexical": "video intelligence api click",
+                    "ITN": "video video intelligence api click",
+                    "MaskedITN": "",
+                    "Display": "Video Intelligence API Click.",
+                    "Words": [
+                        {
+                            "Word": "video",
+                            "Confidence": 0.9503169,
+                            "Offset": "PT1M56.01S",
+                            "Duration": "PT0.44S",
+                            "OffsetInTicks": 1160100000.0,
+                            "DurationInTicks": 4400000.0
+                        },
+                        {
+                            "Word": "intelligence",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT1M56.45S",
+                            "Duration": "PT0.68S",
+                            "OffsetInTicks": 1164500000.0,
+                            "DurationInTicks": 6800000.0
+                        },
+                        {
+                            "Word": "api",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT1M57.13S",
+                            "Duration": "PT0.6S",
+                            "OffsetInTicks": 1171300000.0,
+                            "DurationInTicks": 6000000.0
+                        },
+                        {
+                            "Word": "click",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT2M0.41S",
+                            "Duration": "PT0.4S",
+                            "OffsetInTicks": 1204100000.0,
+                            "DurationInTicks": 4000000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        },
+        {
+            "RecognitionStatus": "Success",
+            "Channel": 0,
+            "Speaker": 2,
+            "Offset": "PT2M2.49S",
+            "Duration": "PT1.6S",
+            "OffsetInTicks": 1224900000,
+            "DurationInTicks": 16000000,
+            "NBest": [
+                {
+                    "Confidence": 0.9480807,
+                    "Lexical": "that would be enabling it",
+                    "ITN": "that would be enabling it",
+                    "MaskedITN": "",
+                    "Display": "That would be enabling it.",
+                    "Words": [
+                        {
+                            "Word": "that",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT2M2.49S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 1224900000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "would",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT2M2.61S",
+                            "Duration": "PT0.12S",
+                            "OffsetInTicks": 1226100000.0,
+                            "DurationInTicks": 1200000.0
+                        },
+                        {
+                            "Word": "be",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT2M2.73S",
+                            "Duration": "PT0.36S",
+                            "OffsetInTicks": 1227300000.0,
+                            "DurationInTicks": 3600000.0
+                        },
+                        {
+                            "Word": "enabling",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT2M3.13S",
+                            "Duration": "PT0.72S",
+                            "OffsetInTicks": 1231300000.0,
+                            "DurationInTicks": 7200000.0
+                        },
+                        {
+                            "Word": "it",
+                            "Confidence": 0.9480807,
+                            "Offset": "PT2M3.85S",
+                            "Duration": "PT0.24S",
+                            "OffsetInTicks": 1238500000.0,
+                            "DurationInTicks": 2400000.0
+                        }
+                    ],
+                    "DisplayPhraseElements": null
+                }
+            ],
+            "Locale": null
+        }
+    ]
+}

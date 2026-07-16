@@ -1,0 +1,236 @@
+[
+    {
+        "DominantEmotion": {
+            "Probability": 57.68670439720154,
+            "Type": "Joy"
+        },
+        "FusedResults": [
+            {
+                "Probability": 26.42846703529358,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 57.68670439720154,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 13.326595723628998,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 1.2274462729692457,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.22659285459667444,
+                "Type": "Fear"
+            }
+        ],
+        "LengthInSeconds": 2,
+        "Text": "And I open up something different, that's.",
+        "TextualResults": [
+            {
+                "Probability": 0.2642846703529358,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.5768670439720154,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.13326595723628998,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 0.012274462729692459,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.0022659285459667444,
+                "Type": "Fear"
+            }
+        ],
+        "TimeRange": {
+            "End": "00:00:34.4100000",
+            "Start": "00:00:32.6500000"
+        },
+        "VocalResults": [
+            {
+                "Probability": 0.2642846703529358,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.5768670439720154,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.13326595723628998,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 0.012274462729692459,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.0022659285459667444,
+                "Type": "Fear"
+            }
+        ]
+    },
+    {
+        "DominantEmotion": {
+            "Probability": 68.92889142036438,
+            "Type": "Joy"
+        },
+        "FusedResults": [
+            {
+                "Probability": 27.165445685386658,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 68.92889142036438,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.7881018333137035,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 1.026629749685526,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.5838229320943356,
+                "Type": "Fear"
+            }
+        ],
+        "LengthInSeconds": 4,
+        "Text": "And I haven't done this before, so I started doing part of it, decided to record it.",
+        "TextualResults": [
+            {
+                "Probability": 0.2716544568538666,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.6892889142036438,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.007881018333137035,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 0.010266297496855259,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.0058382293209433556,
+                "Type": "Fear"
+            }
+        ],
+        "TimeRange": {
+            "End": "00:01:08.0100000",
+            "Start": "00:01:04.2100000"
+        },
+        "VocalResults": [
+            {
+                "Probability": 0.2716544568538666,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.6892889142036438,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.007881018333137035,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 0.010266297496855259,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.0058382293209433556,
+                "Type": "Fear"
+            }
+        ]
+    },
+    {
+        "DominantEmotion": {
+            "Probability": 82.1449339389801,
+            "Type": "Anger"
+        },
+        "FusedResults": [
+            {
+                "Probability": 14.670342206954956,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.32511530444025993,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 82.1449339389801,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 1.8140468746423721,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.390161550603807,
+                "Type": "Fear"
+            }
+        ],
+        "LengthInSeconds": 2,
+        "Text": "I'm going to Control.",
+        "TextualResults": [
+            {
+                "Probability": 0.14670342206954956,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.0032511530444025993,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.821449339389801,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 0.01814046874642372,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.0039016155060380697,
+                "Type": "Fear"
+            }
+        ],
+        "TimeRange": {
+            "End": "00:01:21.0500000",
+            "Start": "00:01:19.8500000"
+        },
+        "VocalResults": [
+            {
+                "Probability": 0.14670342206954956,
+                "Type": "Neutral"
+            },
+            {
+                "Probability": 0.0032511530444025993,
+                "Type": "Joy"
+            },
+            {
+                "Probability": 0.821449339389801,
+                "Type": "Anger"
+            },
+            {
+                "Probability": 0.01814046874642372,
+                "Type": "Sad"
+            },
+            {
+                "Probability": 0.0039016155060380697,
+                "Type": "Fear"
+            }
+        ]
+    }
+]
