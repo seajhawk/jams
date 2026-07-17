@@ -12,6 +12,7 @@ Track every delegated run so we route work to whoever does it best. Update after
 | 2026-07-16 | F1 report page /demo/report (UI-heavy) | Copilot | claude-sonnet-4.6 | ⚠️ | Shipped 12 files, green; but started in a "recursive delegation loop", needed 2 lint fixes + Vidstack/tooltip API corrections mid-run |
 | 2026-07-16 | F1 Clerk auth + webhooks + withOrg | Codex | gpt-5.5 (high) | ✅ | 4 commits, 15 tests; defensive env-var fallback caught a real naming drift; honest Docker blocker report |
 | 2026-07-16 | F1 auth E2E verification (live stack ops) | Codex | gpt-5.5 (high) | ✅ | 8/8 pass; live webhook→mirror→personal-org verified; self-recovered from instance password policy; full cleanup |
+| 2026-07-17 | F2 videos API + SAS routes | Codex | gpt-5 | ✅ | Schema, migration, org-scoped routes, SAS helpers; tests/lint/build/migrate green |
 
 ## Routing heuristics (living — revise as evidence accumulates)
 

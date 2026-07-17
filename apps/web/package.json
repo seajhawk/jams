@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.33.0",
     "@base-ui/react": "^1.6.0",
     "@clerk/nextjs": "^7.5.20",
     "@vidstack/react": "^1.15.6",
