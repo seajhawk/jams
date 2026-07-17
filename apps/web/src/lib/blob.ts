@@ -9,7 +9,7 @@ export const videosContainerName = "videos"
 
 const AZURITE_ACCOUNT_NAME = "devstoreaccount1"
 const AZURITE_ACCOUNT_KEY =
-  "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiq/K8YpkNnY4YOEgHBN"
+  "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
 const AZURITE_BLOB_ENDPOINT = "http://127.0.0.1:10000/devstoreaccount1"
 
 type StorageConfig = {

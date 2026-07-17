@@ -16,3 +16,8 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+
+.e2e-user.local.json
+playwright/.clerk/
+playwright-report/
+test-results/
