@@ -37,3 +37,13 @@ Sentiment model cache:
   `onnx/model_int8.onnx` with ONNX Runtime CPU. Build images may pre-warm this
   cache by importing `jams_worker.providers.sentiment` and calling
   `classify_onnx(["cache warmup"])`.
+
+Optional LLM segment naming:
+
+- Disabled by default. Enable per run with config
+  `{"llm_labeling":{"enabled":true}}`.
+- Set `OPENROUTER_API_KEY` and `JAMS_LABELING_MODEL` to use the OpenRouter
+  OpenAI-compatible chat completions endpoint. Pick a cheap, low-latency model
+  for concise JSON labeling; the worker intentionally has no model default.
+- The provider is still a no-op when `CI` is set, even if the flag and key are
+  present. Tests must never make live LLM calls.
