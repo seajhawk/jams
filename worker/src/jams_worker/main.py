@@ -20,6 +20,7 @@ from jams_worker.errors import PipelineError
 from jams_worker.pipeline import MeasureProvider, PipelineContext, run_pipeline
 from jams_worker.providers.context_switch import ContextSwitchProvider
 from jams_worker.providers.probe import ProbeProvider
+from jams_worker.providers.transcription import TranscriptionProvider
 from jams_worker.settings import Settings
 
 VISIBILITY_TIMEOUT_SECONDS = 45 * 60
@@ -78,9 +79,16 @@ def process_run(
         )
         result = run_pipeline(context, providers)
         repo.set_provider_versions(run_id, result.provider_versions)
+        partial_reasons = [
+            f"{provider_id}:{summary.get('reason')}"
+            for provider_id, summary in result.provider_summaries.items()
+            if summary.get("status") == "partial"
+        ]
         detail = (
             "Analysis completed"
             if result.status == "succeeded"
+            else f"Analysis partially completed ({', '.join(partial_reasons)})"
+            if partial_reasons
             else "Analysis partially completed"
         )
         repo.finalize(
@@ -153,7 +161,11 @@ def run_loop(settings: Settings | None = None) -> None:
     blob_service_client = BlobServiceClient.from_connection_string(
         settings.azure_storage_connection_string
     )
-    providers: list[MeasureProvider] = [ProbeProvider(), ContextSwitchProvider()]
+    providers: list[MeasureProvider] = [
+        ProbeProvider(),
+        ContextSwitchProvider(),
+        TranscriptionProvider(),
+    ]
 
     stop = StopSignal()
     signal.signal(signal.SIGINT, stop.handle)

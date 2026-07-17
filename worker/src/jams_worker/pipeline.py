@@ -27,6 +27,7 @@ class PipelineContext:
     workdir: Path
     register_artifact: Callable[[str, str], str]
     heartbeat: Callable[[str, int, str | None], None]
+    provider_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @property
     def run_id(self) -> str:
@@ -35,6 +36,9 @@ class PipelineContext:
     @property
     def video_id(self) -> str:
         return str(self.run["video_id"])
+
+    def report_provider_summary(self, provider_id: str, summary: dict[str, Any]) -> None:
+        self.provider_summaries[provider_id] = summary
 
 
 @runtime_checkable
@@ -71,6 +75,7 @@ class PipelineResult:
     status: str
     provider_versions: dict[str, str]
     failures: list[tuple[str, str]] = field(default_factory=list)
+    provider_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def write_provider_measures(
@@ -149,8 +154,15 @@ def run_pipeline(
         except Exception as exc:  # pragma: no cover - defensive partial semantics
             failures.append((provider.id, str(exc)))
 
+    partial_summaries = [
+        summary
+        for summary in context.provider_summaries.values()
+        if summary.get("status") == "partial"
+    ]
+
     return PipelineResult(
-        status="partial" if failures else "succeeded",
+        status="partial" if failures or partial_summaries else "succeeded",
         provider_versions=provider_versions,
         failures=failures,
+        provider_summaries=dict(context.provider_summaries),
     )

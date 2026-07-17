@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from jams_worker.pipeline import MeasureProvider, PipelineContext, write_provider_measures
+from jams_worker.pipeline import (
+    MeasureProvider,
+    PipelineContext,
+    run_pipeline,
+    write_provider_measures,
+)
 
 
 class _FakeProvider:
@@ -45,6 +50,12 @@ class _Conn:
 
     def execute(self, sql: str, params: object = None) -> None:
         self.calls.append((" ".join(sql.split()), params))
+
+
+class _SummaryProvider(_FakeProvider):
+    def run(self, context: PipelineContext) -> list[dict[str, Any]]:
+        context.report_provider_summary("fake", {"status": "partial", "reason": "no_speech"})
+        return []
 
 
 def test_measure_provider_protocol() -> None:
@@ -98,3 +109,21 @@ def test_write_provider_measures_deletes_then_inserts() -> None:
         "payload": params["payload"],
     }
     assert params["payload"].obj == {"cut": True}
+
+
+def test_run_pipeline_marks_partial_from_provider_summary(tmp_path) -> None:
+    conn = _Conn()
+    context = PipelineContext(
+        run={"id": "run_1", "video_id": "video_1"},
+        org_id="org_1",
+        blob_service_client=object(),  # type: ignore[arg-type]
+        db_conn=conn,  # type: ignore[arg-type]
+        workdir=tmp_path,
+        register_artifact=lambda _kind, _path: "artifact_1",
+        heartbeat=lambda _stage, _pct, _detail: None,
+    )
+
+    result = run_pipeline(context, [_SummaryProvider()])
+
+    assert result.status == "partial"
+    assert result.provider_summaries["fake"]["reason"] == "no_speech"

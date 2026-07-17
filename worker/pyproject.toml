@@ -18,6 +18,9 @@ dependencies = [
     "static-ffmpeg>=3.0",
     "scenedetect[opencv-headless]==0.6.4",
     "opencv-python-headless==4.10.0.84",
+    "faster-whisper==1.1.1",
+    "ctranslate2==4.5.0",
+    "setuptools<81",
 ]
 
 [project.scripts]
@@ -40,3 +43,8 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+markers = [
+    "whisper_model: requires cached/downloaded faster-whisper model weights",
+]
