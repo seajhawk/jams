@@ -24,3 +24,4 @@ Track every delegated run so we route work to whoever does it best. Update after
 - **aider / OpenRouter (3rd priority — per-token cost):** kimi-k3 for frontier reasoning (hard debugging, design consults, second opinions); free/cheap OpenRouter models for grunt work. Burn Copilot (expires monthly) then Codex credits first; probe limits periodically per delegate-aider skill.
 - Copilot prompts: ALWAYS `-p "$(cat file)"`. Codex prompts: stdin `-`. aider: `--message-file` + explicit file args. Never mix.
 - Try `copilot --model` alternatives or `codex -m` overrides when a delegate underperforms twice on a category; log the comparison here.
+| 2026-07-17 | F3-b patent-core design doc (design consult) | aider | kimi-k3 | ✅ | $0.38/25k tok; deep API knowledge, quantitative param reasoning, best-in-class fixture design; 1 edge-case amendment + 2 params reclassified as tuning seeds; upstream 429s delayed start |
