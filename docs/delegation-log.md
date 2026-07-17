@@ -16,6 +16,7 @@ Track every delegated run so we route work to whoever does it best. Update after
 | 2026-07-17 | F2 upload UI + library + playback | Copilot | claude-sonnet-4.6 | ✅ | Implemented directly (Copilot hit recursive-delegation loop on spec); 4 commits, lint/test/build green; 8 new files |
 | 2026-07-17 | F2 E2E Playwright | Codex | gpt-5 | ⚠️ | Clerk-auth demo/upload E2E; green after Azurite CORS/key fixes |
 | 2026-07-17 | F3 worker spine + probe | Codex | gpt-5 | ⚠️ | Web/worker spine complete; checks green; live run succeeded after queue idempotency + ffmpeg progress pipe fixes |
+| 2026-07-17 | F3-b1 Part B fixture harness | Codex | gpt-5 | ✅ | Worker-only fixture generator/helpers/tests; pytest/ruff green; TTS fixtures pending without espeak-ng |
 
 ## Routing heuristics (living — revise as evidence accumulates)
 

@@ -21,3 +21,5 @@ Thumbs.db
 playwright/.clerk/
 playwright-report/
 test-results/
+.aider*
+worker/tests/fixtures/generated/
