@@ -97,6 +97,7 @@ export default async function VideoDetailPage({
         variant="ghost"
         size="sm"
         className="-ml-2 w-fit"
+        nativeButton={false}
         render={<Link href="/library" />}
       >
         <ArrowLeft data-icon="inline-start" className="size-4" />
@@ -187,6 +188,7 @@ export default async function VideoDetailPage({
             videoId={video.id}
             videoStatus={video.status}
             initialAnalysis={latestRun ? serializeAnalysisRun(latestRun) : null}
+            videoDurationMs={video.durationMs}
           />
         </aside>
       </div>
