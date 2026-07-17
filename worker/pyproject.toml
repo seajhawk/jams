@@ -1,0 +1,27 @@
+[project]
+name = "jams-worker"
+version = "0.1.0"
+description = "JAMS analysis pipeline worker"
+readme = "README.md"
+authors = [
+    { name = "seajhawk", email = "chris@harriskids.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
