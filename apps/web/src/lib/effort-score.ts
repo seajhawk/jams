@@ -32,7 +32,7 @@ const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
   sentiment: "sentiment",
   spoken_word: "physical",
   time_segment: "time",
-  utterance: "physical",
+  utterance: "speech",
 };
 
 const SCORE_KIND_ORDER: MeasureKind[] = [
@@ -152,7 +152,7 @@ export function score(
     return sum + ((normalized[kind]?.normalized ?? 0) * (weights[kind] ?? 0));
   }, 0);
 
-  const components = (["physical", "cognitive", "time", "sentiment"] as const).reduce(
+  const components = (["physical", "cognitive", "time", "sentiment", "speech"] as const).reduce(
     (componentScores, category) => {
       const categoryKinds = activeKinds.filter((kind) => KIND_CATEGORY[kind] === category);
       const categoryWeight = categoryKinds.reduce((sum, kind) => sum + (weights[kind] ?? 0), 0);
@@ -171,6 +171,7 @@ export function score(
       cognitive: 0,
       time: 0,
       sentiment: 0,
+      speech: 0,
     } satisfies Record<MeasureCategory, number>,
   );
 

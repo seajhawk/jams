@@ -22,6 +22,13 @@
       "when": 1784295627356,
       "tag": "0002_analysis_spine",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784312156943,
+      "tag": "0003_add_speech_category",
+      "breakpoints": true
     }
   ]
 }

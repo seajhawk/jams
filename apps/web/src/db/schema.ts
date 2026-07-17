@@ -42,6 +42,7 @@ export const measureCategoryEnum = pgEnum("measure_category", [
   "cognitive",
   "time",
   "sentiment",
+  "speech",
 ])
 export const measureSourceEnum = pgEnum("measure_source", [
   "video_analysis",

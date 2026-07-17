@@ -32,6 +32,7 @@ export const measureCategorySchema = z.enum([
   "cognitive",
   "time",
   "sentiment",
+  "speech",
 ]);
 
 export const normalizationSchema = z.enum([
@@ -58,7 +59,7 @@ const wordTimingSchema = z.object({
 
 const utteranceMeasureSchema = measureBaseSchema.extend({
   kind: z.literal("utterance"),
-  category: z.literal("physical"),
+  category: z.literal("speech"),
   t_end_ms: z.number().int().nonnegative(),
   value_num: z.null(),
   value_text: z.string().min(1),
@@ -169,6 +170,7 @@ export const reportPayloadSchema = z.object({
       cognitive: z.number().min(0).max(100),
       time: z.number().min(0).max(100),
       sentiment: z.number().min(0).max(100),
+      speech: z.number().min(0).max(100),
     }),
     total: z.number().min(0).max(100),
     breakdown: z.array(z.object({

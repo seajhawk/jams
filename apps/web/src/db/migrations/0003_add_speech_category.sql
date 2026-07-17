@@ -1,0 +1,1 @@
+ALTER TYPE "public"."measure_category" ADD VALUE 'speech';

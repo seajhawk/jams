@@ -84,7 +84,7 @@
     {
       "id": "u-001",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 12000,
       "t_end_ms": 17000,
       "value_num": null,
@@ -148,7 +148,7 @@
     {
       "id": "u-002",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 31000,
       "t_end_ms": 36000,
       "value_num": null,
@@ -212,7 +212,7 @@
     {
       "id": "u-003",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 55000,
       "t_end_ms": 59000,
       "value_num": null,
@@ -276,7 +276,7 @@
     {
       "id": "u-004",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 82000,
       "t_end_ms": 87000,
       "value_num": null,
@@ -340,7 +340,7 @@
     {
       "id": "u-005",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 119000,
       "t_end_ms": 124000,
       "value_num": null,
@@ -404,7 +404,7 @@
     {
       "id": "u-006",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 158000,
       "t_end_ms": 163000,
       "value_num": null,
@@ -468,7 +468,7 @@
     {
       "id": "u-007",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 205000,
       "t_end_ms": 210000,
       "value_num": null,
@@ -549,7 +549,7 @@
     {
       "id": "u-008",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 248000,
       "t_end_ms": 253000,
       "value_num": null,
@@ -613,7 +613,7 @@
     {
       "id": "u-009",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 270000,
       "t_end_ms": 275000,
       "value_num": null,
@@ -677,7 +677,7 @@
     {
       "id": "u-010",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 294000,
       "t_end_ms": 299000,
       "value_num": null,
@@ -741,7 +741,7 @@
     {
       "id": "u-011",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 320000,
       "t_end_ms": 325000,
       "value_num": null,
@@ -805,7 +805,7 @@
     {
       "id": "u-012",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 350000,
       "t_end_ms": 355000,
       "value_num": null,
@@ -869,7 +869,7 @@
     {
       "id": "u-013",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 383000,
       "t_end_ms": 388000,
       "value_num": null,
@@ -950,7 +950,7 @@
     {
       "id": "u-014",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 428000,
       "t_end_ms": 433000,
       "value_num": null,
@@ -1032,7 +1032,7 @@
     {
       "id": "u-015",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 448000,
       "t_end_ms": 453000,
       "value_num": null,
@@ -1114,7 +1114,7 @@
     {
       "id": "u-016",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 468000,
       "t_end_ms": 473000,
       "value_num": null,
@@ -1196,7 +1196,7 @@
     {
       "id": "u-017",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 488000,
       "t_end_ms": 492000,
       "value_num": null,
@@ -1295,7 +1295,7 @@
     {
       "id": "u-018",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 510000,
       "t_end_ms": 515000,
       "value_num": null,
@@ -1377,7 +1377,7 @@
     {
       "id": "u-019",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 530000,
       "t_end_ms": 535000,
       "value_num": null,
@@ -1459,7 +1459,7 @@
     {
       "id": "u-020",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 548000,
       "t_end_ms": 552000,
       "value_num": null,
@@ -1541,7 +1541,7 @@
     {
       "id": "u-021",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 568000,
       "t_end_ms": 573000,
       "value_num": null,
@@ -1623,7 +1623,7 @@
     {
       "id": "u-022",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 588000,
       "t_end_ms": 592000,
       "value_num": null,
@@ -1705,7 +1705,7 @@
     {
       "id": "u-023",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 606000,
       "t_end_ms": 611000,
       "value_num": null,
@@ -1787,7 +1787,7 @@
     {
       "id": "u-024",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 624000,
       "t_end_ms": 629000,
       "value_num": null,
@@ -1869,7 +1869,7 @@
     {
       "id": "u-025",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 640000,
       "t_end_ms": 645000,
       "value_num": null,
@@ -1968,7 +1968,7 @@
     {
       "id": "u-026",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 660000,
       "t_end_ms": 665000,
       "value_num": null,
@@ -2050,7 +2050,7 @@
     {
       "id": "u-027",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 676000,
       "t_end_ms": 681000,
       "value_num": null,
@@ -2132,7 +2132,7 @@
     {
       "id": "u-028",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 692000,
       "t_end_ms": 697000,
       "value_num": null,
@@ -2214,7 +2214,7 @@
     {
       "id": "u-029",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 708000,
       "t_end_ms": 713000,
       "value_num": null,
@@ -2296,7 +2296,7 @@
     {
       "id": "u-030",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 724000,
       "t_end_ms": 729000,
       "value_num": null,
@@ -2378,7 +2378,7 @@
     {
       "id": "u-031",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 740000,
       "t_end_ms": 744000,
       "value_num": null,
@@ -2460,7 +2460,7 @@
     {
       "id": "u-032",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 756000,
       "t_end_ms": 760000,
       "value_num": null,
@@ -2542,7 +2542,7 @@
     {
       "id": "u-033",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 770000,
       "t_end_ms": 774000,
       "value_num": null,
@@ -2624,7 +2624,7 @@
     {
       "id": "u-034",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 786000,
       "t_end_ms": 790000,
       "value_num": null,
@@ -2706,7 +2706,7 @@
     {
       "id": "u-035",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 802000,
       "t_end_ms": 806000,
       "value_num": null,
@@ -2788,7 +2788,7 @@
     {
       "id": "u-036",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 814000,
       "t_end_ms": 818000,
       "value_num": null,
@@ -2870,7 +2870,7 @@
     {
       "id": "u-037",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 824000,
       "t_end_ms": 828000,
       "value_num": null,
@@ -2952,7 +2952,7 @@
     {
       "id": "u-038",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 834000,
       "t_end_ms": 837000,
       "value_num": null,
@@ -3016,7 +3016,7 @@
     {
       "id": "u-039",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 837000,
       "t_end_ms": 839000,
       "value_num": null,
@@ -3080,7 +3080,7 @@
     {
       "id": "u-040",
       "kind": "utterance",
-      "category": "physical",
+      "category": "speech",
       "t_start_ms": 839000,
       "t_end_ms": 840000,
       "value_num": null,
@@ -3163,7 +3163,8 @@
       "physical": 45,
       "cognitive": 63,
       "time": 47,
-      "sentiment": 58
+      "sentiment": 58,
+      "speech": 0
     },
     "total": 56,
     "breakdown": [
