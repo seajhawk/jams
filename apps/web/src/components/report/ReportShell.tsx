@@ -23,7 +23,7 @@ function useIsMounted() {
   )
 }
 
-export function ReportShell({ payload }: { payload: ReportPayload }) {
+export function ReportShell({ payload, demo = false }: { payload: ReportPayload; demo?: boolean }) {
   const mounted = useIsMounted()
   const [currentTimeMs, setCurrentTimeMs] = useState(0)
   const [weights, setWeights] = useState<Partial<Record<MeasureKind, number>>>(
@@ -39,8 +39,8 @@ export function ReportShell({ payload }: { payload: ReportPayload }) {
   }, [])
 
   useEffect(() => {
-    toast.info('Demo report — upload your own video soon')
-  }, [])
+    if (demo) toast.info('Demo report — upload your own video soon')
+  }, [demo])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -87,7 +87,7 @@ export function ReportShell({ payload }: { payload: ReportPayload }) {
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      <ReportHeader payload={payload} weights={weights} currentTimeMs={currentTimeMs} />
+      <ReportHeader payload={payload} weights={weights} currentTimeMs={currentTimeMs} demo={demo} />
       <div className="sticky top-0 z-30 bg-background shadow-sm">
         <VideoPlayer
           src={payload.video.playback_url}

@@ -16,9 +16,10 @@ interface ReportHeaderProps {
   payload: ReportPayload
   weights: Partial<Record<MeasureKind, number>>
   currentTimeMs: number
+  demo?: boolean
 }
 
-export function ReportHeader({ payload, weights, currentTimeMs }: ReportHeaderProps) {
+export function ReportHeader({ payload, weights, currentTimeMs, demo = false }: ReportHeaderProps) {
   const normalized = normalize(payload.measures, payload.video, payload.score.profile.normalization)
   const liveScore = score(normalized, weights)
 
@@ -27,7 +28,7 @@ export function ReportHeader({ payload, weights, currentTimeMs }: ReportHeaderPr
       <span className="font-semibold">{payload.task?.name ?? 'Untitled task'}</span>
       <span className="text-muted-foreground">—</span>
       <span className="text-muted-foreground">{payload.video.title}</span>
-      <Badge variant="secondary" className="text-xs">DEMO</Badge>
+      {demo && <Badge variant="secondary" className="text-xs">DEMO</Badge>}
       <span className="text-muted-foreground text-sm">
         {new Date(payload.run.finished_at).toLocaleString()}
       </span>
