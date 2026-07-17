@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { formatMs } from "@/lib/format-ms"
 import { cn } from "@/lib/utils"
 import { UploadDialog } from "./UploadDialog"
+import { ComparePicker } from "@/components/compare/ComparePicker"
 
 interface VideoRecord {
   id: string
@@ -399,6 +400,14 @@ export function LibraryContent() {
             <option value="uploaded">Uploaded</option>
             <option value="failed">Failed</option>
           </select>
+
+          {/* Compare button appears when a task filter is active */}
+          {taskFilter && (() => {
+            const activeTask = allTasks.find((t) => t.id === taskFilter)
+            return activeTask ? (
+              <ComparePicker taskId={activeTask.id} taskName={activeTask.name} />
+            ) : null
+          })()}
         </div>
       )}
 

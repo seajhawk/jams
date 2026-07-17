@@ -4,6 +4,8 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 
 interface EffortScoreDialProps {
   score: number
+  /** Optional data-testid override (default: "score-dial") */
+  testId?: string
 }
 
 function dialColor(value: number): string {
@@ -12,7 +14,7 @@ function dialColor(value: number): string {
   return 'text-red-500'
 }
 
-export function EffortScoreDial({ score }: EffortScoreDialProps) {
+export function EffortScoreDial({ score, testId = 'score-dial' }: EffortScoreDialProps) {
   const r = 48
   const cx = 60
   const cy = 60
@@ -23,7 +25,7 @@ export function EffortScoreDial({ score }: EffortScoreDialProps) {
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger render={<svg data-testid="score-dial" width={80} height={80} viewBox="0 0 120 120" aria-label={`Effort score: ${score}`} />}>
+        <TooltipTrigger render={<svg data-testid={testId} width={80} height={80} viewBox="0 0 120 120" aria-label={`Effort score: ${score}`} />}>
           {/* Background arc */}
           <circle
             cx={cx}
