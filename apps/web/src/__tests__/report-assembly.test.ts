@@ -21,8 +21,10 @@ const SEG_ID = "a1b2c3d4-0000-4000-8000-000000000005"
 // Mock infrastructure (hoisted so vi.mock factories can reference them)
 // ---------------------------------------------------------------------------
 
-const { selectQueue, mockDb } = vi.hoisted(() => {
+const { insertQueue, selectQueue, updateQueue, mockDb } = vi.hoisted(() => {
+  const insertQueue: unknown[][] = []
   const selectQueue: unknown[][] = []
+  const updateQueue: unknown[][] = []
 
   /**
    * Builds a Drizzle-like query chain that is also Promise-thenable.
@@ -35,7 +37,7 @@ const { selectQueue, mockDb } = vi.hoisted(() => {
       from: () => chain,
       leftJoin: () => chain,
       where: () => chain,
-      orderBy: () => Promise.resolve(rows),
+      orderBy: () => chain,
       limit: () => Promise.resolve(rows),
       then: <T, E>(
         onFulfilled?: ((value: unknown[]) => T | PromiseLike<T>) | null,
@@ -49,15 +51,22 @@ const { selectQueue, mockDb } = vi.hoisted(() => {
     select: () => makeChain(),
     insert: () => ({
       values: (v: Record<string, unknown>) => ({
+        onConflictDoNothing: () => ({
+          returning: () => Promise.resolve(insertQueue.shift() ?? [v]),
+        }),
         returning: () => Promise.resolve([v]),
       }),
     }),
     update: () => ({
-      set: () => ({ where: () => Promise.resolve([]) }),
+      set: () => ({
+        where: () => ({
+          returning: () => Promise.resolve(updateQueue.shift() ?? []),
+        }),
+      }),
     }),
   }
 
-  return { selectQueue, mockDb }
+  return { insertQueue, selectQueue, updateQueue, mockDb }
 })
 
 vi.mock("@/db/client", () => ({ db: mockDb }))
@@ -186,6 +195,7 @@ function makeUtterance() {
 
 import {
   assembleReportPayload,
+  getOrCreateDefaultProfile,
   ReportNotFoundError,
   ReportNotReadyError,
 } from "@/lib/report-assembly"
@@ -196,7 +206,9 @@ import {
 
 describe("assembleReportPayload", () => {
   beforeEach(() => {
+    insertQueue.length = 0
     selectQueue.length = 0
+    updateQueue.length = 0
   })
 
   it("assembles a valid ReportPayload from seeded DB rows and validates against the zod schema", async () => {
@@ -260,5 +272,34 @@ describe("assembleReportPayload", () => {
     selectQueue.push([])  // empty → run not found
 
     await expect(assembleReportPayload(RUN_ID, ORG_ID)).rejects.toThrow(ReportNotFoundError)
+  })
+})
+
+describe("getOrCreateDefaultProfile", () => {
+  beforeEach(() => {
+    insertQueue.length = 0
+    selectQueue.length = 0
+    updateQueue.length = 0
+  })
+
+  it("reselects the default profile when creation loses a concurrent insert race", async () => {
+    const profile = makeProfile()
+    selectQueue.push([]) // no default on first read
+    insertQueue.push([]) // insert skipped by on conflict do nothing
+    selectQueue.push([profile]) // concurrent request created the default
+
+    await expect(getOrCreateDefaultProfile(ORG_ID)).resolves.toEqual(profile)
+  })
+
+  it("promotes an existing non-default profile named Default when no default exists", async () => {
+    const namedDefault = { ...makeProfile(), isDefault: false }
+    const promotedDefault = { ...namedDefault, isDefault: true }
+    selectQueue.push([]) // no default on first read
+    insertQueue.push([]) // insert skipped by unique org/name conflict
+    selectQueue.push([]) // still no default after insert conflict
+    selectQueue.push([namedDefault])
+    updateQueue.push([promotedDefault])
+
+    await expect(getOrCreateDefaultProfile(ORG_ID)).resolves.toEqual(promotedDefault)
   })
 })

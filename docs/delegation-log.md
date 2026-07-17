@@ -17,6 +17,7 @@ Track every delegated run so we route work to whoever does it best. Update after
 | 2026-07-17 | F2 E2E Playwright | Codex | gpt-5 | ⚠️ | Clerk-auth demo/upload E2E; green after Azurite CORS/key fixes |
 | 2026-07-17 | F3 worker spine + probe | Codex | gpt-5 | ⚠️ | Web/worker spine complete; checks green; live run succeeded after queue idempotency + ffmpeg progress pipe fixes |
 | 2026-07-17 | F3-b1 Part B fixture harness | Codex | gpt-5 | ✅ | Worker-only fixture generator/helpers/tests; pytest/ruff green; TTS fixtures pending without espeak-ng |
+| 2026-07-17 | F7 E2E weight-profile interference fix | Codex | gpt-5 | ✅ | Comparison fixture no longer seeds org default; default profile creation hardened for concurrent report assembly; E2E green twice |
 
 ## Routing heuristics (living — revise as evidence accumulates)
 

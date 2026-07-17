@@ -94,16 +94,17 @@ async function seedFixture(orgId: string) {
     on conflict (id) do nothing;
   `)
 
-  // Seed default weight profile (skip if already exists for this org)
+  // Seed a comparison-owned non-default profile so this spec never mutates
+  // the org default used by live report tests running in parallel.
   await psql(`
     insert into weight_profiles (id, org_id, name, weights, normalization, is_default)
     values (
       ${sqlLiteral(CMP_PROFILE)},
       ${sqlLiteral(orgId)},
-      'Default',
+      'F7 Compare Profile',
       '{"context_switch":3,"sentiment":4,"spoken_word":1,"time_segment":2}'::jsonb,
       '{"context_switch":"per_minute","sentiment":"neg_density","spoken_word":"per_minute","time_segment":"raw_minutes"}'::jsonb,
-      true
+      false
     )
     on conflict (org_id, name) do nothing;
   `)

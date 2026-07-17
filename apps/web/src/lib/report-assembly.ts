@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 
 import { db } from "@/db/client"
 import {
@@ -38,11 +38,15 @@ export class ReportNotReadyError extends Error {
 export async function getOrCreateDefaultProfile(orgId: string) {
   const scopedDb = createScopedDb(orgId)
 
-  const [existing] = await scopedDb.db
-    .select()
-    .from(weightProfiles)
-    .where(scopedDb.orgFilter(weightProfiles, eq(weightProfiles.isDefault, true)))
-    .limit(1)
+  const selectDefaultProfile = () =>
+    scopedDb.db
+      .select()
+      .from(weightProfiles)
+      .where(scopedDb.orgFilter(weightProfiles, eq(weightProfiles.isDefault, true)))
+      .orderBy(asc(weightProfiles.createdAt), asc(weightProfiles.id))
+      .limit(1)
+
+  const [existing] = await selectDefaultProfile()
 
   if (existing) return existing
 
@@ -55,9 +59,51 @@ export async function getOrCreateDefaultProfile(orgId: string) {
       normalization: DEFAULT_WEIGHT_PROFILE_NORMALIZATION,
       isDefault: true,
     })
+    .onConflictDoNothing()
     .returning()
 
-  return created
+  if (created) return created
+
+  const [afterInsertRace] = await selectDefaultProfile()
+  if (afterInsertRace) return afterInsertRace
+
+  const [namedDefault] = await scopedDb.db
+    .select()
+    .from(weightProfiles)
+    .where(
+      scopedDb.orgFilter(
+        weightProfiles,
+        eq(weightProfiles.name, DEFAULT_WEIGHT_PROFILE_NAME)
+      )
+    )
+    .orderBy(asc(weightProfiles.createdAt), asc(weightProfiles.id))
+    .limit(1)
+
+  if (namedDefault) {
+    try {
+      const [promoted] = await scopedDb.db
+        .update(weightProfiles)
+        .set({
+          weights: DEFAULT_WEIGHT_PROFILE_WEIGHTS,
+          normalization: DEFAULT_WEIGHT_PROFILE_NORMALIZATION,
+          isDefault: true,
+          updatedAt: new Date(),
+        })
+        .where(scopedDb.orgFilter(weightProfiles, eq(weightProfiles.id, namedDefault.id)))
+        .returning()
+
+      if (promoted) return promoted
+    } catch (error) {
+      const [afterPromoteRace] = await selectDefaultProfile()
+      if (afterPromoteRace) return afterPromoteRace
+      throw error
+    }
+  }
+
+  const [finalDefault] = await selectDefaultProfile()
+  if (finalDefault) return finalDefault
+
+  throw new Error(`Unable to create default weight profile for org ${orgId}`)
 }
 
 function warningsFromRun(
