@@ -1,0 +1,24 @@
+# Spec F3-a: Pipeline spine — runs, queue, worker loop, probe stage
+
+Goal: the local-first analysis pipeline spine from docs/PLAN.md §Analysis pipeline stages 1-2 and §Data model (`analysis_runs`, `analysis_artifacts`). NO Azure deployment/KEDA yet — everything runs against docker-compose Azurite + Postgres. Branch `f1-foundation`.
+
+## Web side (apps/web)
+
+1. Drizzle migration: `analysis_runs` + `analysis_artifacts` exactly per PLAN.md §Data model (statuses queued|running|succeeded|partial|failed; error_code enum; superseded_by self-FK; provider_versions/config jsonb; stage/progress_pct/stage_detail).
+2. `POST /api/analyses` (withOrg): body {video_id, config?} — video must be org's and status uploaded; insert run status='queued' (pipeline_version from a `PIPELINE_VERSION` const shared via a small ts file; re-run allowed: set superseded_by chain on the previous run); enqueue JSON `{"run_id": "..."}` to Storage Queue `analysis-jobs` (add queue helpers to blob.ts's sibling `queue.ts`, `@azure/storage-queue`, ensure-created lazily).
+3. `GET /api/analyses/[id]` (withOrg): the poll payload {status, stage, progress_pct, stage_detail, error_code, timestamps}.
+4. Library card + detail page: "Analyze" button now enabled for uploaded videos → POST, then show a compact status stepper (poll 2.5s) inline on the detail page: stage list with live progress + stage_detail line; terminal states show success (link placeholder "Report coming in F4") or typed failure with retry button (re-POST). Keep UI minimal-polished; the full processing experience is F5.
+
+## Worker side (worker/)
+
+5. Deps: psycopg[binary], azure-storage-queue, azure-storage-blob, pydantic; ffmpeg/ffprobe via the `imageio-ffmpeg` package (bundled static binaries — zero manual install) or `static-ffmpeg`; pick one, document why in pyproject comment.
+6. `jams_worker/main.py` long-poll loop: receive from `analysis-jobs` (visibility timeout 45 min, max_messages 1) → claim run (idempotency: skip+delete msg if status succeeded; attempt++, status=running) → execute stages → delete message on success; on exception: if dequeue_count>=3 move to `analysis-jobs-poison` + status=failed (error_code per taxonomy) else let visibility timeout redeliver. Heartbeat: write stage/progress_pct/stage_detail to Postgres after each stage transition. Config via env (DATABASE_URL, AZURE_STORAGE_CONNECTION_STRING); graceful shutdown on SIGINT.
+7. Stage framework: `MeasureProvider` protocol already stubbed in pipeline.py — flesh into: ordered list of providers, each with id/version/requires/provides/run(ctx); ctx carries run row, org_id, blob client, db conn, local temp workdir, and artifact registration helper. Per-provider try/except → 'partial' semantics per PLAN.md stage 10 (delete-then-insert per (run_id, provider_id) for idempotent measure writes — create the shared helper now even though no measures are emitted yet).
+8. Probe provider (`probe`, the only real provider this slice): download original from Blob to temp → ffprobe validation (container/codec/duration; >20 min → typed fail no_audio/too_long/corrupt_file taxonomy) → ffmpeg VFR→CFR normalize to `{org}/{video}/normalized.mp4` in `derived` container + extract 16 kHz mono WAV `audio.wav` (skip if no audio stream, set has_audio accordingly on the video row) → poster frame if missing → register all as analysis_artifacts rows. progress_detail like "Normalizing… 40%" via ffmpeg -progress parsing (best-effort; coarse steps fine).
+9. `pnpm`-style DX: `uv run jams-worker` console script; README section in worker/ on running the loop locally alongside docker compose.
+
+## Tests + acceptance
+
+10. Worker: pytest unit tests for the status machine (mock queue/db), the idempotent measure-write helper, and probe's ffprobe parsing/error taxonomy (feed it fixtures/e2e-tiny.mp4 and a corrupt file made of random bytes — real ffprobe, no mocks for the happy path). Web: route tests per existing patterns.
+11. Live check you must run and report: docker compose up → `uv run jams-worker` in background → sign-in-free path is impossible, so instead enqueue directly: insert a run row + queue message via a small `worker/scripts/enqueue_local.py` (dev-only, reads a video row id passed as arg — use the video created by the Playwright E2E, rerun `pnpm test:e2e` first if the DB is empty) → verify run reaches status=succeeded with artifacts rows and normalized.mp4 + audio.wav present in Azurite `derived` container; then verify `GET /api/analyses/[id]` returns the terminal payload (curl with a session is not needed — assert via direct DB read + a route unit test instead).
+12. `pnpm build/lint/test`, `uv run pytest`, `uv run ruff check` all green. Logical commits; do not push; leave user dirty files alone. Finish: summary + append scorecard row (delegate=Codex, model, grade, note).
