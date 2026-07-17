@@ -1,7 +1,12 @@
 import { eq } from "drizzle-orm"
 
 import { db } from "@/db/client"
-import { orgs, users, webhookEvents } from "@/db/schema"
+import { orgs, users, webhookEvents, weightProfiles } from "@/db/schema"
+import {
+  DEFAULT_WEIGHT_PROFILE_NAME,
+  DEFAULT_WEIGHT_PROFILE_NORMALIZATION,
+  DEFAULT_WEIGHT_PROFILE_WEIGHTS,
+} from "@/lib/weight-profiles"
 import type { MirrorStore } from "./types"
 
 function isPersonalOrg(metadata: unknown): boolean {
@@ -54,6 +59,19 @@ export const drizzleMirrorStore: MirrorStore = {
           updatedAt: new Date(),
         },
       })
+
+    await db
+      .insert(weightProfiles)
+      .values({
+        orgId: org.id,
+        name: DEFAULT_WEIGHT_PROFILE_NAME,
+        weights: DEFAULT_WEIGHT_PROFILE_WEIGHTS,
+        normalization: DEFAULT_WEIGHT_PROFILE_NORMALIZATION,
+        isDefault: true,
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .onConflictDoNothing()
   },
 
   async markOrgDeleted(id) {

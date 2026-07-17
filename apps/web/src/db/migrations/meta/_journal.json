@@ -29,6 +29,13 @@
       "when": 1784312156943,
       "tag": "0003_add_speech_category",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784316329459,
+      "tag": "0004_icy_tigra",
+      "breakpoints": true
     }
   ]
 }

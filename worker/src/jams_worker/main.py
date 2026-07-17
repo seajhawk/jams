@@ -20,6 +20,9 @@ from jams_worker.errors import PipelineError
 from jams_worker.pipeline import MeasureProvider, PipelineContext, run_pipeline
 from jams_worker.providers.context_switch import ContextSwitchProvider
 from jams_worker.providers.probe import ProbeProvider
+from jams_worker.providers.scoring import ScoringProvider
+from jams_worker.providers.segmentation import SegmentationProvider
+from jams_worker.providers.sentiment import SentimentProvider
 from jams_worker.providers.transcription import TranscriptionProvider
 from jams_worker.settings import Settings
 
@@ -165,6 +168,9 @@ def run_loop(settings: Settings | None = None) -> None:
         ProbeProvider(),
         ContextSwitchProvider(),
         TranscriptionProvider(),
+        SentimentProvider(),
+        SegmentationProvider(),
+        ScoringProvider(),
     ]
 
     stop = StopSignal()

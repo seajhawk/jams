@@ -25,3 +25,15 @@ Local run:
 
 The loop long-polls `analysis-jobs`, writes run heartbeats to Postgres, and
 places third-failure messages on `analysis-jobs-poison`.
+
+Sentiment model cache:
+
+- Default path: `%USERPROFILE%\.cache\jams-worker\sentiment` on Windows, or
+  `~/.cache/jams-worker/sentiment` elsewhere.
+- Override with `JAMS_SENTIMENT_MODEL_CACHE`.
+- The provider downloads the pinned
+  `Xenova/distilbert-base-uncased-finetuned-sst-2-english` revision
+  `0b6928efcb76139cae2c6881d49cda67fe119f42` on first use and runs
+  `onnx/model_int8.onnx` with ONNX Runtime CPU. Build images may pre-warm this
+  cache by importing `jams_worker.providers.sentiment` and calling
+  `classify_onnx(["cache warmup"])`.

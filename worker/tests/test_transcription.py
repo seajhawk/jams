@@ -165,7 +165,7 @@ def test_measures_match_canonical_shape() -> None:
     assert [measure["kind"] for measure in measures] == ["spoken_word", "utterance"]
     utterance = measures[1]
     assert utterance["category"] == "speech"
-    assert utterance["value_text"] is None
+    assert utterance["value_text"] == "hello world"
     assert utterance["payload"]["lang"] == "en"
     assert measures[0]["value_num"] == 2
 

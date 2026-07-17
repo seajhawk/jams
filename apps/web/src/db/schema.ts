@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -47,6 +48,12 @@ export const measureCategoryEnum = pgEnum("measure_category", [
 export const measureSourceEnum = pgEnum("measure_source", [
   "video_analysis",
   "telemetry",
+  "manual",
+])
+export const segmentSourceEnum = pgEnum("segment_source", [
+  "audio_cue",
+  "scene_boundary",
+  "llm",
   "manual",
 ])
 
@@ -222,6 +229,78 @@ export const measures = pgTable(
   ]
 )
 
+export const segments = pgTable(
+  "segments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: "cascade" }),
+    parentSegmentId: uuid("parent_segment_id").references(
+      (): AnyPgColumn => segments.id,
+      { onDelete: "set null" }
+    ),
+    name: text("name").notNull(),
+    tStartMs: integer("t_start_ms").notNull(),
+    tEndMs: integer("t_end_ms").notNull(),
+    source: segmentSourceEnum("source").notNull(),
+    thumbnail: text("thumbnail"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("segments_org_id_run_id_idx").on(table.orgId, table.runId),
+    index("segments_run_id_t_start_ms_idx").on(table.runId, table.tStartMs),
+    check("segments_t_start_ms_check", sql`${table.tStartMs} >= 0`),
+    check("segments_t_end_ms_check", sql`${table.tEndMs} > ${table.tStartMs}`),
+  ]
+)
+
+export const weightProfiles = pgTable(
+  "weight_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    weights: jsonb("weights").notNull(),
+    normalization: jsonb("normalization").notNull(),
+    isDefault: boolean("is_default").notNull().default(false),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("weight_profiles_org_id_name_idx").on(table.orgId, table.name),
+    uniqueIndex("weight_profiles_org_id_default_idx")
+      .on(table.orgId)
+      .where(sql`${table.isDefault} = true`),
+    index("weight_profiles_org_id_idx").on(table.orgId),
+  ]
+)
+
+export const effortScores = pgTable(
+  "effort_scores",
+  {
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: "cascade" }),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => weightProfiles.id, { onDelete: "cascade" }),
+    orgId: text("org_id").notNull(),
+    physical: integer("physical").notNull(),
+    cognitive: integer("cognitive").notNull(),
+    time: integer("time").notNull(),
+    sentiment: integer("sentiment").notNull(),
+    speech: integer("speech").notNull(),
+    total: integer("total").notNull(),
+    breakdown: jsonb("breakdown").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.profileId] }),
+    index("effort_scores_org_id_run_id_idx").on(table.orgId, table.runId),
+  ]
+)
+
 export const orgRelations = relations(orgs, () => ({}))
 export const userRelations = relations(users, () => ({}))
 export const taskRelations = relations(tasks, ({ many }) => ({
@@ -245,6 +324,8 @@ export const analysisRunRelations = relations(analysisRuns, ({ one, many }) => (
   }),
   artifacts: many(analysisArtifacts),
   measures: many(measures),
+  segments: many(segments),
+  effortScores: many(effortScores),
 }))
 export const analysisArtifactRelations = relations(analysisArtifacts, ({ one }) => ({
   run: one(analysisRuns, {
@@ -256,5 +337,28 @@ export const measureRelations = relations(measures, ({ one }) => ({
   run: one(analysisRuns, {
     fields: [measures.runId],
     references: [analysisRuns.id],
+  }),
+}))
+export const segmentRelations = relations(segments, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [segments.runId],
+    references: [analysisRuns.id],
+  }),
+  parent: one(segments, {
+    fields: [segments.parentSegmentId],
+    references: [segments.id],
+  }),
+}))
+export const weightProfileRelations = relations(weightProfiles, ({ many }) => ({
+  effortScores: many(effortScores),
+}))
+export const effortScoreRelations = relations(effortScores, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [effortScores.runId],
+    references: [analysisRuns.id],
+  }),
+  profile: one(weightProfiles, {
+    fields: [effortScores.profileId],
+    references: [weightProfiles.id],
   }),
 }))
