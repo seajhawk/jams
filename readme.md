@@ -51,3 +51,17 @@ docker compose up -d
 ```
 
 See `.env.example` for required environment variables.
+
+### Clerk setup
+
+Create a Clerk application with Organizations enabled, then copy these values
+into `.env`:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `CLERK_WEBHOOK_SIGNING_SECRET`
+
+Configure the Clerk webhook endpoint to send to `/api/webhooks/clerk` and
+enable these events: `user.created`, `user.updated`, `user.deleted`,
+`organization.created`, `organization.updated`, `organization.deleted`,
+`organizationMembership.created`, and `organizationMembership.deleted`.
