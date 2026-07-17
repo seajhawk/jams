@@ -46,6 +46,7 @@ interface VideoRecord {
   status: "uploading" | "uploaded" | "failed"
   uploaded_by: string
   created_at: string
+  latest_run: { id: string; status: string } | null
 }
 
 interface TaskRecord {
@@ -231,23 +232,39 @@ function VideoCard({
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={video.status !== "uploaded" || starting}
-          className="w-full"
-          onClick={startAnalysis}
-        >
-          {starting ? (
-            <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
+        <div className="flex flex-col gap-2">
+          {video.latest_run &&
+          (video.latest_run.status === "succeeded" ||
+            video.latest_run.status === "partial") ? (
+            <Button
+              variant="default"
+              size="sm"
+              className="w-full"
+              render={<Link href={`/reports/${video.latest_run.id}`} />}
+            >
+              <ArrowRight data-icon="inline-start" className="size-4" />
+              View report
+            </Button>
           ) : (
-            <Activity data-icon="inline-start" className="size-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={video.status !== "uploaded" || starting}
+              className="w-full"
+              onClick={startAnalysis}
+            >
+              {starting ? (
+                <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
+              ) : (
+                <Activity data-icon="inline-start" className="size-4" />
+              )}
+              Analyze
+            </Button>
           )}
-          Analyze
-        </Button>
-        {analysisError && (
-          <p className="text-xs leading-5 text-destructive">{analysisError}</p>
-        )}
+          {analysisError && (
+            <p className="text-xs leading-5 text-destructive">{analysisError}</p>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -218,13 +218,25 @@ export function AnalysisStatusPanel({
           </div>
 
           {analysis.status === "succeeded" && (
-            <p className="text-sm text-green-700 dark:text-green-400">
-              Analysis complete. Report coming in F4.
+            <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+              Analysis complete.{" "}
+              <a
+                href={`/reports/${analysis.id}`}
+                className="font-medium underline underline-offset-2"
+              >
+                View report →
+              </a>
             </p>
           )}
           {analysis.status === "partial" && (
-            <p className="text-sm text-amber-700 dark:text-amber-400">
-              Analysis finished with partial results. Report coming in F4.
+            <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+              Partial results available.{" "}
+              <a
+                href={`/reports/${analysis.id}`}
+                className="font-medium underline underline-offset-2"
+              >
+                View report →
+              </a>
             </p>
           )}
           {analysis.status === "failed" && (

@@ -1,7 +1,7 @@
-import { and, desc, eq, type SQL } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, type SQL } from "drizzle-orm"
 import { NextResponse, type NextRequest } from "next/server"
 
-import { tasks, videos } from "@/db/schema"
+import { analysisRuns, tasks, videos } from "@/db/schema"
 import { HttpError, handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
 import { mintUploadSas } from "@/lib/blob"
 import {
@@ -50,8 +50,35 @@ export async function GET(request: NextRequest) {
         .where(where)
         .orderBy(desc(videos.createdAt))
 
+      const videoIds = rows.map((r) => r.video.id)
+      const latestRunMap = new Map<string, { id: string; status: string }>()
+
+      if (videoIds.length > 0) {
+        const runRows = await scopedDb.db
+          .select({
+            videoId: analysisRuns.videoId,
+            id: analysisRuns.id,
+            status: analysisRuns.status,
+          })
+          .from(analysisRuns)
+          .where(
+            and(
+              scopedDb.orgFilter(analysisRuns),
+              inArray(analysisRuns.videoId, videoIds),
+              isNull(analysisRuns.supersededBy)
+            )
+          )
+
+        for (const run of runRows) {
+          latestRunMap.set(run.videoId, { id: run.id, status: run.status })
+        }
+      }
+
       return NextResponse.json({
-        videos: rows.map((row) => serializeVideo(row.video, row.taskName)),
+        videos: rows.map((row) => ({
+          ...serializeVideo(row.video, row.taskName),
+          latest_run: latestRunMap.get(row.video.id) ?? null,
+        })),
       })
     })
   } catch (error) {
