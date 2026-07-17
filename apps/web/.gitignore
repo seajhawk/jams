@@ -19,6 +19,7 @@
 
 # production
 /build
+/public/demo.mp4
 
 # misc
 .DS_Store

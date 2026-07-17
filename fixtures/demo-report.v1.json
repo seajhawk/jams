@@ -1,0 +1,3200 @@
+{
+  "contract_version": 1,
+  "run": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "video_id": "22222222-2222-4222-8222-222222222222",
+    "status": "succeeded",
+    "pipeline_version": "0.1.0",
+    "finished_at": "2026-07-16T17:30:00.000Z",
+    "warnings": []
+  },
+  "video": {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "title": "Participant 3 - Azure Python deployment walkthrough",
+    "duration_ms": 840000,
+    "width": 1920,
+    "height": 1080,
+    "has_audio": true,
+    "playback_url": "/demo.mp4"
+  },
+  "task": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "name": "Deploy a Python web app to Azure"
+  },
+  "segments": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "parent_segment_id": null,
+      "name": "Read the quickstart",
+      "t_start_ms": 0,
+      "t_end_ms": 240000,
+      "source": "audio_cue"
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000002",
+      "parent_segment_id": null,
+      "name": "Configure and deploy",
+      "t_start_ms": 240000,
+      "t_end_ms": 420000,
+      "source": "audio_cue"
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000003",
+      "parent_segment_id": null,
+      "name": "Troubleshoot the failed deploy",
+      "t_start_ms": 420000,
+      "t_end_ms": 840000,
+      "source": "scene_boundary"
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000004",
+      "parent_segment_id": "aaaaaaaa-0000-4000-8000-000000000003",
+      "name": "Inspect build logs",
+      "t_start_ms": 500000,
+      "t_end_ms": 650000,
+      "source": "scene_boundary"
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000005",
+      "parent_segment_id": "aaaaaaaa-0000-4000-8000-000000000003",
+      "name": "Fix startup command",
+      "t_start_ms": 650000,
+      "t_end_ms": 800000,
+      "source": "manual"
+    }
+  ],
+  "measures": [
+    {
+      "id": "m-seg-read",
+      "kind": "time_segment",
+      "category": "time",
+      "t_start_ms": 0,
+      "t_end_ms": 240000,
+      "value_num": 240000,
+      "value_text": null,
+      "unit": "ms",
+      "confidence": 0.99,
+      "source": "video_analysis",
+      "provider_id": "segmenter",
+      "provider_version": "0.1.0",
+      "payload": {
+        "segment_id": "aaaaaaaa-0000-4000-8000-000000000001"
+      }
+    },
+    {
+      "id": "u-001",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 12000,
+      "t_end_ms": 17000,
+      "value_num": null,
+      "value_text": "Okay, I have the Azure quickstart open.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Okay, I have the Azure quickstart open.",
+        "words": [
+          {
+            "w": "Okay",
+            "t0": 12000,
+            "t1": 12600
+          },
+          {
+            "w": "Azure",
+            "t0": 13900,
+            "t1": 14500
+          },
+          {
+            "w": "open",
+            "t0": 16200,
+            "t1": 17000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-001",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 12000,
+      "t_end_ms": 17000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-001",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 12000,
+      "t_end_ms": 17000,
+      "value_num": 0.35,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-002",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 31000,
+      "t_end_ms": 36000,
+      "value_num": null,
+      "value_text": "It looks like a pretty standard Flask sample.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "It looks like a pretty standard Flask sample.",
+        "words": [
+          {
+            "w": "It",
+            "t0": 31000,
+            "t1": 31400
+          },
+          {
+            "w": "standard",
+            "t0": 33600,
+            "t1": 34400
+          },
+          {
+            "w": "sample",
+            "t0": 35300,
+            "t1": 36000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-002",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 31000,
+      "t_end_ms": 36000,
+      "value_num": 8,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-002",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 31000,
+      "t_end_ms": 36000,
+      "value_num": 0.28,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-003",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 55000,
+      "t_end_ms": 59000,
+      "value_num": null,
+      "value_text": "First I need to clone the repo.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "First I need to clone the repo.",
+        "words": [
+          {
+            "w": "First",
+            "t0": 55000,
+            "t1": 55600
+          },
+          {
+            "w": "clone",
+            "t0": 57500,
+            "t1": 58200
+          },
+          {
+            "w": "repo",
+            "t0": 58600,
+            "t1": 59000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-003",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 55000,
+      "t_end_ms": 59000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-003",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 55000,
+      "t_end_ms": 59000,
+      "value_num": 0.18,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-004",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 82000,
+      "t_end_ms": 87000,
+      "value_num": null,
+      "value_text": "The prerequisites are already installed here.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The prerequisites are already installed here.",
+        "words": [
+          {
+            "w": "prerequisites",
+            "t0": 82600,
+            "t1": 84000
+          },
+          {
+            "w": "installed",
+            "t0": 85400,
+            "t1": 86300
+          },
+          {
+            "w": "here",
+            "t0": 86600,
+            "t1": 87000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-004",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 82000,
+      "t_end_ms": 87000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-004",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 82000,
+      "t_end_ms": 87000,
+      "value_num": 0.22,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-005",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 119000,
+      "t_end_ms": 124000,
+      "value_num": null,
+      "value_text": "The guide says App Service will detect Python.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The guide says App Service will detect Python.",
+        "words": [
+          {
+            "w": "guide",
+            "t0": 119500,
+            "t1": 120200
+          },
+          {
+            "w": "Service",
+            "t0": 121600,
+            "t1": 122300
+          },
+          {
+            "w": "Python",
+            "t0": 123200,
+            "t1": 124000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-005",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 119000,
+      "t_end_ms": 124000,
+      "value_num": 8,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-005",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 119000,
+      "t_end_ms": 124000,
+      "value_num": 0.12,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-006",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 158000,
+      "t_end_ms": 163000,
+      "value_num": null,
+      "value_text": "I am checking the environment variables.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I am checking the environment variables.",
+        "words": [
+          {
+            "w": "checking",
+            "t0": 159000,
+            "t1": 159900
+          },
+          {
+            "w": "environment",
+            "t0": 160800,
+            "t1": 162000
+          },
+          {
+            "w": "variables",
+            "t0": 162100,
+            "t1": 163000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-006",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 158000,
+      "t_end_ms": 163000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-006",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 158000,
+      "t_end_ms": 163000,
+      "value_num": 0.04,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-007",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 205000,
+      "t_end_ms": 210000,
+      "value_num": null,
+      "value_text": "This should be a clean path, hopefully.",
+      "unit": null,
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "This should be a clean path, hopefully.",
+        "words": [
+          {
+            "w": "This",
+            "t0": 205000,
+            "t1": 205600
+          },
+          {
+            "w": "clean",
+            "t0": 207400,
+            "t1": 208100
+          },
+          {
+            "w": "hopefully",
+            "t0": 209000,
+            "t1": 210000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-007",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 205000,
+      "t_end_ms": 210000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-007",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 205000,
+      "t_end_ms": 210000,
+      "value_num": 0.16,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "m-seg-config",
+      "kind": "time_segment",
+      "category": "time",
+      "t_start_ms": 240000,
+      "t_end_ms": 420000,
+      "value_num": 180000,
+      "value_text": null,
+      "unit": "ms",
+      "confidence": 0.99,
+      "source": "video_analysis",
+      "provider_id": "segmenter",
+      "provider_version": "0.1.0",
+      "payload": {
+        "segment_id": "aaaaaaaa-0000-4000-8000-000000000002"
+      }
+    },
+    {
+      "id": "u-008",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 248000,
+      "t_end_ms": 253000,
+      "value_num": null,
+      "value_text": "Now I am creating the resource group.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Now I am creating the resource group.",
+        "words": [
+          {
+            "w": "Now",
+            "t0": 248000,
+            "t1": 248600
+          },
+          {
+            "w": "resource",
+            "t0": 251000,
+            "t1": 251800
+          },
+          {
+            "w": "group",
+            "t0": 252400,
+            "t1": 253000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-008",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 248000,
+      "t_end_ms": 253000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-008",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 248000,
+      "t_end_ms": 253000,
+      "value_num": 0.2,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-009",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 270000,
+      "t_end_ms": 275000,
+      "value_num": null,
+      "value_text": "The CLI is asking for a region.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The CLI is asking for a region.",
+        "words": [
+          {
+            "w": "CLI",
+            "t0": 270600,
+            "t1": 271100
+          },
+          {
+            "w": "asking",
+            "t0": 272000,
+            "t1": 272700
+          },
+          {
+            "w": "region",
+            "t0": 274100,
+            "t1": 275000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-009",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 270000,
+      "t_end_ms": 275000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-009",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 270000,
+      "t_end_ms": 275000,
+      "value_num": 0.08,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-010",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 294000,
+      "t_end_ms": 299000,
+      "value_num": null,
+      "value_text": "I will use east us for this demo.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I will use east us for this demo.",
+        "words": [
+          {
+            "w": "use",
+            "t0": 295200,
+            "t1": 295700
+          },
+          {
+            "w": "east",
+            "t0": 296300,
+            "t1": 296900
+          },
+          {
+            "w": "demo",
+            "t0": 298300,
+            "t1": 299000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-010",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 294000,
+      "t_end_ms": 299000,
+      "value_num": 8,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-010",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 294000,
+      "t_end_ms": 299000,
+      "value_num": 0.14,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-011",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 320000,
+      "t_end_ms": 325000,
+      "value_num": null,
+      "value_text": "The deployment zip is uploading now.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The deployment zip is uploading now.",
+        "words": [
+          {
+            "w": "deployment",
+            "t0": 320500,
+            "t1": 321600
+          },
+          {
+            "w": "uploading",
+            "t0": 323000,
+            "t1": 324000
+          },
+          {
+            "w": "now",
+            "t0": 324300,
+            "t1": 325000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-011",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 320000,
+      "t_end_ms": 325000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-011",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 320000,
+      "t_end_ms": 325000,
+      "value_num": 0.24,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-012",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 350000,
+      "t_end_ms": 355000,
+      "value_num": null,
+      "value_text": "It says the build has started.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "It says the build has started.",
+        "words": [
+          {
+            "w": "says",
+            "t0": 350700,
+            "t1": 351300
+          },
+          {
+            "w": "build",
+            "t0": 352200,
+            "t1": 352800
+          },
+          {
+            "w": "started",
+            "t0": 354200,
+            "t1": 355000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-012",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 350000,
+      "t_end_ms": 355000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-012",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 350000,
+      "t_end_ms": 355000,
+      "value_num": 0.18,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-013",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 383000,
+      "t_end_ms": 388000,
+      "value_num": null,
+      "value_text": "I am going to open the live URL.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I am going to open the live URL.",
+        "words": [
+          {
+            "w": "going",
+            "t0": 384000,
+            "t1": 384700
+          },
+          {
+            "w": "live",
+            "t0": 386300,
+            "t1": 386900
+          },
+          {
+            "w": "URL",
+            "t0": 387200,
+            "t1": 388000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-013",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 383000,
+      "t_end_ms": 388000,
+      "value_num": 8,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-013",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 383000,
+      "t_end_ms": 388000,
+      "value_num": 0.22,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "m-seg-troubleshoot",
+      "kind": "time_segment",
+      "category": "time",
+      "t_start_ms": 420000,
+      "t_end_ms": 840000,
+      "value_num": 420000,
+      "value_text": null,
+      "unit": "ms",
+      "confidence": 0.98,
+      "source": "video_analysis",
+      "provider_id": "segmenter",
+      "provider_version": "0.1.0",
+      "payload": {
+        "segment_id": "aaaaaaaa-0000-4000-8000-000000000003"
+      }
+    },
+    {
+      "id": "u-014",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 428000,
+      "t_end_ms": 433000,
+      "value_num": null,
+      "value_text": "The browser is showing a startup error.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The browser is showing a startup error.",
+        "words": [
+          {
+            "w": "browser",
+            "t0": 428700,
+            "t1": 429500
+          },
+          {
+            "w": "startup",
+            "t0": 431200,
+            "t1": 432100
+          },
+          {
+            "w": "error",
+            "t0": 432400,
+            "t1": 433000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-014",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 428000,
+      "t_end_ms": 433000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-014",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 428000,
+      "t_end_ms": 433000,
+      "value_num": -0.08,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-001",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 445000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - App Service error",
+        "to": "Azure Portal - deployment logs"
+      }
+    },
+    {
+      "id": "u-015",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 448000,
+      "t_end_ms": 453000,
+      "value_num": null,
+      "value_text": "Let me pull up the deployment logs.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Let me pull up the deployment logs.",
+        "words": [
+          {
+            "w": "Let",
+            "t0": 448000,
+            "t1": 448400
+          },
+          {
+            "w": "deployment",
+            "t0": 451000,
+            "t1": 452000
+          },
+          {
+            "w": "logs",
+            "t0": 452300,
+            "t1": 453000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-015",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 448000,
+      "t_end_ms": 453000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-015",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 448000,
+      "t_end_ms": 453000,
+      "value_num": -0.12,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-002",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 462000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Azure Portal - deployment logs",
+        "to": "Terminal - az webapp log tail"
+      }
+    },
+    {
+      "id": "u-016",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 468000,
+      "t_end_ms": 473000,
+      "value_num": null,
+      "value_text": "Why is it failing? The error says nothing.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Why is it failing? The error says nothing.",
+        "words": [
+          {
+            "w": "Why",
+            "t0": 468000,
+            "t1": 468400
+          },
+          {
+            "w": "failing",
+            "t0": 469200,
+            "t1": 470000
+          },
+          {
+            "w": "nothing",
+            "t0": 472000,
+            "t1": 473000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-016",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 468000,
+      "t_end_ms": 473000,
+      "value_num": 8,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-016",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 468000,
+      "t_end_ms": 473000,
+      "value_num": -0.8,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.91,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-003",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 482000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.91,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - log tail",
+        "to": "Browser - quickstart troubleshooting"
+      }
+    },
+    {
+      "id": "u-017",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 488000,
+      "t_end_ms": 492000,
+      "value_num": null,
+      "value_text": "The log stream is not helpful.",
+      "unit": null,
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The log stream is not helpful.",
+        "words": [
+          {
+            "w": "log",
+            "t0": 488800,
+            "t1": 489300
+          },
+          {
+            "w": "stream",
+            "t0": 489400,
+            "t1": 490000
+          },
+          {
+            "w": "helpful",
+            "t0": 491200,
+            "t1": 492000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-017",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 488000,
+      "t_end_ms": 492000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-017",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 488000,
+      "t_end_ms": 492000,
+      "value_num": -0.58,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "m-seg-logs",
+      "kind": "time_segment",
+      "category": "time",
+      "t_start_ms": 500000,
+      "t_end_ms": 650000,
+      "value_num": 150000,
+      "value_text": null,
+      "unit": "ms",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "segmenter",
+      "provider_version": "0.1.0",
+      "payload": {
+        "segment_id": "aaaaaaaa-0000-4000-8000-000000000004"
+      }
+    },
+    {
+      "id": "c-004",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 504000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - docs",
+        "to": "Terminal - project files"
+      }
+    },
+    {
+      "id": "u-018",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 510000,
+      "t_end_ms": 515000,
+      "value_num": null,
+      "value_text": "Maybe the startup command is missing.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Maybe the startup command is missing.",
+        "words": [
+          {
+            "w": "Maybe",
+            "t0": 510000,
+            "t1": 510700
+          },
+          {
+            "w": "startup",
+            "t0": 512000,
+            "t1": 512900
+          },
+          {
+            "w": "missing",
+            "t0": 514000,
+            "t1": 515000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-018",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 510000,
+      "t_end_ms": 515000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-018",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 510000,
+      "t_end_ms": 515000,
+      "value_num": -0.36,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-005",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 522000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - project files",
+        "to": "Editor - requirements.txt"
+      }
+    },
+    {
+      "id": "u-019",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 530000,
+      "t_end_ms": 535000,
+      "value_num": null,
+      "value_text": "I do not see a gunicorn entry.",
+      "unit": null,
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I do not see a gunicorn entry.",
+        "words": [
+          {
+            "w": "not",
+            "t0": 531000,
+            "t1": 531400
+          },
+          {
+            "w": "gunicorn",
+            "t0": 533000,
+            "t1": 534000
+          },
+          {
+            "w": "entry",
+            "t0": 534300,
+            "t1": 535000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-019",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 530000,
+      "t_end_ms": 535000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-019",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 530000,
+      "t_end_ms": 535000,
+      "value_num": -0.42,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-006",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 544000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.91,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Editor - requirements.txt",
+        "to": "Browser - Azure docs"
+      }
+    },
+    {
+      "id": "u-020",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 548000,
+      "t_end_ms": 552000,
+      "value_num": null,
+      "value_text": "This part is more hidden than expected.",
+      "unit": null,
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "This part is more hidden than expected.",
+        "words": [
+          {
+            "w": "part",
+            "t0": 548800,
+            "t1": 549300
+          },
+          {
+            "w": "hidden",
+            "t0": 550600,
+            "t1": 551300
+          },
+          {
+            "w": "expected",
+            "t0": 551400,
+            "t1": 552000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-020",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 548000,
+      "t_end_ms": 552000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-020",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 548000,
+      "t_end_ms": 552000,
+      "value_num": -0.46,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-007",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 562000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - Azure docs",
+        "to": "Azure Portal - configuration"
+      }
+    },
+    {
+      "id": "u-021",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 568000,
+      "t_end_ms": 573000,
+      "value_num": null,
+      "value_text": "I am checking configuration again.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I am checking configuration again.",
+        "words": [
+          {
+            "w": "checking",
+            "t0": 569000,
+            "t1": 569800
+          },
+          {
+            "w": "configuration",
+            "t0": 570300,
+            "t1": 571700
+          },
+          {
+            "w": "again",
+            "t0": 572200,
+            "t1": 573000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-021",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 568000,
+      "t_end_ms": 573000,
+      "value_num": 5,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-021",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 568000,
+      "t_end_ms": 573000,
+      "value_num": -0.32,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-008",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 583000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Azure Portal - configuration",
+        "to": "Terminal - restart command"
+      }
+    },
+    {
+      "id": "u-022",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 588000,
+      "t_end_ms": 592000,
+      "value_num": null,
+      "value_text": "Restarting it did not clear it.",
+      "unit": null,
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Restarting it did not clear it.",
+        "words": [
+          {
+            "w": "Restarting",
+            "t0": 588000,
+            "t1": 589200
+          },
+          {
+            "w": "clear",
+            "t0": 590700,
+            "t1": 591300
+          },
+          {
+            "w": "it",
+            "t0": 591600,
+            "t1": 592000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-022",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 588000,
+      "t_end_ms": 592000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-022",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 588000,
+      "t_end_ms": 592000,
+      "value_num": -0.52,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-009",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 602000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.91,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - restart command",
+        "to": "Browser - error page"
+      }
+    },
+    {
+      "id": "u-023",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 606000,
+      "t_end_ms": 611000,
+      "value_num": null,
+      "value_text": "Still failing, same blank application page.",
+      "unit": null,
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Still failing, same blank application page.",
+        "words": [
+          {
+            "w": "Still",
+            "t0": 606000,
+            "t1": 606700
+          },
+          {
+            "w": "blank",
+            "t0": 608900,
+            "t1": 609600
+          },
+          {
+            "w": "page",
+            "t0": 610200,
+            "t1": 611000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-023",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 606000,
+      "t_end_ms": 611000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.93,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-023",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 606000,
+      "t_end_ms": 611000,
+      "value_num": -0.62,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-010",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 618000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.91,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - error page",
+        "to": "Azure Portal - log stream"
+      }
+    },
+    {
+      "id": "u-024",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 624000,
+      "t_end_ms": 629000,
+      "value_num": null,
+      "value_text": "I need a better clue than this.",
+      "unit": null,
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I need a better clue than this.",
+        "words": [
+          {
+            "w": "need",
+            "t0": 624800,
+            "t1": 625300
+          },
+          {
+            "w": "better",
+            "t0": 626100,
+            "t1": 626800
+          },
+          {
+            "w": "clue",
+            "t0": 627100,
+            "t1": 627800
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-024",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 624000,
+      "t_end_ms": 629000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-024",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 624000,
+      "t_end_ms": 629000,
+      "value_num": -0.38,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-011",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 638000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Azure Portal - log stream",
+        "to": "Editor - app.py"
+      }
+    },
+    {
+      "id": "u-025",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 640000,
+      "t_end_ms": 645000,
+      "value_num": null,
+      "value_text": "Hold on, the module name is app.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Hold on, the module name is app.",
+        "words": [
+          {
+            "w": "Hold",
+            "t0": 640000,
+            "t1": 640600
+          },
+          {
+            "w": "module",
+            "t0": 642000,
+            "t1": 642700
+          },
+          {
+            "w": "app",
+            "t0": 644300,
+            "t1": 645000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-025",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 640000,
+      "t_end_ms": 645000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-025",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 640000,
+      "t_end_ms": 645000,
+      "value_num": 0.02,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.85,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "m-seg-fix",
+      "kind": "time_segment",
+      "category": "time",
+      "t_start_ms": 650000,
+      "t_end_ms": 800000,
+      "value_num": 150000,
+      "value_text": null,
+      "unit": "ms",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "segmenter",
+      "provider_version": "0.1.0",
+      "payload": {
+        "segment_id": "aaaaaaaa-0000-4000-8000-000000000005"
+      }
+    },
+    {
+      "id": "c-012",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 654000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.91,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Editor - app.py",
+        "to": "Browser - startup command docs"
+      }
+    },
+    {
+      "id": "u-026",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 660000,
+      "t_end_ms": 665000,
+      "value_num": null,
+      "value_text": "The startup command should reference app app.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The startup command should reference app app.",
+        "words": [
+          {
+            "w": "startup",
+            "t0": 660500,
+            "t1": 661300
+          },
+          {
+            "w": "reference",
+            "t0": 662700,
+            "t1": 663700
+          },
+          {
+            "w": "app",
+            "t0": 664400,
+            "t1": 665000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-026",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 660000,
+      "t_end_ms": 665000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-026",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 660000,
+      "t_end_ms": 665000,
+      "value_num": 0.12,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-013",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 672000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - docs",
+        "to": "Azure Portal - configuration"
+      }
+    },
+    {
+      "id": "u-027",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 676000,
+      "t_end_ms": 681000,
+      "value_num": null,
+      "value_text": "I found the setting in configuration.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I found the setting in configuration.",
+        "words": [
+          {
+            "w": "found",
+            "t0": 676700,
+            "t1": 677300
+          },
+          {
+            "w": "setting",
+            "t0": 678500,
+            "t1": 679300
+          },
+          {
+            "w": "configuration",
+            "t0": 679500,
+            "t1": 681000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-027",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 676000,
+      "t_end_ms": 681000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-027",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 676000,
+      "t_end_ms": 681000,
+      "value_num": 0.26,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-014",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 688000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Azure Portal - configuration",
+        "to": "Terminal - git status"
+      }
+    },
+    {
+      "id": "u-028",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 692000,
+      "t_end_ms": 697000,
+      "value_num": null,
+      "value_text": "I am saving that and redeploying.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I am saving that and redeploying.",
+        "words": [
+          {
+            "w": "saving",
+            "t0": 693000,
+            "t1": 693800
+          },
+          {
+            "w": "that",
+            "t0": 694100,
+            "t1": 694700
+          },
+          {
+            "w": "redeploying",
+            "t0": 695400,
+            "t1": 697000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-028",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 692000,
+      "t_end_ms": 697000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-028",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 692000,
+      "t_end_ms": 697000,
+      "value_num": 0.18,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-015",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 704000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - git status",
+        "to": "Terminal - deploy output"
+      }
+    },
+    {
+      "id": "u-029",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 708000,
+      "t_end_ms": 713000,
+      "value_num": null,
+      "value_text": "The deploy is taking a minute.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The deploy is taking a minute.",
+        "words": [
+          {
+            "w": "deploy",
+            "t0": 708700,
+            "t1": 709500
+          },
+          {
+            "w": "taking",
+            "t0": 710500,
+            "t1": 711200
+          },
+          {
+            "w": "minute",
+            "t0": 712000,
+            "t1": 713000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-029",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 708000,
+      "t_end_ms": 713000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-029",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 708000,
+      "t_end_ms": 713000,
+      "value_num": 0.05,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.85,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-016",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 720000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - deploy output",
+        "to": "Azure Portal - deployment center"
+      }
+    },
+    {
+      "id": "u-030",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 724000,
+      "t_end_ms": 729000,
+      "value_num": null,
+      "value_text": "There is a new build record now.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "There is a new build record now.",
+        "words": [
+          {
+            "w": "new",
+            "t0": 726000,
+            "t1": 726500
+          },
+          {
+            "w": "build",
+            "t0": 726800,
+            "t1": 727400
+          },
+          {
+            "w": "record",
+            "t0": 727700,
+            "t1": 728500
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-030",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 724000,
+      "t_end_ms": 729000,
+      "value_num": 7,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-030",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 724000,
+      "t_end_ms": 729000,
+      "value_num": 0.24,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-017",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 736000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Azure Portal - deployment center",
+        "to": "Browser - app URL"
+      }
+    },
+    {
+      "id": "u-031",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 740000,
+      "t_end_ms": 744000,
+      "value_num": null,
+      "value_text": "The page is still warming up.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "The page is still warming up.",
+        "words": [
+          {
+            "w": "page",
+            "t0": 740600,
+            "t1": 741200
+          },
+          {
+            "w": "warming",
+            "t0": 742400,
+            "t1": 743200
+          },
+          {
+            "w": "up",
+            "t0": 743500,
+            "t1": 744000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-031",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 740000,
+      "t_end_ms": 744000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-031",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 740000,
+      "t_end_ms": 744000,
+      "value_num": 0.08,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.84,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-018",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 752000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - app URL",
+        "to": "Terminal - curl health check"
+      }
+    },
+    {
+      "id": "u-032",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 756000,
+      "t_end_ms": 760000,
+      "value_num": null,
+      "value_text": "Curl returns a two hundred.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Curl returns a two hundred.",
+        "words": [
+          {
+            "w": "Curl",
+            "t0": 756000,
+            "t1": 756700
+          },
+          {
+            "w": "returns",
+            "t0": 757300,
+            "t1": 758100
+          },
+          {
+            "w": "hundred",
+            "t0": 759000,
+            "t1": 760000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-032",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 756000,
+      "t_end_ms": 760000,
+      "value_num": 5,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-032",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 756000,
+      "t_end_ms": 760000,
+      "value_num": 0.34,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-019",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 766000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - curl health check",
+        "to": "Browser - app URL"
+      }
+    },
+    {
+      "id": "u-033",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 770000,
+      "t_end_ms": 774000,
+      "value_num": null,
+      "value_text": "Okay, that is encouraging.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Okay, that is encouraging.",
+        "words": [
+          {
+            "w": "Okay",
+            "t0": 770000,
+            "t1": 770700
+          },
+          {
+            "w": "that",
+            "t0": 771400,
+            "t1": 771900
+          },
+          {
+            "w": "encouraging",
+            "t0": 772500,
+            "t1": 774000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-033",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 770000,
+      "t_end_ms": 774000,
+      "value_num": 4,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-033",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 770000,
+      "t_end_ms": 774000,
+      "value_num": 0.46,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.89,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-020",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 780000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - app URL",
+        "to": "Azure Portal - overview"
+      }
+    },
+    {
+      "id": "u-034",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 786000,
+      "t_end_ms": 790000,
+      "value_num": null,
+      "value_text": "I am refreshing one more time.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I am refreshing one more time.",
+        "words": [
+          {
+            "w": "refreshing",
+            "t0": 787000,
+            "t1": 788000
+          },
+          {
+            "w": "more",
+            "t0": 788800,
+            "t1": 789300
+          },
+          {
+            "w": "time",
+            "t0": 789500,
+            "t1": 790000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-034",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 786000,
+      "t_end_ms": 790000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-034",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 786000,
+      "t_end_ms": 790000,
+      "value_num": 0.32,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-021",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 798000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Azure Portal - overview",
+        "to": "Browser - app URL"
+      }
+    },
+    {
+      "id": "u-035",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 802000,
+      "t_end_ms": 806000,
+      "value_num": null,
+      "value_text": "Now the home page is rendering.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Now the home page is rendering.",
+        "words": [
+          {
+            "w": "home",
+            "t0": 803000,
+            "t1": 803600
+          },
+          {
+            "w": "page",
+            "t0": 803800,
+            "t1": 804400
+          },
+          {
+            "w": "rendering",
+            "t0": 805000,
+            "t1": 806000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-035",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 802000,
+      "t_end_ms": 806000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-035",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 802000,
+      "t_end_ms": 806000,
+      "value_num": 0.62,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-022",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 810000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - app URL",
+        "to": "Terminal - final status"
+      }
+    },
+    {
+      "id": "u-036",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 814000,
+      "t_end_ms": 818000,
+      "value_num": null,
+      "value_text": "I am checking the final status.",
+      "unit": null,
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I am checking the final status.",
+        "words": [
+          {
+            "w": "checking",
+            "t0": 815000,
+            "t1": 815800
+          },
+          {
+            "w": "final",
+            "t0": 816400,
+            "t1": 817000
+          },
+          {
+            "w": "status",
+            "t0": 817200,
+            "t1": 818000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-036",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 814000,
+      "t_end_ms": 818000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.95,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-036",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 814000,
+      "t_end_ms": 818000,
+      "value_num": 0.42,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.87,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-023",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 822000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Terminal - final status",
+        "to": "Browser - app URL"
+      }
+    },
+    {
+      "id": "u-037",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 824000,
+      "t_end_ms": 828000,
+      "value_num": null,
+      "value_text": "Everything is green in the portal.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Everything is green in the portal.",
+        "words": [
+          {
+            "w": "Everything",
+            "t0": 824000,
+            "t1": 825100
+          },
+          {
+            "w": "green",
+            "t0": 826200,
+            "t1": 826900
+          },
+          {
+            "w": "portal",
+            "t0": 827300,
+            "t1": 828000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-037",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 824000,
+      "t_end_ms": 828000,
+      "value_num": 6,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-037",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 824000,
+      "t_end_ms": 828000,
+      "value_num": 0.58,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "c-024",
+      "kind": "context_switch",
+      "category": "cognitive",
+      "t_start_ms": 832000,
+      "t_end_ms": null,
+      "value_num": null,
+      "value_text": null,
+      "unit": null,
+      "confidence": 0.86,
+      "source": "video_analysis",
+      "provider_id": "scene-detect",
+      "provider_version": "0.1.0",
+      "payload": {
+        "from": "Browser - app URL",
+        "to": "Browser - deployed app"
+      }
+    },
+    {
+      "id": "u-038",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 834000,
+      "t_end_ms": 837000,
+      "value_num": null,
+      "value_text": "Oh! Finally, it is live.",
+      "unit": null,
+      "confidence": 0.97,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "Oh! Finally, it is live.",
+        "words": [
+          {
+            "w": "Oh",
+            "t0": 834000,
+            "t1": 834400
+          },
+          {
+            "w": "Finally",
+            "t0": 834600,
+            "t1": 835600
+          },
+          {
+            "w": "live",
+            "t0": 836300,
+            "t1": 837000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-038",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 834000,
+      "t_end_ms": 837000,
+      "value_num": 5,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.97,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-038",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 834000,
+      "t_end_ms": 837000,
+      "value_num": 0.9,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.92,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-039",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 837000,
+      "t_end_ms": 839000,
+      "value_num": null,
+      "value_text": "That was the missing piece.",
+      "unit": null,
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "That was the missing piece.",
+        "words": [
+          {
+            "w": "That",
+            "t0": 837000,
+            "t1": 837400
+          },
+          {
+            "w": "missing",
+            "t0": 838000,
+            "t1": 838700
+          },
+          {
+            "w": "piece",
+            "t0": 838700,
+            "t1": 839000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-039",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 837000,
+      "t_end_ms": 839000,
+      "value_num": 5,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.96,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-039",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 837000,
+      "t_end_ms": 839000,
+      "value_num": 0.72,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.9,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "u-040",
+      "kind": "utterance",
+      "category": "physical",
+      "t_start_ms": 839000,
+      "t_end_ms": 840000,
+      "value_num": null,
+      "value_text": "I would document that.",
+      "unit": null,
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {
+        "text": "I would document that.",
+        "words": [
+          {
+            "w": "I",
+            "t0": 839000,
+            "t1": 839200
+          },
+          {
+            "w": "document",
+            "t0": 839400,
+            "t1": 839800
+          },
+          {
+            "w": "that",
+            "t0": 839800,
+            "t1": 840000
+          }
+        ]
+      }
+    },
+    {
+      "id": "w-040",
+      "kind": "spoken_word",
+      "category": "physical",
+      "t_start_ms": 839000,
+      "t_end_ms": 840000,
+      "value_num": 4,
+      "value_text": null,
+      "unit": "words",
+      "confidence": 0.94,
+      "source": "video_analysis",
+      "provider_id": "transcript",
+      "provider_version": "0.1.0",
+      "payload": {}
+    },
+    {
+      "id": "s-040",
+      "kind": "sentiment",
+      "category": "sentiment",
+      "t_start_ms": 839000,
+      "t_end_ms": 840000,
+      "value_num": 0.44,
+      "value_text": null,
+      "unit": "score",
+      "confidence": 0.88,
+      "source": "video_analysis",
+      "provider_id": "sentiment",
+      "provider_version": "0.1.0",
+      "payload": {}
+    }
+  ],
+  "score": {
+    "profile": {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "name": "Default",
+      "weights": {
+        "context_switch": 3,
+        "sentiment": 4,
+        "spoken_word": 1,
+        "time_segment": 2
+      },
+      "normalization": {
+        "context_switch": "per_minute",
+        "sentiment": "neg_density",
+        "spoken_word": "per_minute",
+        "time_segment": "raw_minutes"
+      }
+    },
+    "components": {
+      "physical": 45,
+      "cognitive": 63,
+      "time": 47,
+      "sentiment": 58
+    },
+    "total": 56,
+    "breakdown": [
+      {
+        "kind": "context_switch",
+        "raw": 24,
+        "normalized": 63,
+        "weight": 3,
+        "contribution": 18.9
+      },
+      {
+        "kind": "sentiment",
+        "raw": 0.2,
+        "normalized": 58,
+        "weight": 4,
+        "contribution": 23.2
+      },
+      {
+        "kind": "spoken_word",
+        "raw": 255,
+        "normalized": 45,
+        "weight": 1,
+        "contribution": 4.5
+      },
+      {
+        "kind": "time_segment",
+        "raw": 14,
+        "normalized": 47,
+        "weight": 2,
+        "contribution": 9.4
+      }
+    ]
+  }
+}
