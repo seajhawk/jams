@@ -138,6 +138,8 @@ function VideoCard({
 
   return (
     <div
+      data-testid="video-card"
+      data-video-title={video.title}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-shadow hover:shadow-md",
         highlighted && "ring-2 ring-primary ring-offset-1"

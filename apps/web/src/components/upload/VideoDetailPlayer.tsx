@@ -12,6 +12,8 @@ interface VideoDetailPlayerProps {
 export function VideoDetailPlayer({ src }: VideoDetailPlayerProps) {
   const playerRef = useRef<MediaPlayerInstance | null>(null)
   return (
-    <VideoPlayer src={src} playerRef={playerRef} onTimeUpdate={() => {}} />
+    <div data-testid="video-detail-player" data-src={src}>
+      <VideoPlayer src={src} playerRef={playerRef} onTimeUpdate={() => {}} />
+    </div>
   )
 }

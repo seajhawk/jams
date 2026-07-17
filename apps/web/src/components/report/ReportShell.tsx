@@ -32,6 +32,7 @@ export function ReportShell({ payload }: { payload: ReportPayload }) {
   const playerRef = useRef<MediaPlayerInstance | null>(null)
 
   const seekTo = useCallback((ms: number) => {
+    setCurrentTimeMs(ms)
     if (playerRef.current) {
       playerRef.current.currentTime = ms / 1000
     }

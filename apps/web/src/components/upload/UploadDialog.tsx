@@ -341,6 +341,7 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
       <input
         ref={fileInputRef}
         type="file"
+        data-testid="upload-file-input"
         accept=".mp4,.mov,.webm,.m4v,video/mp4,video/quicktime,video/webm,video/x-m4v"
         className="hidden"
         onChange={handleFileChange}
@@ -470,6 +471,7 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
                     </select>
                     {form.taskId === "__new__" && (
                       <Input
+                        data-testid="new-task-name"
                         placeholder="New task name"
                         value={form.newTaskName}
                         onChange={(e) =>

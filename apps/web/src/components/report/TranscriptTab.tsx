@@ -71,6 +71,8 @@ export function TranscriptTab({ payload, currentTimeMs, onSeek }: TranscriptTabP
           return (
             <div
               key={utterance.id}
+              data-testid="transcript-row"
+              data-start-ms={utterance.t_start_ms}
               ref={isActive ? activeRowRef : undefined}
               className={`flex items-start gap-3 px-3 py-2 cursor-pointer border-l-[3px] ${sentimentBorder(sentimentVal)} ${isActive ? 'bg-muted' : 'hover:bg-muted/50'}`}
               onClick={() => onSeek(utterance.t_start_ms)}

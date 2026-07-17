@@ -78,6 +78,7 @@ export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
       style={{ height: SVG_HEIGHT }}
     >
       <svg
+        data-testid="report-timeline"
         width={width}
         height={SVG_HEIGHT}
         onClick={(e) => {
@@ -169,6 +170,7 @@ export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
 
         {/* Playhead */}
         <line
+          data-testid="timeline-playhead"
           x1={msToX(currentTimeMs)} y1={0}
           x2={msToX(currentTimeMs)} y2={SVG_HEIGHT}
           stroke="hsl(var(--primary))"

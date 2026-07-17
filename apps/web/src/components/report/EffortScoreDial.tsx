@@ -23,7 +23,7 @@ export function EffortScoreDial({ score }: EffortScoreDialProps) {
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger render={<svg width={80} height={80} viewBox="0 0 120 120" aria-label={`Effort score: ${score}`} />}>
+        <TooltipTrigger render={<svg data-testid="score-dial" width={80} height={80} viewBox="0 0 120 120" aria-label={`Effort score: ${score}`} />}>
           {/* Background arc */}
           <circle
             cx={cx}

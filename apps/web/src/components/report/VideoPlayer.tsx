@@ -20,6 +20,7 @@ export function VideoPlayer({ src, playerRef, onTimeUpdate }: VideoPlayerProps) 
     <div className="w-full max-w-4xl mx-auto aspect-video">
       <MediaPlayer
         ref={playerRef}
+        data-testid="video-player"
         src={src}
         onTimeUpdate={(detail: MediaTimeUpdateEventDetail) => {
           const now = Date.now()
