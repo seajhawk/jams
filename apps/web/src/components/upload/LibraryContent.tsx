@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
+  Activity,
   ArrowRight,
   FileVideo,
+  Loader2,
   RotateCcw,
   Upload,
 } from "lucide-react"
@@ -21,12 +23,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { formatMs } from "@/lib/format-ms"
 import { cn } from "@/lib/utils"
 import { UploadDialog } from "./UploadDialog"
@@ -135,6 +131,34 @@ function VideoCard({
     video.poster_blob_path !== null
   )
   const router = useRouter()
+  const [starting, setStarting] = useState(false)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+
+  async function startAnalysis() {
+    if (video.status !== "uploaded" || starting) return
+    setStarting(true)
+    setAnalysisError(null)
+    try {
+      const res = await fetch("/api/analyses", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ video_id: video.id }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null
+        throw new Error(body?.error ?? "Failed to start analysis")
+      }
+      router.push(`/library/${video.id}`)
+    } catch (err) {
+      setAnalysisError(
+        err instanceof Error ? err.message : "Failed to start analysis"
+      )
+    } finally {
+      setStarting(false)
+    }
+  }
 
   return (
     <div
@@ -207,21 +231,23 @@ function VideoCard({
           )}
         </div>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger render={<span className="inline-block" tabIndex={0} />}>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                className="w-full"
-              >
-                Analyze
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Analysis arrives in the next update</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={video.status !== "uploaded" || starting}
+          className="w-full"
+          onClick={startAnalysis}
+        >
+          {starting ? (
+            <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
+          ) : (
+            <Activity data-icon="inline-start" className="size-4" />
+          )}
+          Analyze
+        </Button>
+        {analysisError && (
+          <p className="text-xs leading-5 text-destructive">{analysisError}</p>
+        )}
       </div>
     </div>
   )

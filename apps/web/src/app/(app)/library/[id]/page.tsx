@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq, isNull } from "drizzle-orm"
 import {
   ArrowLeft,
   Calendar,
@@ -13,13 +13,15 @@ import { notFound } from "next/navigation"
 import type React from "react"
 
 import { db } from "@/db/client"
-import { tasks, videos } from "@/db/schema"
+import { analysisRuns, tasks, videos } from "@/db/schema"
 import { mintReadSas } from "@/lib/blob"
 import { formatMs } from "@/lib/format-ms"
+import { serializeAnalysisRun } from "@/lib/analyses"
 import { resolveOrgContext } from "@/lib/with-org"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { AnalysisStatusPanel } from "@/components/upload/AnalysisStatusPanel"
 import { VideoDetailPlayer } from "@/components/upload/VideoDetailPlayer"
 
 const UUID_RE =
@@ -60,6 +62,18 @@ export default async function VideoDetailPage({
   if (!row) notFound()
 
   const { video, taskName } = row
+  const [latestRun] = await db
+    .select()
+    .from(analysisRuns)
+    .where(
+      and(
+        eq(analysisRuns.videoId, video.id),
+        eq(analysisRuns.orgId, context.orgId),
+        isNull(analysisRuns.supersededBy)
+      )
+    )
+    .orderBy(desc(analysisRuns.createdAt))
+    .limit(1)
 
   const [playbackSas, posterSas] = await Promise.all([
     mintReadSas(video.blobPath),
@@ -168,6 +182,12 @@ export default async function VideoDetailPage({
               />
             </div>
           )}
+
+          <AnalysisStatusPanel
+            videoId={video.id}
+            videoStatus={video.status}
+            initialAnalysis={latestRun ? serializeAnalysisRun(latestRun) : null}
+          />
         </aside>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm"
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -21,6 +22,31 @@ export const videoStatusEnum = pgEnum("video_status", [
   "uploading",
   "uploaded",
   "failed",
+])
+export const analysisStatusEnum = pgEnum("analysis_status", [
+  "queued",
+  "running",
+  "succeeded",
+  "partial",
+  "failed",
+])
+export const analysisErrorCodeEnum = pgEnum("analysis_error_code", [
+  "no_audio",
+  "too_long",
+  "corrupt_file",
+  "transient",
+  "unknown",
+])
+export const measureCategoryEnum = pgEnum("measure_category", [
+  "physical",
+  "cognitive",
+  "time",
+  "sentiment",
+])
+export const measureSourceEnum = pgEnum("measure_source", [
+  "video_analysis",
+  "telemetry",
+  "manual",
 ])
 
 const timestamps = {
@@ -104,14 +130,130 @@ export const videos = pgTable(
   ]
 )
 
+export const analysisRuns = pgTable(
+  "analysis_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    videoId: uuid("video_id")
+      .notNull()
+      .references(() => videos.id, { onDelete: "cascade" }),
+    config: jsonb("config").notNull().default({}),
+    pipelineVersion: text("pipeline_version").notNull(),
+    providerVersions: jsonb("provider_versions").notNull().default({}),
+    status: analysisStatusEnum("status").notNull().default("queued"),
+    stage: text("stage").notNull().default("queued"),
+    progressPct: integer("progress_pct").notNull().default(0),
+    stageDetail: text("stage_detail"),
+    errorCode: analysisErrorCodeEnum("error_code"),
+    attempt: integer("attempt").notNull().default(0),
+    supersededBy: uuid("superseded_by").references(
+      (): AnyPgColumn => analysisRuns.id,
+      { onDelete: "set null" }
+    ),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("analysis_runs_org_id_video_id_idx").on(table.orgId, table.videoId),
+    index("analysis_runs_org_id_status_idx").on(table.orgId, table.status),
+    index("analysis_runs_superseded_by_idx").on(table.supersededBy),
+    check(
+      "analysis_runs_progress_pct_check",
+      sql`${table.progressPct} >= 0 and ${table.progressPct} <= 100`
+    ),
+  ]
+)
+
+export const analysisArtifacts = pgTable(
+  "analysis_artifacts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    blobPath: text("blob_path").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("analysis_artifacts_org_id_run_id_idx").on(table.orgId, table.runId),
+    index("analysis_artifacts_run_id_kind_idx").on(table.runId, table.kind),
+  ]
+)
+
+export const measures = pgTable(
+  "measures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: "cascade" }),
+    orgId: text("org_id").notNull(),
+    kind: text("kind").notNull(),
+    category: measureCategoryEnum("category").notNull(),
+    tStartMs: integer("t_start_ms").notNull(),
+    tEndMs: integer("t_end_ms"),
+    valueNum: real("value_num"),
+    valueText: text("value_text"),
+    unit: text("unit"),
+    confidence: real("confidence"),
+    source: measureSourceEnum("source").notNull(),
+    providerId: text("provider_id").notNull(),
+    providerVersion: text("provider_version").notNull(),
+    payload: jsonb("payload").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("measures_run_id_kind_t_start_ms_idx").on(
+      table.runId,
+      table.kind,
+      table.tStartMs
+    ),
+    index("measures_org_id_kind_idx").on(table.orgId, table.kind),
+    check("measures_t_start_ms_check", sql`${table.tStartMs} >= 0`),
+    check(
+      "measures_t_end_ms_check",
+      sql`${table.tEndMs} is null or ${table.tEndMs} >= ${table.tStartMs}`
+    ),
+  ]
+)
+
 export const orgRelations = relations(orgs, () => ({}))
 export const userRelations = relations(users, () => ({}))
 export const taskRelations = relations(tasks, ({ many }) => ({
   videos: many(videos),
 }))
-export const videoRelations = relations(videos, ({ one }) => ({
+export const videoRelations = relations(videos, ({ one, many }) => ({
   task: one(tasks, {
     fields: [videos.taskId],
     references: [tasks.id],
+  }),
+  analysisRuns: many(analysisRuns),
+}))
+export const analysisRunRelations = relations(analysisRuns, ({ one, many }) => ({
+  video: one(videos, {
+    fields: [analysisRuns.videoId],
+    references: [videos.id],
+  }),
+  supersededByRun: one(analysisRuns, {
+    fields: [analysisRuns.supersededBy],
+    references: [analysisRuns.id],
+  }),
+  artifacts: many(analysisArtifacts),
+  measures: many(measures),
+}))
+export const analysisArtifactRelations = relations(analysisArtifacts, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [analysisArtifacts.runId],
+    references: [analysisRuns.id],
+  }),
+}))
+export const measureRelations = relations(measures, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [measures.runId],
+    references: [analysisRuns.id],
   }),
 }))

@@ -15,6 +15,13 @@
       "when": 1784290953156,
       "tag": "0001_gorgeous_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784295627356,
+      "tag": "0002_analysis_spine",
+      "breakpoints": true
     }
   ]
 }

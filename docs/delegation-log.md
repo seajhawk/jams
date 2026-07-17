@@ -15,10 +15,12 @@ Track every delegated run so we route work to whoever does it best. Update after
 | 2026-07-17 | F2 videos API + SAS routes | Codex | gpt-5 | ✅ | Schema, migration, org-scoped routes, SAS helpers; tests/lint/build/migrate green |
 | 2026-07-17 | F2 upload UI + library + playback | Copilot | claude-sonnet-4.6 | ✅ | Implemented directly (Copilot hit recursive-delegation loop on spec); 4 commits, lint/test/build green; 8 new files |
 | 2026-07-17 | F2 E2E Playwright | Codex | gpt-5 | ⚠️ | Clerk-auth demo/upload E2E; green after Azurite CORS/key fixes |
+| 2026-07-17 | F3 worker spine + probe | Codex | gpt-5 | ⚠️ | Web/worker spine complete; checks green; live run succeeded after queue idempotency + ffmpeg progress pipe fixes |
 
 ## Routing heuristics (living — revise as evidence accumulates)
 
 - **Codex / gpt-5.5:** surgical precision on well-specified slices; excellent spec compliance and honest blocker reporting. Default for: schema/migrations, libs with exact contracts, security-adjacent code, ops/verification scripts.
 - **Copilot / claude-sonnet-4.6:** strong on large multi-file scaffolds and UI composition; occasionally wobbles on session mechanics (loop glitch) and API details of bleeding-edge libs. Default for: scaffolding, UI components, CI workflows, git/GitHub chores (built-in GitHub MCP).
-- Copilot prompts: ALWAYS `-p "$(cat file)"`. Codex prompts: stdin `-`. Never mix.
+- **aider / OpenRouter (3rd priority — per-token cost):** kimi-k3 for frontier reasoning (hard debugging, design consults, second opinions); free/cheap OpenRouter models for grunt work. Burn Copilot (expires monthly) then Codex credits first; probe limits periodically per delegate-aider skill.
+- Copilot prompts: ALWAYS `-p "$(cat file)"`. Codex prompts: stdin `-`. aider: `--message-file` + explicit file args. Never mix.
 - Try `copilot --model` alternatives or `codex -m` overrides when a delegate underperforms twice on a category; log the comparison here.
