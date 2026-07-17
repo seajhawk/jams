@@ -18,6 +18,7 @@ from azure.storage.queue import QueueClient
 from jams_worker.db import RunRepository
 from jams_worker.errors import PipelineError
 from jams_worker.pipeline import MeasureProvider, PipelineContext, run_pipeline
+from jams_worker.providers.context_switch import ContextSwitchProvider
 from jams_worker.providers.probe import ProbeProvider
 from jams_worker.settings import Settings
 
@@ -152,7 +153,7 @@ def run_loop(settings: Settings | None = None) -> None:
     blob_service_client = BlobServiceClient.from_connection_string(
         settings.azure_storage_connection_string
     )
-    providers: list[MeasureProvider] = [ProbeProvider()]
+    providers: list[MeasureProvider] = [ProbeProvider(), ContextSwitchProvider()]
 
     stop = StopSignal()
     signal.signal(signal.SIGINT, stop.handle)

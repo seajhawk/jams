@@ -16,6 +16,8 @@ dependencies = [
     # static-ffmpeg exposes both ffmpeg and ffprobe paths; imageio-ffmpeg only
     # gives us ffmpeg, but probe tests and the spine need real ffprobe.
     "static-ffmpeg>=3.0",
+    "scenedetect[opencv-headless]==0.6.4",
+    "opencv-python-headless==4.10.0.84",
 ]
 
 [project.scripts]

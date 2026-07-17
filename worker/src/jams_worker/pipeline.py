@@ -9,6 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from azure.storage.blob import BlobServiceClient
 from psycopg import Connection
+from psycopg.types.json import Jsonb
 
 from jams_worker.errors import PipelineError
 
@@ -24,7 +25,7 @@ class PipelineContext:
     blob_service_client: BlobServiceClient
     db_conn: Connection[Any]
     workdir: Path
-    register_artifact: Callable[[str, str], None]
+    register_artifact: Callable[[str, str], str]
     heartbeat: Callable[[str, int, str | None], None]
 
     @property
@@ -117,7 +118,7 @@ def write_provider_measures(
                     "unit": measure.get("unit"),
                     "confidence": measure.get("confidence"),
                     "source": measure.get("source", "video_analysis"),
-                    "payload": measure.get("payload", {}),
+                    "payload": Jsonb(measure.get("payload", {})),
                 },
             )
 

@@ -79,7 +79,9 @@ def test_write_provider_measures_deletes_then_inserts() -> None:
     assert conn.calls[0][0].startswith("delete from measures")
     assert conn.calls[0][1] == ("run_1", "probe")
     assert conn.calls[1][0].startswith("insert into measures")
-    assert conn.calls[1][1] == {
+    params = conn.calls[1][1]
+    assert isinstance(params, dict)
+    assert params == {
         "run_id": "run_1",
         "org_id": "org_1",
         "provider_id": "probe",
@@ -93,5 +95,6 @@ def test_write_provider_measures_deletes_then_inserts() -> None:
         "unit": None,
         "confidence": None,
         "source": "video_analysis",
-        "payload": {"cut": True},
+        "payload": params["payload"],
     }
+    assert params["payload"].obj == {"cut": True}

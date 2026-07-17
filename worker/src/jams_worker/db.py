@@ -77,19 +77,29 @@ class RunRepository:
         )
         self.conn.commit()
 
-    def register_artifact(self, run_id: str, org_id: str, kind: str, blob_path: str) -> None:
+    def register_artifact(self, run_id: str, org_id: str, kind: str, blob_path: str) -> str:
         with self.conn.transaction():
-            self.conn.execute(
-                "delete from analysis_artifacts where run_id = %s and kind = %s",
-                (run_id, kind),
-            )
-            self.conn.execute(
+            if kind == "thumbnail":
+                self.conn.execute(
+                    "delete from analysis_artifacts where run_id = %s and blob_path = %s",
+                    (run_id, blob_path),
+                )
+            else:
+                self.conn.execute(
+                    "delete from analysis_artifacts where run_id = %s and kind = %s",
+                    (run_id, kind),
+                )
+            row = self.conn.execute(
                 """
                 insert into analysis_artifacts (run_id, org_id, kind, blob_path)
                 values (%s, %s, %s, %s)
+                returning id::text
                 """,
                 (run_id, org_id, kind, blob_path),
-            )
+            ).fetchone()
+            if row is None:  # pragma: no cover - defensive DB invariant
+                raise RuntimeError("artifact insert returned no id")
+            return str(row[0])
 
     def set_provider_versions(self, run_id: str, provider_versions: dict[str, str]) -> None:
         self.conn.execute(
