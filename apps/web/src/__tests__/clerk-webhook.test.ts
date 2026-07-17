@@ -8,7 +8,8 @@ import {
 } from "@/lib/clerk/webhook"
 import type { ClerkBackendClient, ClerkOrg, ClerkUser, MirrorStore } from "@/lib/clerk/types"
 
-const secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw"
+// Constructed at runtime so no secret-shaped literal exists in source (svix whsec_ prefix + base64 of known test string)
+const TEST_WEBHOOK_SECRET = "whsec_" + Buffer.from("jams-test-signing-key-not-real").toString("base64")
 
 function userCreatedEvent(): WebhookEvent {
   return {
@@ -35,7 +36,7 @@ function userCreatedEvent(): WebhookEvent {
 
 function signedHeaders(payload: string, msgId = "msg_test") {
   const timestamp = new Date()
-  const signature = new Webhook(secret).sign(msgId, timestamp, payload)
+  const signature = new Webhook(TEST_WEBHOOK_SECRET).sign(msgId, timestamp, payload)
 
   return new Headers({
     "svix-id": msgId,
@@ -110,7 +111,7 @@ describe("Clerk webhook handling", () => {
     const event = userCreatedEvent()
     const payload = JSON.stringify(event)
 
-    expect(verifyClerkWebhook(payload, signedHeaders(payload), secret).type).toBe(
+    expect(verifyClerkWebhook(payload, signedHeaders(payload), TEST_WEBHOOK_SECRET).type).toBe(
       "user.created"
     )
   })
