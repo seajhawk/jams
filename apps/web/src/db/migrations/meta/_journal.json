@@ -36,6 +36,13 @@
       "when": 1784316329459,
       "tag": "0004_icy_tigra",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784329464149,
+      "tag": "0005_acoustic_fat_cobra",
+      "breakpoints": true
     }
   ]
 }

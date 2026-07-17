@@ -174,6 +174,26 @@ export const analysisRuns = pgTable(
   ]
 )
 
+export const shareLinks = pgTable(
+  "share_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: "cascade" }),
+    orgId: text("org_id").notNull(),
+    token: text("token").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("share_links_token_idx").on(table.token),
+    index("share_links_org_id_run_id_idx").on(table.orgId, table.runId),
+  ]
+)
+
 export const analysisArtifacts = pgTable(
   "analysis_artifacts",
   {
@@ -322,10 +342,17 @@ export const analysisRunRelations = relations(analysisRuns, ({ one, many }) => (
     fields: [analysisRuns.supersededBy],
     references: [analysisRuns.id],
   }),
+  shareLinks: many(shareLinks),
   artifacts: many(analysisArtifacts),
   measures: many(measures),
   segments: many(segments),
   effortScores: many(effortScores),
+}))
+export const shareLinkRelations = relations(shareLinks, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [shareLinks.runId],
+    references: [analysisRuns.id],
+  }),
 }))
 export const analysisArtifactRelations = relations(analysisArtifacts, ({ one }) => ({
   run: one(analysisRuns, {

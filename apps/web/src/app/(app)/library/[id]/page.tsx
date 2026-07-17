@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull } from "drizzle-orm"
 import {
   ArrowLeft,
   Calendar,
@@ -13,7 +13,7 @@ import { notFound } from "next/navigation"
 import type React from "react"
 
 import { db } from "@/db/client"
-import { analysisRuns, tasks, videos } from "@/db/schema"
+import { analysisRuns, effortScores, tasks, videos } from "@/db/schema"
 import { mintReadSas } from "@/lib/blob"
 import { formatMs } from "@/lib/format-ms"
 import { serializeAnalysisRun } from "@/lib/analyses"
@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { AnalysisStatusPanel } from "@/components/upload/AnalysisStatusPanel"
+import { RunHistoryPanel } from "@/components/upload/RunHistoryPanel"
 import { VideoDetailPlayer } from "@/components/upload/VideoDetailPlayer"
 
 const UUID_RE =
@@ -62,18 +63,46 @@ export default async function VideoDetailPage({
   if (!row) notFound()
 
   const { video, taskName } = row
-  const [latestRun] = await db
-    .select()
-    .from(analysisRuns)
-    .where(
-      and(
-        eq(analysisRuns.videoId, video.id),
-        eq(analysisRuns.orgId, context.orgId),
-        isNull(analysisRuns.supersededBy)
+  const [[latestRun], runRows] = await Promise.all([
+    db
+      .select()
+      .from(analysisRuns)
+      .where(
+        and(
+          eq(analysisRuns.videoId, video.id),
+          eq(analysisRuns.orgId, context.orgId),
+          isNull(analysisRuns.supersededBy)
+        )
       )
-    )
-    .orderBy(desc(analysisRuns.createdAt))
-    .limit(1)
+      .orderBy(desc(analysisRuns.createdAt))
+      .limit(1),
+    db
+      .select()
+      .from(analysisRuns)
+      .where(
+        and(
+          eq(analysisRuns.videoId, video.id),
+          eq(analysisRuns.orgId, context.orgId)
+        )
+      )
+      .orderBy(desc(analysisRuns.createdAt)),
+  ])
+
+  const scoreRows = runRows.length
+    ? await db
+        .select({
+          runId: effortScores.runId,
+          total: effortScores.total,
+        })
+        .from(effortScores)
+        .where(
+          and(
+            eq(effortScores.orgId, context.orgId),
+            inArray(effortScores.runId, runRows.map((run) => run.id))
+          )
+        )
+    : []
+  const scoresByRun = new Map(scoreRows.map((scoreRow) => [scoreRow.runId, scoreRow.total]))
 
   const [playbackSas, posterSas] = await Promise.all([
     mintReadSas(video.blobPath),
@@ -189,6 +218,18 @@ export default async function VideoDetailPage({
             videoStatus={video.status}
             initialAnalysis={latestRun ? serializeAnalysisRun(latestRun) : null}
             videoDurationMs={video.durationMs}
+          />
+          <RunHistoryPanel
+            videoId={video.id}
+            runs={runRows.map((run) => ({
+              id: run.id,
+              pipeline_version: run.pipelineVersion,
+              status: run.status,
+              total_score: scoresByRun.get(run.id) ?? null,
+              created_at: run.createdAt.toISOString(),
+              completed_at: run.completedAt?.toISOString() ?? null,
+              superseded_by: run.supersededBy,
+            }))}
           />
         </aside>
       </div>

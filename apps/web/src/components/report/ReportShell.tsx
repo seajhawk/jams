@@ -23,7 +23,15 @@ function useIsMounted() {
   )
 }
 
-export function ReportShell({ payload, demo = false }: { payload: ReportPayload; demo?: boolean }) {
+export function ReportShell({
+  payload,
+  demo = false,
+  readOnly = false,
+}: {
+  payload: ReportPayload
+  demo?: boolean
+  readOnly?: boolean
+}) {
   const mounted = useIsMounted()
   const [currentTimeMs, setCurrentTimeMs] = useState(0)
   const [weights, setWeights] = useState<Partial<Record<MeasureKind, number>>>(
@@ -87,7 +95,21 @@ export function ReportShell({ payload, demo = false }: { payload: ReportPayload;
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      <ReportHeader payload={payload} weights={weights} currentTimeMs={currentTimeMs} demo={demo} />
+      {readOnly && (
+        <div className="flex items-center gap-3 border-b bg-background px-4 py-2">
+          <span className="font-semibold tracking-tight">JAMS</span>
+          <span className="rounded-md border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            Shared report
+          </span>
+        </div>
+      )}
+      <ReportHeader
+        payload={payload}
+        weights={weights}
+        currentTimeMs={currentTimeMs}
+        demo={demo}
+        readOnly={readOnly}
+      />
       <div className="sticky top-0 z-30 bg-background shadow-sm">
         <VideoPlayer
           src={payload.video.playback_url}
@@ -114,7 +136,12 @@ export function ReportShell({ payload, demo = false }: { payload: ReportPayload;
             <MeasuresTab payload={payload} onSeek={seekTo} />
           </TabsContent>
           <TabsContent value="score">
-            <ScoreTab payload={payload} weights={weights} onWeightsChange={setWeights} />
+            <ScoreTab
+              payload={payload}
+              weights={weights}
+              onWeightsChange={setWeights}
+              readOnly={readOnly}
+            />
           </TabsContent>
         </Tabs>
       </div>

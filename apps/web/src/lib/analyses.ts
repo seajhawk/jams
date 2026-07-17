@@ -31,6 +31,7 @@ export function serializeAnalysisRun(run: AnalysisRunRow) {
   return {
     id: run.id,
     video_id: run.videoId,
+    pipeline_version: run.pipelineVersion,
     status: run.status,
     stage: run.stage,
     progress_pct: run.progressPct,

@@ -12,9 +12,10 @@ interface ScoreTabProps {
   payload: ReportPayload
   weights: Partial<Record<MeasureKind, number>>
   onWeightsChange: (weights: Partial<Record<MeasureKind, number>>) => void
+  readOnly?: boolean
 }
 
-export function ScoreTab({ payload, weights, onWeightsChange }: ScoreTabProps) {
+export function ScoreTab({ payload, weights, onWeightsChange, readOnly = false }: ScoreTabProps) {
   const normalized = normalize(payload.measures, payload.video, payload.score.profile.normalization)
   const liveScore = score(normalized, weights)
 
@@ -59,21 +60,23 @@ export function ScoreTab({ payload, weights, onWeightsChange }: ScoreTabProps) {
           {saveError && (
             <span className="text-xs text-destructive">{saveError}</span>
           )}
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={saving}
-            onClick={saveAsDefault}
-          >
-            {saving ? (
-              <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
-            ) : saved ? (
-              <Check data-icon="inline-start" className="size-4 text-green-600" />
-            ) : (
-              <Save data-icon="inline-start" className="size-4" />
-            )}
-            {saved ? 'Saved' : 'Save as org default'}
-          </Button>
+          {!readOnly && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={saving}
+              onClick={saveAsDefault}
+            >
+              {saving ? (
+                <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
+              ) : saved ? (
+                <Check data-icon="inline-start" className="size-4 text-green-600" />
+              ) : (
+                <Save data-icon="inline-start" className="size-4" />
+              )}
+              {saved ? 'Saved' : 'Save as org default'}
+            </Button>
+          )}
           <button
             onClick={() => onWeightsChange(payload.score.profile.weights)}
             className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2"
