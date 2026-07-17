@@ -29,6 +29,8 @@ Design validated by a 7-agent research + judge-panel workflow (verified Azure pr
 | Clicks/keypresses/scrolls §[0017–19] | Future CV providers + telemetry agent (claim 2) | F10+ |
 | Concepts §[0021] / Choices §[0023] | Future OCR+NLP providers | F10+ |
 
+> **Status 2026-07-17:** F1-F4 (MVP) complete and verified locally. **Azure provisioning is deferred by decision** - build and test locally (docker compose: Postgres + Azurite) until Chris green-lights deploy. No Azure meters run before then; deploy becomes Bicep + connection-string swaps when triggered.
+
 ## Architecture
 
 **Exactly two deployable units** + managed services. They never call each other over HTTP: one Storage Queue message shape (`{run_id}`) in one direction, shared Postgres state in the other. UI polls run status at 2.5s.
