@@ -15,8 +15,9 @@ from scenedetect import SceneManager, StatsManager, open_video
 from scenedetect.detectors import AdaptiveDetector
 
 from jams_worker.errors import PipelineError
+from jams_worker.ffmpeg import ffmpeg_path
 from jams_worker.pipeline import PipelineContext
-from jams_worker.providers.probe import DERIVED_CONTAINER, ffmpeg_paths
+from jams_worker.providers.probe import DERIVED_CONTAINER
 
 DetectorImpl = Literal["adaptive", "dhash"]
 
@@ -149,10 +150,10 @@ def _run_ffmpeg(args: list[str], error_code: str = "transient") -> None:
 
 
 def build_proxy(source: Path, proxy: Path) -> None:
-    ffmpeg, _ffprobe = ffmpeg_paths()
+    proxy.parent.mkdir(parents=True, exist_ok=True)
     _run_ffmpeg(
         [
-            ffmpeg,
+            ffmpeg_path(),
             "-y",
             "-i",
             str(source),
@@ -171,11 +172,10 @@ def build_proxy(source: Path, proxy: Path) -> None:
 
 
 def extract_thumbnail(source: Path, target: Path, cut_ms: int) -> None:
-    ffmpeg, _ffprobe = ffmpeg_paths()
     target.parent.mkdir(parents=True, exist_ok=True)
     _run_ffmpeg(
         [
-            ffmpeg,
+            ffmpeg_path(),
             "-y",
             "-ss",
             f"{cut_ms / 1000 + THUMB_OFFSET_SECONDS:.3f}",

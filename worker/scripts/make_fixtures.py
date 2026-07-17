@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import functools
 import json
 import shutil
 import subprocess
@@ -11,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from static_ffmpeg import run as static_ffmpeg_run
+from jams_worker.ffmpeg import ffmpeg_paths
 
 WORKER_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = WORKER_ROOT.parent
@@ -57,11 +56,12 @@ TONES_TOTAL = 45.0
 ESPEAK_VOICE = "en-us"
 ESPEAK_SPEED = 150
 ESPEAK_TEXT = (
-    "the quick brown fox jumps over the lazy dog "
-    "she sells seashells by the seashore "
-    "how much wood would a woodchuck chuck "
-    "peter piper picked a peck of pickled peppers "
-    "the rain in spain stays mainly in the plain"
+    "i opened the browser and signed into the project dashboard "
+    "then i followed the tutorial steps created a new app chose the sample settings "
+    "and waited for the deployment to finish "
+    "next i reviewed the status page compared the result with the guide fixed one setting "
+    "and confirmed the app loaded for the team "
+    "after that i explained what changed and saved the notes"
 )
 ESPEAK_TOTAL = 60.0
 SPEECH_OFFSET_1_MS = 5000
@@ -92,13 +92,6 @@ REAL_CLIPS: list[dict[str, Any]] = [
         "tts_pending": False,
     },
 ]
-
-
-@functools.lru_cache(maxsize=1)
-def ffmpeg_paths() -> tuple[str, str]:
-    """Return static ffmpeg and ffprobe executable paths."""
-
-    return static_ffmpeg_run.get_or_fetch_platform_executables_else_raise()
 
 
 def _run_cmd(args: list[str], check: bool = True) -> subprocess.CompletedProcess[bytes]:
@@ -507,8 +500,8 @@ def _gen_av_sync(ffmpeg: str, out: Path) -> dict[str, Any]:
                 "-y",
                 "-filter_complex",
                 (
-                    f"color=c=0x3355AA:s={W}x{H}:r={FPS}:d={AV_SYNC_CUT_S:g}[a];"
-                    f"color=c=0xAA3355:s={W}x{H}:r={FPS}:d={AV_SYNC_TOTAL - AV_SYNC_CUT_S:g}[b];"
+                    f"color=c=0x102030:s={W}x{H}:r={FPS}:d={AV_SYNC_CUT_S:g}[a];"
+                    f"color=c=0xE0D040:s={W}x{H}:r={FPS}:d={AV_SYNC_TOTAL - AV_SYNC_CUT_S:g}[b];"
                     "[a][b]concat=n=2:v=1:a=0[v]"
                 ),
                 "-map",

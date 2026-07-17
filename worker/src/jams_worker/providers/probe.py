@@ -5,19 +5,22 @@ from __future__ import annotations
 import json
 import subprocess
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from azure.core.exceptions import ResourceExistsError
-from static_ffmpeg import run as static_ffmpeg_run
 
+from jams_worker import ffmpeg as ffmpeg_tools
 from jams_worker.errors import PipelineError
 from jams_worker.pipeline import PipelineContext
 
 VIDEOS_CONTAINER = "videos"
 DERIVED_CONTAINER = "derived"
 MAX_DURATION_SECONDS = 20 * 60
+
+
+def ffmpeg_paths() -> tuple[str, str]:
+    return ffmpeg_tools.ffmpeg_paths()
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,11 +33,6 @@ class ProbeResult:
     duration_ms: int
     has_audio: bool
     audio_codec: str | None
-
-
-@lru_cache(maxsize=1)
-def ffmpeg_paths() -> tuple[str, str]:
-    return static_ffmpeg_run.get_or_fetch_platform_executables_else_raise()
 
 
 def _run_json(args: list[str]) -> dict[str, Any]:
@@ -67,10 +65,9 @@ def _fps(value: str | None) -> float | None:
 
 
 def probe_file(path: Path) -> ProbeResult:
-    _ffmpeg, ffprobe = ffmpeg_paths()
     data = _run_json(
         [
-            ffprobe,
+            ffmpeg_tools.ffprobe_path(),
             "-v",
             "error",
             "-print_format",
@@ -146,7 +143,7 @@ def _run_ffmpeg_with_progress(
     process = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         text=True,
     )
     assert process.stdout is not None
@@ -160,9 +157,9 @@ def _run_ffmpeg_with_progress(
             span = max(1, progress_end - progress_start)
             pct = progress_start + min(span, round((out_ms / max(1, duration_ms)) * span))
             context.heartbeat("normalize", pct, f"Normalizing... {pct}%")
-    process.communicate()
+    _stdout, stderr = process.communicate()
     if process.returncode != 0:
-        raise PipelineError("corrupt_file", "ffmpeg failed")
+        raise PipelineError("corrupt_file", (stderr or "").strip() or "ffmpeg failed")
 
 
 def _run_ffmpeg(args: list[str]) -> None:
@@ -189,7 +186,7 @@ class ProbeProvider:
         return ["normalized_video", "audio_wav", "poster"]
 
     def run(self, context: PipelineContext) -> list[dict[str, Any]]:
-        ffmpeg, _ffprobe = ffmpeg_paths()
+        ffmpeg = ffmpeg_tools.ffmpeg_path()
         context.heartbeat("probe", 5, "Downloading original")
         original = context.workdir / "original"
         normalized = context.workdir / "normalized.mp4"

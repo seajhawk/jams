@@ -18,8 +18,9 @@ from typing import Any
 from azure.core.exceptions import ResourceExistsError
 
 from jams_worker.errors import PipelineError
+from jams_worker.ffmpeg import ffmpeg_path, ffprobe_path
 from jams_worker.pipeline import PipelineContext
-from jams_worker.providers.probe import DERIVED_CONTAINER, ffmpeg_paths
+from jams_worker.providers.probe import DERIVED_CONTAINER
 
 PROVIDER_ID = "transcription"
 PROVIDER_VERSION = "1.0.0"
@@ -308,10 +309,9 @@ def wav_duration_ms(path: Path) -> int:
 
 
 def audio_rms_db(path: Path) -> float:
-    ffmpeg, _ffprobe = ffmpeg_paths()
     result = subprocess.run(
         [
-            ffmpeg,
+            ffmpeg_path(),
             "-hide_banner",
             "-nostats",
             "-loglevel",
@@ -492,10 +492,9 @@ def _video_duration_ms(context: PipelineContext, normalized_video: Path) -> int:
     value = context.run.get("duration_ms")
     if value is not None:
         return int(value)
-    _ffmpeg, ffprobe = ffmpeg_paths()
     result = subprocess.run(
         [
-            ffprobe,
+            ffprobe_path(),
             "-v",
             "error",
             "-show_entries",

@@ -5,21 +5,9 @@ from __future__ import annotations
 import re
 import subprocess
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 
-try:
-    from static_ffmpeg import run as static_ffmpeg_run
-
-    @lru_cache(maxsize=1)
-    def _ffmpeg() -> tuple[str, str]:
-        return static_ffmpeg_run.get_or_fetch_platform_executables_else_raise()
-
-except ImportError:
-
-    @lru_cache(maxsize=1)
-    def _ffmpeg() -> tuple[str, str]:  # type: ignore[misc]
-        return "ffmpeg", "ffprobe"
+from jams_worker.ffmpeg import ffmpeg_path, ffprobe_path
 
 
 @dataclass
@@ -132,10 +120,9 @@ def assert_cross_stage(cut_ms: int, first_word_t0_ms: int, video_duration_ms: in
 
 
 def ffprobe_duration_ms(path: Path) -> int:
-    _ffmpeg_path, ffprobe = _ffmpeg()
     result = subprocess.run(
         [
-            ffprobe,
+            ffprobe_path(),
             "-v",
             "error",
             "-show_entries",
@@ -177,9 +164,8 @@ def _frame_rgb(ffmpeg: str, path: Path, t_s: float) -> bytes:
 
 
 def frame_mae_at_cut(path: Path, cut_s: float, fps: int = 30) -> float:
-    ffmpeg, _ffprobe = _ffmpeg()
-    before = _frame_rgb(ffmpeg, path, cut_s - 1 / fps)
-    after = _frame_rgb(ffmpeg, path, cut_s + 1 / fps)
+    before = _frame_rgb(ffmpeg_path(), path, cut_s - 1 / fps)
+    after = _frame_rgb(ffmpeg_path(), path, cut_s + 1 / fps)
     expected_len = 160 * 120 * 3
     if len(before) != expected_len or len(after) != expected_len:
         msg = f"expected {expected_len}-byte frames, got {len(before)} and {len(after)}"
@@ -207,10 +193,9 @@ def frame_mae_at_cut(path: Path, cut_s: float, fps: int = 30) -> float:
 
 
 def audio_rms_db(path: Path, start_s: float, duration_s: float) -> float:
-    ffmpeg, _ffprobe = _ffmpeg()
     result = subprocess.run(
         [
-            ffmpeg,
+            ffmpeg_path(),
             "-hide_banner",
             "-nostats",
             "-loglevel",
