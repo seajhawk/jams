@@ -11,7 +11,7 @@ Put it in `docs/specs/<feature>-<slice>.md` (committed, reusable) or the scratch
 - Goal in one sentence, then exact scope (files to create/modify with paths)
 - Constraints that apply (AGENTS.md is auto-loaded by Codex, so only slice-specific rules)
 - Acceptance criteria + which tests/lint to run
-- End with: "Finish by running the tests and printing a concise summary of every file you changed and anything left incomplete."
+- End with: "Finish by running the tests and printing a concise summary of every file you changed and anything left incomplete. Then append one row for this run to docs/delegation-log.md (delegate=Codex, model from your session, grade ✅/⚠️/❌ per that file's legend, terse note) without rewriting the file."
 
 ## 2. Run it
 

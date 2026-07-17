@@ -7,7 +7,7 @@ description: Delegate a task to the GitHub Copilot CLI (non-interactive, yolo) t
 
 ## 1. Write the spec
 
-Same conventions as delegate-codex: self-contained, exact paths, acceptance criteria, "end with a concise summary of changes". Copilot auto-loads `AGENTS.md`. Spec files live in `docs/specs/` (committed) or the scratchpad (throwaway).
+Same conventions as delegate-codex: self-contained, exact paths, acceptance criteria, "end with a concise summary of changes". Copilot auto-loads `AGENTS.md`. Spec files live in `docs/specs/` (committed) or the scratchpad (throwaway). Always include: "Append one row for this run to docs/delegation-log.md (delegate=Copilot, model from your session, grade ✅/⚠️/❌ per that file's legend, terse note) without rewriting the file."
 
 ## 2. Run it
 
