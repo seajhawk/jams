@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -15,7 +14,7 @@ from scenedetect import SceneManager, StatsManager, open_video
 from scenedetect.detectors import AdaptiveDetector
 
 from jams_worker.errors import PipelineError
-from jams_worker.ffmpeg import ffmpeg_path
+from jams_worker.ffmpeg import MEDIA_TIMEOUT_SECONDS, ffmpeg_path, run_media_command
 from jams_worker.pipeline import PipelineContext
 from jams_worker.providers.probe import DERIVED_CONTAINER
 
@@ -144,7 +143,7 @@ def _phase_to_payload(phase: PhaseCorrelation | None) -> dict[str, float] | None
 
 
 def _run_ffmpeg(args: list[str], error_code: str = "transient") -> None:
-    completed = subprocess.run(args, capture_output=True, text=True, check=False)
+    completed = run_media_command(args, timeout_seconds=MEDIA_TIMEOUT_SECONDS)
     if completed.returncode != 0:
         raise PipelineError(error_code, completed.stderr.strip() or "ffmpeg failed")
 

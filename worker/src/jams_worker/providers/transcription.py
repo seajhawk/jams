@@ -8,7 +8,6 @@ import math
 import os
 import re
 import shutil
-import subprocess
 import wave
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -18,7 +17,13 @@ from typing import Any
 from azure.core.exceptions import ResourceExistsError
 
 from jams_worker.errors import PipelineError
-from jams_worker.ffmpeg import ffmpeg_path, ffprobe_path
+from jams_worker.ffmpeg import (
+    MEDIA_TIMEOUT_SECONDS,
+    PROBE_TIMEOUT_SECONDS,
+    ffmpeg_path,
+    ffprobe_path,
+    run_media_command,
+)
 from jams_worker.pipeline import PipelineContext
 from jams_worker.providers.probe import DERIVED_CONTAINER
 
@@ -309,7 +314,7 @@ def wav_duration_ms(path: Path) -> int:
 
 
 def audio_rms_db(path: Path) -> float:
-    result = subprocess.run(
+    result = run_media_command(
         [
             ffmpeg_path(),
             "-hide_banner",
@@ -325,9 +330,7 @@ def audio_rms_db(path: Path) -> float:
             "null",
             "-",
         ],
-        capture_output=True,
-        check=False,
-        text=True,
+        timeout_seconds=MEDIA_TIMEOUT_SECONDS,
     )
     match = re.search(r"mean_volume:\s*(-?\d+(?:\.\d+)?) dB", result.stderr)
     if match is None:
@@ -492,7 +495,7 @@ def _video_duration_ms(context: PipelineContext, normalized_video: Path) -> int:
     value = context.run.get("duration_ms")
     if value is not None:
         return int(value)
-    result = subprocess.run(
+    result = run_media_command(
         [
             ffprobe_path(),
             "-v",
@@ -503,10 +506,10 @@ def _video_duration_ms(context: PipelineContext, normalized_video: Path) -> int:
             "csv=p=0",
             str(normalized_video),
         ],
-        capture_output=True,
-        check=True,
-        text=True,
+        timeout_seconds=PROBE_TIMEOUT_SECONDS,
     )
+    if result.returncode != 0:
+        raise PipelineError("corrupt_file", result.stderr.strip() or "ffprobe failed")
     return ms_from_seconds(float(result.stdout.strip()))
 
 

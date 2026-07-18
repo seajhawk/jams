@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -36,7 +35,10 @@ class ProbeResult:
 
 
 def _run_json(args: list[str]) -> dict[str, Any]:
-    completed = subprocess.run(args, capture_output=True, text=True, check=False)
+    completed = ffmpeg_tools.run_media_command(
+        args,
+        timeout_seconds=ffmpeg_tools.PROBE_TIMEOUT_SECONDS,
+    )
     if completed.returncode != 0:
         raise PipelineError(
             "corrupt_file",
@@ -140,30 +142,31 @@ def _run_ffmpeg_with_progress(
     progress_start: int,
     progress_end: int,
 ) -> None:
-    process = subprocess.Popen(
-        args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    assert process.stdout is not None
-    for line in process.stdout:
+    def on_progress(line: str) -> None:
         key, _, value = line.strip().partition("=")
         if key == "out_time_ms":
             try:
                 out_ms = int(value) / 1000
             except ValueError:
-                continue
+                return
             span = max(1, progress_end - progress_start)
             pct = progress_start + min(span, round((out_ms / max(1, duration_ms)) * span))
             context.heartbeat("normalize", pct, f"Normalizing... {pct}%")
-    _stdout, stderr = process.communicate()
-    if process.returncode != 0:
-        raise PipelineError("corrupt_file", (stderr or "").strip() or "ffmpeg failed")
+
+    completed = ffmpeg_tools.run_media_command_with_progress(
+        args,
+        timeout_seconds=ffmpeg_tools.MEDIA_TIMEOUT_SECONDS,
+        on_stdout_line=on_progress,
+    )
+    if completed.returncode != 0:
+        raise PipelineError("corrupt_file", completed.stderr.strip() or "ffmpeg failed")
 
 
 def _run_ffmpeg(args: list[str]) -> None:
-    completed = subprocess.run(args, capture_output=True, text=True, check=False)
+    completed = ffmpeg_tools.run_media_command(
+        args,
+        timeout_seconds=ffmpeg_tools.MEDIA_TIMEOUT_SECONDS,
+    )
     if completed.returncode != 0:
         raise PipelineError("corrupt_file", completed.stderr.strip() or "ffmpeg failed")
 
