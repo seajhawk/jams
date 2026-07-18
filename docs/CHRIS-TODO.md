@@ -8,6 +8,9 @@ Manual items tracked for when you have time. Claude keeps this current; strike i
 - [ ] **Record F10 ground-truth fixtures** (when F10 detection lands, to validate on real footage): 2–3 short screen recordings of yourself doing a small task where you deliberately count clicks/keystrokes (or run the logger script the F10 slice will provide). Synthetic Playwright-generated fixtures carry CI until then.
 - [ ] **ADMIN_USER_IDS**: put your Clerk user id in `apps/web/.env.local` to access `/admin` (README §Admin has the one-liner to find your id).
 
+- [ ] **Patent-holder call (concepts provider):** extend the patent's concept-source enum with 'transcript' as a first-class source, or keep transcript as corroborating evidence only? (docs/design/f11-cognitive-effort-providers.md §7.3)
+- [ ] **Glossary governance (concepts provider):** ship a default software-domain glossary with JAMS or keep glossaries per-customer config? Materially affects concept recall. (§7.4)
+
 ## Deploy-time decisions (no rush — everything runs locally)
 
 - [ ] **Azure go/no-go**: when ready — `az login`, then the infra slice provisions ACA + Storage + Postgres (Bicep/azd). Includes: real passwords for the `jams_web`/`jams_worker` DB roles (compose-local defaults today), the ACA-SKU whisper benchmark gate, GHCR pull secret.
