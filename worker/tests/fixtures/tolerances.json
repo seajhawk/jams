@@ -27,6 +27,11 @@
     "scroll_precision": 0.90,
     "scroll_recall": 0.90
   },
+  "scrolls": {
+    "edge_tolerance_ms": 300,
+    "event_separation_ms": 1000,
+    "percent_relative_tolerance": 0.12
+  },
   "timestamp": {
     "cross_stage_agreement_ms": 250
   }

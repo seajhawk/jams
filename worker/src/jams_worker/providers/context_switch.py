@@ -17,11 +17,15 @@ from jams_worker.errors import PipelineError
 from jams_worker.ffmpeg import MEDIA_TIMEOUT_SECONDS, ffmpeg_path, run_media_command
 from jams_worker.pipeline import PipelineContext
 from jams_worker.providers.probe import DERIVED_CONTAINER
+from jams_worker.providers.proxy_motion import (
+    PROXY_FPS,
+    MotionArtifact,
+    _frame_delta,
+    ensure_proxy_motion,
+)
 
 DetectorImpl = Literal["adaptive", "dhash"]
 
-PROXY_FPS = 5.0
-PROXY_WIDTH = 480
 THUMB_WIDTH = 640
 THUMB_OFFSET_SECONDS = 0.5
 
@@ -148,28 +152,6 @@ def _run_ffmpeg(args: list[str], error_code: str = "transient") -> None:
         raise PipelineError(error_code, completed.stderr.strip() or "ffmpeg failed")
 
 
-def build_proxy(source: Path, proxy: Path) -> None:
-    proxy.parent.mkdir(parents=True, exist_ok=True)
-    _run_ffmpeg(
-        [
-            ffmpeg_path(),
-            "-y",
-            "-i",
-            str(source),
-            "-vf",
-            f"fps={PROXY_FPS:g},scale={PROXY_WIDTH}:-2,format=yuv420p",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-crf",
-            "20",
-            "-an",
-            str(proxy),
-        ]
-    )
-
-
 def extract_thumbnail(source: Path, target: Path, cut_ms: int) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     _run_ffmpeg(
@@ -191,26 +173,6 @@ def extract_thumbnail(source: Path, target: Path, cut_ms: int) -> None:
     )
 
 
-def read_grayscale_frames(path: Path) -> list[np.ndarray]:
-    capture = cv2.VideoCapture(str(path))
-    if not capture.isOpened():
-        raise PipelineError("corrupt_file", f"Could not decode proxy video {path}")
-
-    frames: list[np.ndarray] = []
-    try:
-        while True:
-            ok, frame = capture.read()
-            if not ok:
-                break
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-    finally:
-        capture.release()
-
-    if not frames:
-        raise PipelineError("corrupt_file", "Proxy video contained no frames")
-    return frames
-
-
 def phase_correlate(before: np.ndarray, after: np.ndarray) -> PhaseCorrelation:
     shift, response = cv2.phaseCorrelate(
         np.float32(before),
@@ -220,6 +182,16 @@ def phase_correlate(before: np.ndarray, after: np.ndarray) -> PhaseCorrelation:
         response=float(response),
         shift_x=float(shift[0]),
         shift_y=float(shift[1]),
+    )
+
+
+def _phase_from_motion(motion: MotionArtifact, frame_index: int) -> PhaseCorrelation | None:
+    if frame_index <= 0 or frame_index >= len(motion.frame_ms):
+        return None
+    return PhaseCorrelation(
+        response=float(motion.resp_full[frame_index]),
+        shift_x=float(motion.dx_full[frame_index]),
+        shift_y=float(motion.dy_full[frame_index]),
     )
 
 
@@ -242,24 +214,18 @@ def post_filter_for_frame(
     return decide_post_filter(boundary=boundary, post=tuple(post), params=params)
 
 
-def _frame_delta(before: np.ndarray, after: np.ndarray) -> float:
-    delta = np.abs(after.astype(np.int16) - before.astype(np.int16))
-    full = float(np.mean(delta))
-    height = delta.shape[0]
-    band_height = max(1, height // 6)
-    bands = [
-        float(np.mean(delta[row : row + band_height, :]))
-        for row in range(0, max(1, height - band_height + 1), max(1, band_height // 2))
+def post_filter_for_motion(
+    motion: MotionArtifact,
+    frame_index: int,
+    params: ContextSwitchParams,
+) -> PostFilterDecision:
+    boundary = _phase_from_motion(motion, frame_index)
+    post = [
+        phase
+        for offset in range(4)
+        if (phase := _phase_from_motion(motion, frame_index + offset + 1)) is not None
     ]
-    return max(full, *bands)
-
-
-def content_val_series(frames: list[np.ndarray]) -> list[float]:
-    if not frames:
-        return []
-    values = [0.0]
-    values.extend(_frame_delta(frames[index - 1], frames[index]) for index in range(1, len(frames)))
-    return values
+    return decide_post_filter(boundary=boundary, post=tuple(post), params=params)
 
 
 def _content_trigger(
@@ -295,10 +261,12 @@ def _normalize_cut_frame(frame_index: int, frame_count: int) -> int:
 
 
 def detect_adaptive(
-    proxy: Path,
-    frames: list[np.ndarray],
+    motion: MotionArtifact,
     params: ContextSwitchParams,
 ) -> list[DetectorCut]:
+    frames = motion.frames
+    if frames is None:
+        raise PipelineError("unknown", "context-switch adaptive detector requires frames")
     stats = StatsManager()
     scene_manager = SceneManager(stats)
     scene_manager.add_detector(
@@ -310,7 +278,7 @@ def detect_adaptive(
             luma_only=True,
         )
     )
-    video = open_video(str(proxy), framerate=PROXY_FPS)
+    video = open_video(str(motion.proxy_path), framerate=PROXY_FPS)
     scene_manager.detect_scenes(video=video, show_progress=False)
     raw_cuts = scene_manager.get_cut_list(show_warning=False)
 
@@ -318,7 +286,7 @@ def detect_adaptive(
         float((stats.get_metrics(index, ["content_val"])[0] or 0.0))
         for index in range(len(frames))
     ]
-    ui_content_vals = content_val_series(frames)
+    ui_content_vals = [float(value) for value in motion.content_val]
     content_vals = [
         max(stats_value, ui_value)
         for stats_value, ui_value in zip(stats_content_vals, ui_content_vals, strict=True)
@@ -334,7 +302,7 @@ def detect_adaptive(
     for frame_index in sorted(candidate_frames):
         if frame_index - last_kept_frame < min_gap_frames:
             continue
-        decision = post_filter_for_frame(frames, frame_index, params)
+        decision = post_filter_for_motion(motion, frame_index, params)
         if not decision.keep:
             continue
 
@@ -412,9 +380,12 @@ def _dhash_confidence(distance: int) -> float:
     return round(min(1.0, max(0.05, (distance - 10) / 22)), 4)
 
 
-def detect_dhash(frames: list[np.ndarray], params: ContextSwitchParams) -> list[DetectorCut]:
+def detect_dhash(motion: MotionArtifact, params: ContextSwitchParams) -> list[DetectorCut]:
+    frames = motion.frames
+    if frames is None:
+        raise PipelineError("unknown", "context-switch dHash detector requires frames")
     hashes = [_dhash(frame) for frame in frames]
-    content_vals = content_val_series(frames)
+    content_vals = [float(value) for value in motion.content_val]
     if len(hashes) < 2:
         return []
 
@@ -446,7 +417,7 @@ def detect_dhash(frames: list[np.ndarray], params: ContextSwitchParams) -> list[
                 cut_t = start / PROXY_FPS
                 if cut_t - last_cut_t >= params.min_gap_seconds:
                     frame_index = _normalize_cut_frame(start, len(frames))
-                    decision = post_filter_for_frame(frames, frame_index, params)
+                    decision = post_filter_for_motion(motion, frame_index, params)
                     candidate_distance = _visual_hash_distance(
                         anchor, hashes[start], frames[anchor_index], frames[start]
                     )
@@ -497,13 +468,11 @@ def detect_context_switches(
     params: ContextSwitchParams | None = None,
 ) -> list[DetectorCut]:
     params = params or ContextSwitchParams()
-    proxy = workdir / f"context_switch_{detector_impl}_proxy.mp4"
-    build_proxy(video, proxy)
-    frames = read_grayscale_frames(proxy)
+    motion = ensure_proxy_motion(video, workdir, include_frames=True)
     if detector_impl == "adaptive":
-        return detect_adaptive(proxy, frames, params)
+        return detect_adaptive(motion, params)
     if detector_impl == "dhash":
-        return detect_dhash(frames, params)
+        return detect_dhash(motion, params)
     raise ValueError(f"Unsupported detector_impl: {detector_impl}")
 
 

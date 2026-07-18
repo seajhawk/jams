@@ -54,6 +54,14 @@ class FlashAlignment:
         return int(round((float(event_ms) * self.scale) + self.offset_ms))
 
 
+@dataclass(frozen=True, slots=True)
+class ScrollExpectation:
+    t_start_ms: int
+    t_end_ms: int
+    direction: str
+    percent_viewport: float
+
+
 def load_tolerances(path: Path = TOLERANCES_PATH) -> dict:
     return json.loads(path.read_text())
 
@@ -311,6 +319,44 @@ def resolve_flash_alignment(video_path: Path, events_jsonl: Path) -> FlashAlignm
         scale=scale,
         drift_ms=float(drift_ms),
     )
+
+
+def expected_scrolls_from_jsonl(
+    events_jsonl: Path,
+    gt: dict,
+    alignment: FlashAlignment,
+    *,
+    separation_ms: int,
+) -> list[ScrollExpectation]:
+    wheel_events = [
+        row for row in parse_jsonl(events_jsonl) if row.get("kind") == "wheel"
+    ]
+    wheel_events.sort(key=lambda row: float(row["t_ms"]))
+
+    groups: list[list[dict]] = []
+    for row in wheel_events:
+        if not groups:
+            groups.append([row])
+            continue
+        previous = groups[-1][-1]
+        if float(row["t_ms"]) - float(previous["t_ms"]) >= separation_ms:
+            groups.append([row])
+        else:
+            groups[-1].append(row)
+
+    scroll_events = gt.get("scroll_events", [])
+    assert len(groups) == len(scroll_events)
+    expectations: list[ScrollExpectation] = []
+    for group, expected in zip(groups, scroll_events, strict=True):
+        expectations.append(
+            ScrollExpectation(
+                t_start_ms=alignment.event_to_video_ms(float(group[0]["t_ms"])),
+                t_end_ms=alignment.event_to_video_ms(float(group[-1]["t_ms"])),
+                direction=str(expected["direction"]),
+                percent_viewport=float(expected["percent_viewport"]),
+            )
+        )
+    return expectations
 
 
 def frame_mae_at_cut(path: Path, cut_s: float, fps: int = 30) -> float:

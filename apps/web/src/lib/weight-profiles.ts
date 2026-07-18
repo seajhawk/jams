@@ -5,6 +5,7 @@ export const DEFAULT_WEIGHT_PROFILE_NAME = "Default"
 export const DEFAULT_WEIGHT_PROFILE_WEIGHTS = {
   context_switch: 3,
   sentiment: 4,
+  scrolls: 0,
   spoken_word: 1,
   time_segment: 2,
 } satisfies Partial<Record<MeasureKind, number>>

@@ -227,6 +227,19 @@ function mapMeasure(m: DbMeasure): Record<string, unknown> | null {
         payload: { segment_id: segmentId },
       }
     }
+    case "scrolls": {
+      if (m.tEndMs == null || m.valueNum == null) return null
+      return {
+        ...base,
+        kind: "scrolls",
+        category: "physical",
+        t_end_ms: m.tEndMs,
+        value_num: m.valueNum,
+        value_text: null,
+        unit: "percent_viewport",
+        payload,
+      }
+    }
     default:
       return null
   }

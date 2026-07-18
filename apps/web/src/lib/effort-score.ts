@@ -30,6 +30,7 @@ export type ScoreResult = {
 const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
   context_switch: "cognitive",
   sentiment: "sentiment",
+  scrolls: "physical",
   spoken_word: "physical",
   time_segment: "time",
   utterance: "speech",
@@ -38,6 +39,7 @@ const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
 const SCORE_KIND_ORDER: MeasureKind[] = [
   "context_switch",
   "sentiment",
+  "scrolls",
   "spoken_word",
   "time_segment",
   "utterance",

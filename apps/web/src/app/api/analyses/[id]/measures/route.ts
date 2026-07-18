@@ -15,6 +15,7 @@ const VALID_KINDS = new Set([
   "spoken_word",
   "time_segment",
   "sentiment",
+  "scrolls",
 ])
 
 function serializeMeasure(m: typeof measures.$inferSelect) {

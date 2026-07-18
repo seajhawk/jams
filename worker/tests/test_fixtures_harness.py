@@ -13,6 +13,7 @@ import make_fixtures as mf
 import pytest
 
 from jams_worker.ffmpeg import ffmpeg_path
+from jams_worker.providers.scrolls import detect_scrolls
 
 DURATION_TOL_MS = 400
 FRAME_DIFF_CUT_THRESHOLD = 40.0
@@ -35,6 +36,33 @@ def _entry(reg: dict[str, Any], fixture_id: str) -> dict[str, Any]:
         if item["id"] == fixture_id:
             return item
     raise KeyError(fixture_id)
+
+
+def _run_cv_generator(out: Path) -> dict[str, Any]:
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        pytest.skip("pnpm not available for Playwright CV fixture generation")
+    if not (CV_GENERATOR / "node_modules" / "playwright").exists():
+        pytest.skip("run pnpm install in worker/scripts/make_cv_fixtures")
+
+    result = subprocess.run(
+        [
+            pnpm,
+            "fixtures",
+            "--output-dir",
+            str(out),
+            "--ffmpeg",
+            ffmpeg_path(),
+        ],
+        cwd=CV_GENERATOR,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Playwright/Chromium unavailable: {result.stderr[-400:]}")
+    return json.loads((out / "cv_registry.json").read_text())
 
 
 def test_all_generated_gt_jsons_present(fxt: tuple[dict[str, Any], Path]) -> None:
@@ -185,32 +213,8 @@ def test_determinism(fxt: tuple[dict[str, Any], Path], tmp_path: Path) -> None:
 
 @pytest.mark.playwright
 def test_playwright_cv_generator_flash_alignment(tmp_path: Path) -> None:
-    pnpm = shutil.which("pnpm")
-    if pnpm is None:
-        pytest.skip("pnpm not available for Playwright CV fixture generation")
-    if not (CV_GENERATOR / "node_modules" / "playwright").exists():
-        pytest.skip("run pnpm install in worker/scripts/make_cv_fixtures")
-
     out = tmp_path / "cv"
-    result = subprocess.run(
-        [
-            pnpm,
-            "fixtures",
-            "--output-dir",
-            str(out),
-            "--ffmpeg",
-            ffmpeg_path(),
-        ],
-        cwd=CV_GENERATOR,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=120,
-    )
-    if result.returncode != 0:
-        pytest.skip(f"Playwright/Chromium unavailable: {result.stderr[-400:]}")
-
-    registry = json.loads((out / "cv_registry.json").read_text())
+    registry = _run_cv_generator(out)
     assert {entry["id"] for entry in registry["generated"]} == {
         "cv_scroll_page",
         "cv_button_grid",
@@ -219,3 +223,78 @@ def test_playwright_cv_generator_flash_alignment(tmp_path: Path) -> None:
     for entry in registry["generated"]:
         alignment = g.resolve_flash_alignment(out / entry["file"], out / entry["events_jsonl"])
         assert alignment.drift_ms <= g.load_tolerances()["flash_sync"]["drift_max_ms"]
+
+
+@pytest.mark.playwright
+def test_playwright_cv_generator_records_ground_truth_jsonl(tmp_path: Path) -> None:
+    out = tmp_path / "cv"
+    registry = _run_cv_generator(out)
+    by_id = {entry["id"]: entry for entry in registry["generated"]}
+
+    scroll_rows = g.parse_jsonl(out / by_id["cv_scroll_page"]["events_jsonl"])
+    assert sum(1 for row in scroll_rows if row.get("kind") == "wheel") == 9
+    assert by_id["cv_scroll_page"]["scroll_events"] == [
+        {"direction": "down", "percent_viewport": 9.0}
+    ]
+
+    button_rows = g.parse_jsonl(out / by_id["cv_button_grid"]["events_jsonl"])
+    assert sum(1 for row in button_rows if row.get("kind") == "click") >= 5
+    assert any(row.get("kind") == "keydown" for row in button_rows)
+
+
+@pytest.mark.playwright
+def test_playwright_cv_generator_determinism(tmp_path: Path) -> None:
+    out1 = tmp_path / "cv1"
+    out2 = tmp_path / "cv2"
+    reg1 = _run_cv_generator(out1)
+    reg2 = _run_cv_generator(out2)
+
+    def comparable(registry: dict[str, Any]) -> list[dict[str, Any]]:
+        return sorted(
+            [
+                {
+                    key: value
+                    for key, value in entry.items()
+                    if key not in {"file", "events_jsonl"}
+                }
+                for entry in registry["generated"]
+            ],
+            key=lambda entry: entry["id"],
+        )
+
+    assert comparable(reg1) == comparable(reg2)
+
+
+@pytest.mark.playwright
+def test_scrolls_provider_matches_cv_fixture_gate(tmp_path: Path) -> None:
+    out = tmp_path / "cv"
+    registry = _run_cv_generator(out)
+    tolerances = g.load_tolerances()["scrolls"]
+    by_id = {entry["id"]: entry for entry in registry["generated"]}
+    scroll_entry = by_id["cv_scroll_page"]
+    alignment = g.resolve_flash_alignment(
+        out / scroll_entry["file"],
+        out / scroll_entry["events_jsonl"],
+    )
+    expected = g.expected_scrolls_from_jsonl(
+        out / scroll_entry["events_jsonl"],
+        scroll_entry,
+        alignment,
+        separation_ms=int(tolerances["event_separation_ms"]),
+    )
+    detected = detect_scrolls(out / scroll_entry["file"], tmp_path / "scroll-work")
+
+    assert len(detected) == len(expected)
+    for actual, target in zip(detected, expected, strict=True):
+        assert abs(actual.t_start_ms - target.t_start_ms) <= int(tolerances["edge_tolerance_ms"])
+        assert abs(actual.t_end_ms - target.t_end_ms) <= int(tolerances["edge_tolerance_ms"])
+        assert actual.direction == target.direction
+        assert actual.percent == pytest.approx(
+            target.percent_viewport,
+            rel=float(tolerances["percent_relative_tolerance"]),
+        )
+        assert actual.payload["lines"] is None
+        assert actual.payload["direction"] == target.direction
+
+    assert detect_scrolls(out / by_id["cv_button_grid"]["file"], tmp_path / "button-work") == []
+    assert detect_scrolls(out / by_id["cv_hover_negative"]["file"], tmp_path / "hover-work") == []

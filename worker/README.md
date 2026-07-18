@@ -61,14 +61,17 @@ Golden fixture generation:
   ```
 
 - CV/browser fixtures require `pnpm`, `espeak-ng` for narrated audio variants,
-  and a Playwright Chromium install:
+  and the repo-wide cached Playwright Chromium used by `apps/web`:
 
   ```powershell
   cd worker/scripts/make_cv_fixtures
   pnpm install
-  pnpm exec playwright install chromium
   pnpm fixtures --output-dir ../../tests/fixtures/generated
   ```
+
+  Keep this package's `playwright` version exactly aligned with
+  `apps/web`'s locked `@playwright/test` version so both harnesses reuse one
+  cached browser build. Do not install a separate browser for this package.
 
   The Playwright harness records the browser WebM, writes JSONL input events via
   `addInitScript`, and normalizes the video through the same ffmpeg resolver

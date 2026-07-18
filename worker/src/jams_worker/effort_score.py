@@ -10,6 +10,7 @@ Measure = dict[str, Any]
 KIND_CATEGORY = {
     "context_switch": "cognitive",
     "sentiment": "sentiment",
+    "scrolls": "physical",
     "spoken_word": "physical",
     "time_segment": "time",
     "utterance": "speech",
@@ -18,6 +19,7 @@ KIND_CATEGORY = {
 SCORE_KIND_ORDER = [
     "context_switch",
     "sentiment",
+    "scrolls",
     "spoken_word",
     "time_segment",
     "utterance",

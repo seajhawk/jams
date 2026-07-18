@@ -25,6 +25,7 @@ export const measureKindSchema = z.enum([
   "spoken_word",
   "time_segment",
   "sentiment",
+  "scrolls",
 ]);
 
 export const measureCategorySchema = z.enum([
@@ -115,12 +116,28 @@ const timeSegmentMeasureSchema = measureBaseSchema.extend({
   }),
 });
 
+const scrollsMeasureSchema = measureBaseSchema.extend({
+  kind: z.literal("scrolls"),
+  category: z.literal("physical"),
+  t_end_ms: z.number().int().nonnegative(),
+  value_num: z.number().nonnegative(),
+  value_text: z.null(),
+  unit: z.literal("percent_viewport"),
+  payload: z.object({
+    type: z.enum(["vertical", "horizontal", "zoom"]),
+    percent: z.number(),
+    direction: z.enum(["up", "down", "left", "right", "in", "out"]),
+    lines: z.null(),
+  }).passthrough(),
+});
+
 export const measureSchema = z.discriminatedUnion("kind", [
   contextSwitchMeasureSchema,
   utteranceMeasureSchema,
   spokenWordMeasureSchema,
   timeSegmentMeasureSchema,
   sentimentMeasureSchema,
+  scrollsMeasureSchema,
 ]);
 
 export const reportPayloadSchema = z.object({

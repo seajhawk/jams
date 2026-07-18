@@ -78,6 +78,26 @@ async function installCapture(context, events) {
     events.push(event)
   })
   await context.addInitScript(({ flash1Ms, flash2Ms, flashDurationMs }) => {
+    window.jamsInstallCapture = () => {
+      if (window.__jamsCaptureInstalled) return
+      window.__jamsCaptureInstalled = true
+      const capture = (event) => {
+        const target = event.target instanceof Element ? event.target : null
+        window.jamsRecordEvent({
+          kind: event.type,
+          t_ms: performance.now(),
+          x: "clientX" in event ? Math.round(event.clientX) : null,
+          y: "clientY" in event ? Math.round(event.clientY) : null,
+          delta_x: "deltaX" in event ? Math.round(event.deltaX) : null,
+          delta_y: "deltaY" in event ? Math.round(event.deltaY) : null,
+          key: "key" in event ? event.key : null,
+          target: target?.getAttribute("data-fixture-button") ?? target?.id ?? target?.tagName ?? null,
+        })
+      }
+      for (const type of ["click", "mousedown", "mouseup", "keydown", "wheel", "mousemove"]) {
+        window.addEventListener(type, capture, { passive: true, capture: true })
+      }
+    }
     const capture = (event) => {
       const target = event.target instanceof Element ? event.target : null
       window.jamsRecordEvent({
@@ -85,6 +105,8 @@ async function installCapture(context, events) {
         t_ms: performance.now(),
         x: "clientX" in event ? Math.round(event.clientX) : null,
         y: "clientY" in event ? Math.round(event.clientY) : null,
+        delta_x: "deltaX" in event ? Math.round(event.deltaX) : null,
+        delta_y: "deltaY" in event ? Math.round(event.deltaY) : null,
         key: "key" in event ? event.key : null,
         target: target?.getAttribute("data-fixture-button") ?? target?.id ?? target?.tagName ?? null,
       })
@@ -165,13 +187,14 @@ async function recordScenario(browser, outputDir, ffmpeg, scenario) {
   const tempDir = await mkdtemp(path.join(tmpdir(), `jams-cv-${scenario}-`))
   const events = []
   try {
-    const context = await browser.newContext({
+  const context = await browser.newContext({
       viewport: { width: W, height: H },
       recordVideo: { dir: tempDir, size: { width: W, height: H } },
     })
     await installCapture(context, events)
     const page = await context.newPage()
     await page.setContent(htmlForScenario(scenario), { waitUntil: "load" })
+    await page.evaluate(() => window.jamsInstallCapture())
     await driveScenario(page, scenario)
     await page.waitForTimeout(700)
     const video = page.video()
@@ -195,6 +218,9 @@ async function recordScenario(browser, outputDir, ffmpeg, scenario) {
       fps: FPS,
       has_audio: false,
       provider_pending: scenario === "cv_hover_negative" ? "F10-b/c negative" : "F10-b/c",
+      scroll_events: scenario === "cv_scroll_page"
+        ? [{ direction: "down", percent_viewport: 9.0 }]
+        : [],
       sync_marker: {
         flash_count: 2,
         flash_duration_ms: FLASH_DURATION_MS,

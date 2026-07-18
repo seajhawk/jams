@@ -25,6 +25,7 @@ from jams_worker.pipeline import MeasureProvider, PipelineContext, log_event, ru
 from jams_worker.providers.context_switch import ContextSwitchProvider
 from jams_worker.providers.probe import ProbeProvider
 from jams_worker.providers.scoring import ScoringProvider
+from jams_worker.providers.scrolls import ScrollsProvider
 from jams_worker.providers.segment_labeling import SegmentLabelingProvider
 from jams_worker.providers.segmentation import SegmentationProvider
 from jams_worker.providers.sentiment import SentimentProvider
@@ -191,6 +192,7 @@ def run_loop(settings: Settings | None = None, *, drain: bool = False) -> None:
     providers: list[MeasureProvider] = [
         ProbeProvider(),
         ContextSwitchProvider(),
+        ScrollsProvider(),
         TranscriptionProvider(),
         SentimentProvider(),
         SegmentationProvider(),
