@@ -1,0 +1,33 @@
+{
+  "audio": {
+    "offset_parse_max_drift_ms": 0,
+    "transient_to_speech_db": -6.0
+  },
+  "context_switch": {
+    "cut_match_tolerance_ms": 1000,
+    "frame_diff_cut_threshold": 40.0
+  },
+  "duration": {
+    "audio_video_alignment_ms": 500,
+    "ffprobe_duration_tolerance_ms": 400
+  },
+  "flash_sync": {
+    "drift_max_ms": 200,
+    "expected_count": 2,
+    "luma_threshold": 245.0,
+    "min_gap_ms": 250
+  },
+  "provider_gates_pending": {
+    "button_click_precision": 0.80,
+    "button_click_recall": 0.80,
+    "hover_false_positive_max": 0,
+    "in_speech_click_recall": 0.60,
+    "keypress_precision": 0.75,
+    "keypress_recall": 0.75,
+    "scroll_precision": 0.90,
+    "scroll_recall": 0.90
+  },
+  "timestamp": {
+    "cross_stage_agreement_ms": 250
+  }
+}

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 from jams_worker.ffmpeg import ffmpeg_path, ffprobe_path
+
+FIXTURES_ROOT = Path(__file__).resolve().parent / "fixtures"
+TOLERANCES_PATH = FIXTURES_ROOT / "tolerances.json"
 
 
 @dataclass
@@ -36,6 +40,46 @@ class CutMatchResult:
         if denom == 0:
             return 0.0
         return 2 * self.precision * self.recall / denom
+
+
+@dataclass(frozen=True, slots=True)
+class FlashAlignment:
+    event_flash_ms: tuple[int, int]
+    video_flash_ms: tuple[int, int]
+    offset_ms: float
+    scale: float
+    drift_ms: float
+
+    def event_to_video_ms(self, event_ms: int | float) -> int:
+        return int(round((float(event_ms) * self.scale) + self.offset_ms))
+
+
+def load_tolerances(path: Path = TOLERANCES_PATH) -> dict:
+    return json.loads(path.read_text())
+
+
+def parse_jsonl(path: Path) -> list[dict]:
+    rows = []
+    for line_number, line in enumerate(path.read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            msg = f"{path}:{line_number} is not valid JSONL"
+            raise AssertionError(msg) from exc
+    return rows
+
+
+def parse_offsets_jsonl(path: Path) -> list[int]:
+    offsets: list[int] = []
+    for row in parse_jsonl(path):
+        assert isinstance(row.get("t_ms"), int)
+        assert row["t_ms"] >= 0
+        assert isinstance(row.get("kind"), str)
+        offsets.append(row["t_ms"])
+    assert offsets == sorted(offsets)
+    return offsets
 
 
 def cut_match(
@@ -161,6 +205,112 @@ def _frame_rgb(ffmpeg: str, path: Path, t_s: float) -> bytes:
         check=True,
     )
     return result.stdout
+
+
+def _gray_frames(ffmpeg: str, path: Path, fps: int = 30) -> list[bytes]:
+    width = 80
+    height = 45
+    result = subprocess.run(
+        [
+            ffmpeg,
+            "-loglevel",
+            "error",
+            "-i",
+            str(path),
+            "-vf",
+            f"fps={fps},scale={width}:{height}",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "gray",
+            "-",
+        ],
+        capture_output=True,
+        check=True,
+    )
+    frame_size = width * height
+    return [
+        result.stdout[index : index + frame_size]
+        for index in range(0, len(result.stdout), frame_size)
+        if len(result.stdout[index : index + frame_size]) == frame_size
+    ]
+
+
+def detect_sync_flashes(
+    path: Path,
+    *,
+    fps: int = 30,
+    luma_threshold: float | None = None,
+    min_gap_ms: int | None = None,
+) -> list[int]:
+    tolerances = load_tolerances()["flash_sync"]
+    threshold = float(
+        luma_threshold if luma_threshold is not None else tolerances["luma_threshold"]
+    )
+    gap_ms = int(min_gap_ms if min_gap_ms is not None else tolerances["min_gap_ms"])
+    frames = _gray_frames(ffmpeg_path(), path, fps=fps)
+    bright_indices = []
+    for index, frame in enumerate(frames):
+        mean_luma = sum(frame) / len(frame)
+        if mean_luma >= threshold:
+            bright_indices.append(index)
+
+    groups: list[list[int]] = []
+    for index in bright_indices:
+        if not groups or index - groups[-1][-1] > 1:
+            groups.append([index])
+        else:
+            groups[-1].append(index)
+
+    flashes: list[int] = []
+    previous_ms: int | None = None
+    for group in groups:
+        mid_frame = (group[0] + group[-1]) / 2
+        mid_ms = int(round(mid_frame * 1000 / fps))
+        if previous_ms is not None and mid_ms - previous_ms < gap_ms:
+            continue
+        flashes.append(mid_ms)
+        previous_ms = mid_ms
+    return flashes
+
+
+def sync_flash_events(events_jsonl: Path) -> list[int]:
+    events = [
+        row
+        for row in parse_jsonl(events_jsonl)
+        if row.get("kind") == "sync_flash" and row.get("phase") == "start"
+    ]
+    events.sort(key=lambda row: int(row["index"]))
+    flashes = [int(round(float(row["t_ms"]))) for row in events]
+    return flashes
+
+
+def resolve_flash_alignment(video_path: Path, events_jsonl: Path) -> FlashAlignment:
+    tolerances = load_tolerances()["flash_sync"]
+    expected_count = int(tolerances["expected_count"])
+    event_flashes = sync_flash_events(events_jsonl)
+    video_flashes = detect_sync_flashes(video_path)
+    assert len(event_flashes) == expected_count
+    assert len(video_flashes) == expected_count
+
+    event_gap = event_flashes[1] - event_flashes[0]
+    video_gap = video_flashes[1] - video_flashes[0]
+    assert event_gap > 0
+    drift_ms = abs(video_gap - event_gap)
+    assert drift_ms <= int(tolerances["drift_max_ms"])
+
+    if drift_ms == 0:
+        scale = 1.0
+    else:
+        scale = video_gap / event_gap
+    offset_ms = video_flashes[0] - (event_flashes[0] * scale)
+    return FlashAlignment(
+        event_flash_ms=(event_flashes[0], event_flashes[1]),
+        video_flash_ms=(video_flashes[0], video_flashes[1]),
+        offset_ms=offset_ms,
+        scale=scale,
+        drift_ms=float(drift_ms),
+    )
 
 
 def frame_mae_at_cut(path: Path, cut_s: float, fps: int = 30) -> float:

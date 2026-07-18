@@ -6,6 +6,8 @@ import golden as g
 import pytest
 from golden import _normalize_text
 
+from jams_worker.ffmpeg import ffmpeg_path
+
 
 def test_cut_match_exact_match() -> None:
     result = g.cut_match([1000, 5000], [1000, 5000], tolerance_ms=1000)
@@ -161,3 +163,58 @@ def test_cross_stage() -> None:
 
     with pytest.raises(AssertionError):
         g.assert_cross_stage(cut_ms=5300, first_word_t0_ms=4900, video_duration_ms=25010)
+
+
+def test_tolerances_include_pinned_transient_mix() -> None:
+    tolerances = g.load_tolerances()
+
+    assert tolerances["audio"]["transient_to_speech_db"] == -6.0
+    assert tolerances["provider_gates_pending"]["in_speech_click_recall"] == 0.60
+
+
+def test_parse_offsets_jsonl(tmp_path) -> None:
+    path = tmp_path / "offsets.jsonl"
+    path.write_text(
+        '{"kind":"click","t_ms":100,"recipe":"mouse_click_v1"}\n'
+        '{"kind":"click","t_ms":250,"recipe":"mouse_click_v1"}\n'
+    )
+
+    assert g.parse_offsets_jsonl(path) == [100, 250]
+
+
+def test_resolve_flash_alignment(tmp_path) -> None:
+    video = tmp_path / "flashes.mp4"
+    events = tmp_path / "events.jsonl"
+    subprocess_args = [
+        ffmpeg_path(),
+        "-y",
+        "-filter_complex",
+        (
+            "color=c=black:s=160x120:r=30:d=1.0[v0];"
+            "color=c=white:s=160x120:r=30:d=0.1[v1];"
+            "color=c=black:s=160x120:r=30:d=0.5[v2];"
+            "color=c=white:s=160x120:r=30:d=0.1[v3];"
+            "color=c=black:s=160x120:r=30:d=1.0[v4];"
+            "[v0][v1][v2][v3][v4]concat=n=5:v=1:a=0[v]"
+        ),
+        "-map",
+        "[v]",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        str(video),
+    ]
+    import subprocess
+
+    subprocess.run(subprocess_args, capture_output=True, check=True)
+    events.write_text(
+        '{"kind":"sync_flash","phase":"start","index":1,"t_ms":1000}\n'
+        '{"kind":"sync_flash","phase":"start","index":2,"t_ms":1600}\n'
+    )
+
+    alignment = g.resolve_flash_alignment(video, events)
+
+    assert alignment.video_flash_ms[0] == pytest.approx(1050, abs=40)
+    assert alignment.video_flash_ms[1] == pytest.approx(1650, abs=40)
+    assert alignment.event_to_video_ms(1000) == alignment.video_flash_ms[0]

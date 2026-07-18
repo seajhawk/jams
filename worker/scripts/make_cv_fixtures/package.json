@@ -1,0 +1,13 @@
+{
+  "name": "@jams/make-cv-fixtures",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "fixtures": "node ./src/generate.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.49.1"
+  },
+  "devDependencies": {}
+}

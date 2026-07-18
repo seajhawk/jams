@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +12,11 @@ import golden as g
 import make_fixtures as mf
 import pytest
 
+from jams_worker.ffmpeg import ffmpeg_path
+
 DURATION_TOL_MS = 400
 FRAME_DIFF_CUT_THRESHOLD = 40.0
+CV_GENERATOR = Path(__file__).resolve().parents[1] / "scripts" / "make_cv_fixtures"
 
 
 @pytest.fixture(scope="session")
@@ -50,6 +55,40 @@ def test_duration_matches_gt(fxt: tuple[dict[str, Any], Path]) -> None:
         path = out_dir / entry["file"]
         duration_ms = g.ffprobe_duration_ms(path)
         assert abs(duration_ms - entry["duration_ms"]) <= DURATION_TOL_MS, entry["id"]
+
+
+def test_audio_offset_lists_parse(fxt: tuple[dict[str, Any], Path]) -> None:
+    reg, out_dir = fxt
+
+    entries = [entry for entry in _generated(reg) if entry.get("offsets_jsonl")]
+    assert entries
+    for entry in entries:
+        if entry["tts_pending"]:
+            continue
+        offsets = g.parse_offsets_jsonl(out_dir / entry["offsets_jsonl"])
+        assert len(offsets) == entry["event_count"]
+
+
+def test_narrated_transient_mix_ratio_is_pinned(fxt: tuple[dict[str, Any], Path]) -> None:
+    reg, _out_dir = fxt
+    pinned = g.load_tolerances()["audio"]["transient_to_speech_db"]
+
+    for fixture_id in ("narrated_clicks", "narrated_keypresses"):
+        entry = _entry(reg, fixture_id)
+        if entry["tts_pending"]:
+            pytest.skip("espeak-ng not available")
+        assert entry["transient_to_speech_db"] == pinned
+
+
+def test_integration_desync_probe_metadata(fxt: tuple[dict[str, Any], Path]) -> None:
+    reg, _out_dir = fxt
+    aligned = _entry(reg, "integration_av_0ms")
+    desynced = _entry(reg, "integration_av_desync_300ms")
+    if aligned["tts_pending"] or desynced["tts_pending"]:
+        pytest.skip("espeak-ng not available")
+
+    assert aligned["audio_offset_ms"] == 0
+    assert desynced["audio_offset_ms"] == 300
 
 
 def test_cut_boundaries_have_large_frame_diff(fxt: tuple[dict[str, Any], Path]) -> None:
@@ -142,3 +181,41 @@ def test_determinism(fxt: tuple[dict[str, Any], Path], tmp_path: Path) -> None:
 
     registry_json = json.loads((out2 / "registry.json").read_text())
     assert _gt_data(registry_json) == _gt_data(reg2)
+
+
+@pytest.mark.playwright
+def test_playwright_cv_generator_flash_alignment(tmp_path: Path) -> None:
+    pnpm = shutil.which("pnpm")
+    if pnpm is None:
+        pytest.skip("pnpm not available for Playwright CV fixture generation")
+    if not (CV_GENERATOR / "node_modules" / "playwright").exists():
+        pytest.skip("run pnpm install in worker/scripts/make_cv_fixtures")
+
+    out = tmp_path / "cv"
+    result = subprocess.run(
+        [
+            pnpm,
+            "fixtures",
+            "--output-dir",
+            str(out),
+            "--ffmpeg",
+            ffmpeg_path(),
+        ],
+        cwd=CV_GENERATOR,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    if result.returncode != 0:
+        pytest.skip(f"Playwright/Chromium unavailable: {result.stderr[-400:]}")
+
+    registry = json.loads((out / "cv_registry.json").read_text())
+    assert {entry["id"] for entry in registry["generated"]} == {
+        "cv_scroll_page",
+        "cv_button_grid",
+        "cv_hover_negative",
+    }
+    for entry in registry["generated"]:
+        alignment = g.resolve_flash_alignment(out / entry["file"], out / entry["events_jsonl"])
+        assert alignment.drift_ms <= g.load_tolerances()["flash_sync"]["drift_max_ms"]

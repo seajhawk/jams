@@ -50,3 +50,32 @@ Optional LLM segment naming:
   for concise JSON labeling; the worker intentionally has no model default.
 - The provider is still a no-op when `CI` is set, even if the flag and key are
   present. Tests must never make live LLM calls.
+
+Golden fixture generation:
+
+- Core synthetic fixtures:
+
+  ```powershell
+  cd worker
+  uv run python scripts/make_fixtures.py --force
+  ```
+
+- CV/browser fixtures require `pnpm`, `espeak-ng` for narrated audio variants,
+  and a Playwright Chromium install:
+
+  ```powershell
+  cd worker/scripts/make_cv_fixtures
+  pnpm install
+  pnpm exec playwright install chromium
+  pnpm fixtures --output-dir ../../tests/fixtures/generated
+  ```
+
+  The Playwright harness records the browser WebM, writes JSONL input events via
+  `addInitScript`, and normalizes the video through the same ffmpeg resolver
+  settings used by production. Pytest marks these checks as `playwright` and
+  skips them when the package or browser is absent.
+
+- Narrated transient fixtures pin `TRANSIENT_TO_SPEECH_DB = -6.0` in
+  `scripts/make_fixtures.py`. Transcript/VAD artifacts are generated through the
+  real faster-whisper provider only when `JAMS_RUN_WHISPER_TESTS=1` and cached
+  weights exist; normal tests record those artifacts as pending.
