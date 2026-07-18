@@ -158,6 +158,19 @@ function mapMeasure(m: DbMeasure): Record<string, unknown> | null {
   const payload = (m.payload ?? {}) as Record<string, unknown>
 
   switch (m.kind) {
+    case "clicks": {
+      if (m.valueNum == null) return null
+      return {
+        ...base,
+        kind: "clicks",
+        category: "physical",
+        t_end_ms: null,
+        value_num: m.valueNum,
+        value_text: null,
+        unit: "click",
+        payload,
+      }
+    }
     case "utterance": {
       if (!m.valueText || m.tEndMs == null) return null
       const words = (payload.words as Array<{ w: string; t0: number; t1: number }>) ?? []
@@ -237,6 +250,19 @@ function mapMeasure(m: DbMeasure): Record<string, unknown> | null {
         value_num: m.valueNum,
         value_text: null,
         unit: "percent_viewport",
+        payload,
+      }
+    }
+    case "keypresses": {
+      if (m.tEndMs == null || m.valueNum == null) return null
+      return {
+        ...base,
+        kind: "keypresses",
+        category: "physical",
+        t_end_ms: m.tEndMs,
+        value_num: m.valueNum,
+        value_text: null,
+        unit: "keys",
         payload,
       }
     }

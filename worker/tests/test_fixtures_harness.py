@@ -13,6 +13,10 @@ import make_fixtures as mf
 import pytest
 
 from jams_worker.ffmpeg import ffmpeg_path
+from jams_worker.providers.audio_onsets import SpeechRegion, ensure_audio_onsets
+from jams_worker.providers.clicks import detect_audio_clicks, detect_visual_clicks
+from jams_worker.providers.keypresses import detect_keypress_bursts
+from jams_worker.providers.proxy_motion import ensure_proxy_motion
 from jams_worker.providers.scrolls import detect_scrolls
 
 DURATION_TOL_MS = 400
@@ -65,6 +69,43 @@ def _run_cv_generator(out: Path) -> dict[str, Any]:
     return json.loads((out / "cv_registry.json").read_text())
 
 
+def _match_times(
+    actual_ms: list[int],
+    expected_ms: list[int],
+    tolerance_ms: int,
+) -> tuple[int, int, int]:
+    pool = sorted(actual_ms)
+    tp = 0
+    for expected in sorted(expected_ms):
+        candidates = [
+            (abs(actual - expected), index)
+            for index, actual in enumerate(pool)
+            if abs(actual - expected) <= tolerance_ms
+        ]
+        if not candidates:
+            continue
+        _delta, index = min(candidates)
+        pool.pop(index)
+        tp += 1
+    return tp, len(pool), len(expected_ms) - tp
+
+
+def _precision_recall(tp: int, fp: int, fn: int) -> tuple[float, float]:
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    return precision, recall
+
+
+def _expected_bursts(offsets: list[int], split_ms: int = 800) -> list[list[int]]:
+    bursts: list[list[int]] = []
+    for offset in offsets:
+        if not bursts or offset - bursts[-1][-1] >= split_ms:
+            bursts.append([offset])
+        else:
+            bursts[-1].append(offset)
+    return bursts
+
+
 def test_all_generated_gt_jsons_present(fxt: tuple[dict[str, Any], Path]) -> None:
     reg, out_dir = fxt
 
@@ -106,6 +147,122 @@ def test_narrated_transient_mix_ratio_is_pinned(fxt: tuple[dict[str, Any], Path]
         if entry["tts_pending"]:
             pytest.skip("espeak-ng not available")
         assert entry["transient_to_speech_db"] == pinned
+
+
+def test_audio_click_provider_matches_clean_transients(
+    fxt: tuple[dict[str, Any], Path],
+    tmp_path: Path,
+) -> None:
+    reg, out_dir = fxt
+    tolerances = g.load_tolerances()["audio"]
+    entry = _entry(reg, "click_transients")
+    expected = g.parse_offsets_jsonl(out_dir / entry["offsets_jsonl"])
+    artifact = ensure_audio_onsets(out_dir / entry["file"], tmp_path / "audio-clicks")
+    events = detect_audio_clicks(artifact)
+
+    assert len(events) == len(expected)
+    actual = [event.t_start_ms for event in events]
+    for actual_ms, expected_ms in zip(actual, expected, strict=True):
+        assert abs(actual_ms - expected_ms) <= int(tolerances["click_tolerance_ms"])
+    assert all(event.confidence >= 0.70 for event in events)
+
+
+def test_keypress_provider_matches_clean_bursts(
+    fxt: tuple[dict[str, Any], Path],
+    tmp_path: Path,
+) -> None:
+    reg, out_dir = fxt
+    entry = _entry(reg, "keypress_transients")
+    offsets = g.parse_offsets_jsonl(out_dir / entry["offsets_jsonl"])
+    expected = _expected_bursts(offsets)
+    artifact = ensure_audio_onsets(out_dir / entry["file"], tmp_path / "keys")
+    bursts = detect_keypress_bursts(artifact)
+
+    assert [burst.count for burst in bursts] == [len(group) for group in expected]
+    for burst, expected_group in zip(bursts, expected, strict=True):
+        assert abs(burst.t_start_ms - (expected_group[0] - 30)) <= 150
+        assert abs(burst.t_end_ms - (expected_group[-1] + 80)) <= 150
+        assert burst.confidence >= 0.65
+
+
+def test_audio_negatives_emit_zero_clicks_and_keypresses(
+    fxt: tuple[dict[str, Any], Path],
+    tmp_path: Path,
+) -> None:
+    reg, out_dir = fxt
+    for fixture_id in ("silence", "tones", "music_bed_negative", "pure_speech_negative"):
+        entry = _entry(reg, fixture_id)
+        if entry["tts_pending"]:
+            continue
+        speech_regions = (
+            (SpeechRegion(0, int(entry["duration_ms"])),)
+            if fixture_id == "pure_speech_negative"
+            else ()
+        )
+        artifact = ensure_audio_onsets(
+            out_dir / entry["file"],
+            tmp_path / f"negative-{fixture_id}",
+            speech_regions=speech_regions,
+        )
+        assert detect_audio_clicks(artifact) == []
+        assert detect_keypress_bursts(artifact) == []
+
+
+def test_in_speech_click_onsets_hit_pinned_recall_gate(
+    fxt: tuple[dict[str, Any], Path],
+    tmp_path: Path,
+) -> None:
+    reg, out_dir = fxt
+    tolerances = g.load_tolerances()["audio"]
+    entry = _entry(reg, "narrated_clicks")
+    if entry["tts_pending"]:
+        pytest.skip("espeak-ng not available")
+    expected = g.parse_offsets_jsonl(out_dir / entry["offsets_jsonl"])
+    speech_regions = (SpeechRegion(0, int(entry["duration_ms"])),)
+    artifact = ensure_audio_onsets(
+        out_dir / entry["file"],
+        tmp_path / "narrated-clicks",
+        speech_regions=speech_regions,
+    )
+    candidates = [
+        onset.t_ms
+        for onset in artifact.onsets
+        if onset.in_speech and onset.label in {"click_candidate", "ambiguous"}
+    ]
+    tp, fp, fn = _match_times(candidates, expected, int(tolerances["click_tolerance_ms"]))
+    precision, recall = _precision_recall(tp, fp, fn)
+
+    assert recall >= float(tolerances["in_speech_click_recall"])
+    assert precision >= float(tolerances["in_speech_click_precision"])
+
+
+def test_integration_av_desync_degrades_without_crashing(
+    fxt: tuple[dict[str, Any], Path],
+    tmp_path: Path,
+) -> None:
+    reg, out_dir = fxt
+    aligned = _entry(reg, "integration_av_0ms")
+    desynced = _entry(reg, "integration_av_desync_300ms")
+    if aligned["tts_pending"] or desynced["tts_pending"]:
+        pytest.skip("espeak-ng not available")
+
+    counts = []
+    for entry in (aligned, desynced):
+        speech_regions = (SpeechRegion(0, int(entry["duration_ms"])),)
+        artifact = ensure_audio_onsets(
+            out_dir / entry["audio_source"],
+            tmp_path / f"onsets-{entry['id']}",
+            speech_regions=speech_regions,
+        )
+        motion = ensure_proxy_motion(
+            out_dir / entry["file"],
+            tmp_path / f"motion-{entry['id']}",
+            include_frames=True,
+        )
+        events = detect_audio_clicks(artifact, motion=motion, full_width=640, full_height=480)
+        counts.append(len(events))
+
+    assert counts[1] <= counts[0]
 
 
 def test_integration_desync_probe_metadata(fxt: tuple[dict[str, Any], Path]) -> None:
@@ -298,3 +455,45 @@ def test_scrolls_provider_matches_cv_fixture_gate(tmp_path: Path) -> None:
 
     assert detect_scrolls(out / by_id["cv_button_grid"]["file"], tmp_path / "button-work") == []
     assert detect_scrolls(out / by_id["cv_hover_negative"]["file"], tmp_path / "hover-work") == []
+
+
+@pytest.mark.playwright
+def test_clicks_provider_matches_cv_button_grid_gate(tmp_path: Path) -> None:
+    out = tmp_path / "cv"
+    registry = _run_cv_generator(out)
+    tolerances = g.load_tolerances()["clicks"]
+    by_id = {entry["id"]: entry for entry in registry["generated"]}
+    button_entry = by_id["cv_button_grid"]
+    alignment = g.resolve_flash_alignment(
+        out / button_entry["file"],
+        out / button_entry["events_jsonl"],
+    )
+    expected = [
+        alignment.event_to_video_ms(row["t_ms"])
+        for row in g.parse_jsonl(out / button_entry["events_jsonl"])
+        if row.get("kind") == "click"
+    ]
+    motion = ensure_proxy_motion(
+        out / button_entry["file"],
+        tmp_path / "button-click-motion",
+        include_frames=True,
+    )
+    detected = detect_visual_clicks(motion, full_width=640, full_height=480)
+    actual = [event.t_start_ms for event in detected]
+    tp, fp, fn = _match_times(
+        actual,
+        expected,
+        int(tolerances["visual_edge_tolerance_ms"]),
+    )
+    precision, recall = _precision_recall(tp, fp, fn)
+
+    assert recall >= float(tolerances["visual_recall"])
+    assert precision >= float(tolerances["visual_precision"])
+    assert all(event.visual.response_centroid is not None for event in detected)
+
+    hover_motion = ensure_proxy_motion(
+        out / by_id["cv_hover_negative"]["file"],
+        tmp_path / "hover-click-motion",
+        include_frames=True,
+    )
+    assert detect_visual_clicks(hover_motion, full_width=640, full_height=480) == []

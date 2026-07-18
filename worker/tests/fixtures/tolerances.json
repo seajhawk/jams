@@ -1,7 +1,19 @@
 {
   "audio": {
+    "click_tolerance_ms": 75,
+    "in_speech_click_precision": 0.85,
+    "in_speech_click_recall": 0.60,
+    "keypress_edge_tolerance_ms": 150,
+    "keypress_max_exact_rate_keys_per_s": 8,
+    "negative_max_rows": 0,
     "offset_parse_max_drift_ms": 0,
     "transient_to_speech_db": -6.0
+  },
+  "clicks": {
+    "visual_edge_tolerance_ms": 400,
+    "visual_location_tolerance_px": 80,
+    "visual_precision": 0.70,
+    "visual_recall": 0.70
   },
   "context_switch": {
     "cut_match_tolerance_ms": 1000,

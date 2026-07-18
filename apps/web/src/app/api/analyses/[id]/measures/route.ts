@@ -10,7 +10,9 @@ export const dynamic = "force-dynamic"
 const idSchema = z.string().uuid()
 
 const VALID_KINDS = new Set([
+  "clicks",
   "context_switch",
+  "keypresses",
   "utterance",
   "spoken_word",
   "time_segment",

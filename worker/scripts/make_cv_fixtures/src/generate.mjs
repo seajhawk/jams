@@ -50,6 +50,7 @@ function htmlForScenario(name) {
       <style>${commonStyle}
         main { padding: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
         button { height: 74px; border: 2px solid #64748b; background: #1f2937; color: white; font-size: 15px; }
+        button.selected { background: #0f766e; border-color: #5eead4; }
         button:active { background: #f59e0b; color: #111827; transform: translateY(3px); }
         #status { position: fixed; left: 24px; right: 24px; bottom: 22px; height: 44px; line-height: 44px; background: #164e63; text-align: center; }
       </style>
@@ -58,6 +59,8 @@ function htmlForScenario(name) {
         document.addEventListener("click", (event) => {
           const button = event.target.closest("button")
           if (!button) return
+          document.querySelectorAll("button.selected").forEach((item) => item.classList.remove("selected"))
+          button.classList.add("selected")
           document.querySelector("#status").textContent = "pressed " + button.dataset.fixtureButton
         })
       </script>
@@ -156,7 +159,7 @@ async function driveScenario(page, name) {
     for (const index of [0, 5, 11, 3, 8]) {
       const button = page.locator(`[data-fixture-button="${index}"]`)
       await button.click()
-      await page.waitForTimeout(220)
+      await page.waitForTimeout(1000)
     }
     await page.keyboard.press("Tab")
     await page.keyboard.press("Enter")

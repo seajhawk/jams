@@ -20,7 +20,9 @@ const rootRelativeOrAbsoluteUrlSchema = z.string().min(1).refine(
 );
 
 export const measureKindSchema = z.enum([
+  "clicks",
   "context_switch",
+  "keypresses",
   "utterance",
   "spoken_word",
   "time_segment",
@@ -131,8 +133,42 @@ const scrollsMeasureSchema = measureBaseSchema.extend({
   }).passthrough(),
 });
 
+const clicksMeasureSchema = measureBaseSchema.extend({
+  kind: z.literal("clicks"),
+  category: z.literal("physical"),
+  t_end_ms: z.null(),
+  value_num: z.literal(1),
+  value_text: z.null(),
+  unit: z.literal("click"),
+  payload: z.object({
+    type: z.literal("single"),
+    location: z.null(),
+    response_centroid: z.object({
+      x: z.number().int(),
+      y: z.number().int(),
+    }).nullable(),
+    context: z.null(),
+  }).passthrough(),
+});
+
+const keypressesMeasureSchema = measureBaseSchema.extend({
+  kind: z.literal("keypresses"),
+  category: z.literal("physical"),
+  t_end_ms: z.number().int().nonnegative(),
+  value_num: z.number().int().nonnegative(),
+  value_text: z.null(),
+  unit: z.literal("keys"),
+  payload: z.object({
+    type: z.literal("multiple"),
+    count: z.number().int().nonnegative(),
+    keys: z.null(),
+  }).passthrough(),
+});
+
 export const measureSchema = z.discriminatedUnion("kind", [
+  clicksMeasureSchema,
   contextSwitchMeasureSchema,
+  keypressesMeasureSchema,
   utteranceMeasureSchema,
   spokenWordMeasureSchema,
   timeSegmentMeasureSchema,

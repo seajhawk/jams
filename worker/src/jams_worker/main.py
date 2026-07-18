@@ -22,7 +22,9 @@ from azure.storage.queue import QueueClient
 from jams_worker.db import RunRepository
 from jams_worker.errors import PipelineError
 from jams_worker.pipeline import MeasureProvider, PipelineContext, log_event, run_pipeline
+from jams_worker.providers.clicks import ClicksProvider
 from jams_worker.providers.context_switch import ContextSwitchProvider
+from jams_worker.providers.keypresses import KeypressesProvider
 from jams_worker.providers.probe import ProbeProvider
 from jams_worker.providers.scoring import ScoringProvider
 from jams_worker.providers.scrolls import ScrollsProvider
@@ -191,9 +193,11 @@ def run_loop(settings: Settings | None = None, *, drain: bool = False) -> None:
     )
     providers: list[MeasureProvider] = [
         ProbeProvider(),
+        TranscriptionProvider(),
         ContextSwitchProvider(),
         ScrollsProvider(),
-        TranscriptionProvider(),
+        KeypressesProvider(),
+        ClicksProvider(),
         SentimentProvider(),
         SegmentationProvider(),
         SegmentLabelingProvider(),

@@ -3,7 +3,9 @@ import type { MeasureKind, Normalization } from "./report-contract"
 export const DEFAULT_WEIGHT_PROFILE_NAME = "Default"
 
 export const DEFAULT_WEIGHT_PROFILE_WEIGHTS = {
+  clicks: 0,
   context_switch: 3,
+  keypresses: 0,
   sentiment: 4,
   scrolls: 0,
   spoken_word: 1,
@@ -11,7 +13,9 @@ export const DEFAULT_WEIGHT_PROFILE_WEIGHTS = {
 } satisfies Partial<Record<MeasureKind, number>>
 
 export const DEFAULT_WEIGHT_PROFILE_NORMALIZATION = {
+  clicks: "per_minute",
   context_switch: "per_minute",
+  keypresses: "per_minute",
   sentiment: "neg_density",
   spoken_word: "per_minute",
   time_segment: "raw_minutes",

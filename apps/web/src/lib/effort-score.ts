@@ -28,7 +28,9 @@ export type ScoreResult = {
 };
 
 const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
+  clicks: "physical",
   context_switch: "cognitive",
+  keypresses: "physical",
   sentiment: "sentiment",
   scrolls: "physical",
   spoken_word: "physical",
@@ -37,7 +39,9 @@ const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
 };
 
 const SCORE_KIND_ORDER: MeasureKind[] = [
+  "clicks",
   "context_switch",
+  "keypresses",
   "sentiment",
   "scrolls",
   "spoken_word",
@@ -49,7 +53,9 @@ const SCORE_KIND_ORDER: MeasureKind[] = [
 // They make the demo fixture land at readable 0-100 values:
 // roughly 1.7 switches/min => 63, 18 words/min => 45.
 const PER_MINUTE_SCALE: Partial<Record<MeasureKind, number>> = {
+  clicks: 1,
   context_switch: 36.75,
+  keypresses: 1,
   spoken_word: 2.47,
   utterance: 10,
 };
@@ -69,7 +75,7 @@ function durationMinutes(video: ReportVideo) {
 function perMinuteRaw(kind: MeasureKind, measures: ReportMeasure[]) {
   const kindMeasures = measuresForKind(measures, kind);
 
-  if (kind === "spoken_word") {
+  if (kind === "keypresses" || kind === "spoken_word") {
     return kindMeasures.reduce((sum, measure) => sum + (measure.value_num ?? 0), 0);
   }
 
