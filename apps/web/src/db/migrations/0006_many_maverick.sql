@@ -1,0 +1,1 @@
+ALTER TABLE "analysis_runs" ADD COLUMN "provider_results" jsonb DEFAULT '{}'::jsonb NOT NULL;

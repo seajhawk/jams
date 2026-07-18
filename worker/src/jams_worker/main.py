@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import signal
+import sys
 import tempfile
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from types import FrameType
 from typing import Any
@@ -17,7 +21,7 @@ from azure.storage.queue import QueueClient
 
 from jams_worker.db import RunRepository
 from jams_worker.errors import PipelineError
-from jams_worker.pipeline import MeasureProvider, PipelineContext, run_pipeline
+from jams_worker.pipeline import MeasureProvider, PipelineContext, log_event, run_pipeline
 from jams_worker.providers.context_switch import ContextSwitchProvider
 from jams_worker.providers.probe import ProbeProvider
 from jams_worker.providers.scoring import ScoringProvider
@@ -29,6 +33,13 @@ from jams_worker.settings import Settings
 
 VISIBILITY_TIMEOUT_SECONDS = 45 * 60
 MAX_DEQUEUE_ATTEMPTS = 3
+
+
+@dataclass(frozen=True, slots=True)
+class MessageResult:
+    run_id: str | None
+    status: str
+    poisoned: bool = False
 
 
 def ensure_queue(queue: QueueClient) -> None:
@@ -83,6 +94,7 @@ def process_run(
         )
         result = run_pipeline(context, providers)
         repo.set_provider_versions(run_id, result.provider_versions)
+        repo.set_provider_results(run_id, result.provider_summaries)
         partial_reasons = [
             f"{provider_id}:{summary.get('reason')}"
             for provider_id, summary in result.provider_summaries.items()
@@ -122,11 +134,17 @@ def handle_message(
     conn: psycopg.Connection[Any],
     blob_service_client: BlobServiceClient,
     providers: list[MeasureProvider],
-) -> None:
+) -> MessageResult:
     repo = RunRepository(conn)
+    run_id: str | None = None
     try:
         run_id = parse_message(str(message.content))
-        process_run(
+        log_event(
+            "message_claim",
+            run_id=run_id,
+            dequeue_count=getattr(message, "dequeue_count", None),
+        )
+        status = process_run(
             run_id=run_id,
             conn=conn,
             blob_service_client=blob_service_client,
@@ -134,23 +152,28 @@ def handle_message(
         )
     except PipelineError as exc:
         if getattr(message, "dequeue_count", 1) >= MAX_DEQUEUE_ATTEMPTS:
-            if "run_id" in locals():
+            if run_id is not None:
                 repo.fail(run_id, exc.error_code, str(exc))
             move_to_poison(message=message, queue=queue, poison_queue=poison_queue)
+            return MessageResult(run_id, "poisoned", poisoned=True)
         else:
             conn.rollback()
+            return MessageResult(run_id, "redelivery")
     except Exception as exc:
         if getattr(message, "dequeue_count", 1) >= MAX_DEQUEUE_ATTEMPTS:
-            if "run_id" in locals():
+            if run_id is not None:
                 repo.fail(run_id, "unknown", str(exc))
             move_to_poison(message=message, queue=queue, poison_queue=poison_queue)
+            return MessageResult(run_id, "poisoned", poisoned=True)
         else:
             conn.rollback()
+            return MessageResult(run_id, "redelivery")
     else:
         queue.delete_message(message.id, message.pop_receipt)
+        return MessageResult(run_id, status)
 
 
-def run_loop(settings: Settings | None = None) -> None:
+def run_loop(settings: Settings | None = None, *, drain: bool = False) -> None:
     settings = settings or Settings()
     queue = QueueClient.from_connection_string(
         settings.azure_storage_connection_string,
@@ -179,6 +202,15 @@ def run_loop(settings: Settings | None = None) -> None:
     signal.signal(signal.SIGINT, stop.handle)
     signal.signal(signal.SIGTERM, stop.handle)
 
+    log_event(
+        "worker_start",
+        queue=settings.jobs_queue_name,
+        poison_queue=settings.poison_queue_name,
+        drain=drain,
+        openrouter_key_present=bool(os.environ.get("OPENROUTER_API_KEY")),
+        labeling_model=os.environ.get("JAMS_LABELING_MODEL"),
+    )
+
     with psycopg.connect(settings.database_url) as conn:
         while not stop.requested:
             messages = queue.receive_messages(
@@ -188,8 +220,9 @@ def run_loop(settings: Settings | None = None) -> None:
             handled = False
             for message in messages:
                 handled = True
+                started_at = time.perf_counter()
                 try:
-                    handle_message(
+                    result = handle_message(
                         message=message,
                         queue=queue,
                         poison_queue=poison_queue,
@@ -200,12 +233,33 @@ def run_loop(settings: Settings | None = None) -> None:
                 except Exception:
                     conn.rollback()
                     raise
+                finally:
+                    duration_ms = round((time.perf_counter() - started_at) * 1000)
+                log_event(
+                    "run_summary",
+                    run_id=result.run_id,
+                    status=result.status,
+                    poisoned=result.poisoned,
+                    duration_ms=duration_ms,
+                )
             if not handled:
+                if drain:
+                    log_event("drain_complete")
+                    return
                 time.sleep(2)
 
 
 def main() -> None:
-    run_loop()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(line_buffering=True, write_through=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--drain",
+        action="store_true",
+        help="Process available queue messages, then exit when the queue is empty.",
+    )
+    args = parser.parse_args()
+    run_loop(drain=args.drain)
 
 
 if __name__ == "__main__":

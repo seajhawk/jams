@@ -7,7 +7,7 @@ import json
 import pytest
 
 from jams_worker.errors import PipelineError
-from jams_worker.main import handle_message
+from jams_worker.main import handle_message, run_loop
 
 
 class _Message:
@@ -48,6 +48,12 @@ class _Conn:
 
     def rollback(self) -> None:
         self.rollbacks += 1
+
+    def __enter__(self) -> "_Conn":
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
 
 
 def test_handle_message_deletes_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -119,3 +125,36 @@ def test_handle_message_poisons_third_failure(monkeypatch: pytest.MonkeyPatch) -
     assert poison.sent == [json.dumps({"run_id": "run_1"})]
     assert queue.deleted == [("msg", "receipt")]
     assert conn.executed[0][0].startswith("update analysis_runs set status = 'failed'")
+
+
+def test_run_loop_drain_exits_when_queue_empty(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    queue = _Queue()
+    poison = _Queue()
+
+    def receive_messages(**_kwargs: object) -> list[object]:
+        return []
+
+    queue.receive_messages = receive_messages  # type: ignore[method-assign]
+
+    class _Settings:
+        database_url = "postgresql://example"
+        azure_storage_connection_string = "UseDevelopmentStorage=true"
+        jobs_queue_name = "analysis-jobs"
+        poison_queue_name = "analysis-jobs-poison"
+
+    queues = [queue, poison]
+
+    monkeypatch.setattr(
+        "jams_worker.main.QueueClient.from_connection_string",
+        lambda *_args: queues.pop(0),
+    )
+    monkeypatch.setattr(
+        "jams_worker.main.BlobServiceClient.from_connection_string",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr("jams_worker.main.psycopg.connect", lambda *_args: _Conn())
+
+    run_loop(settings=_Settings(), drain=True)  # type: ignore[arg-type]
+
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert events[-1]["event"] == "drain_complete"

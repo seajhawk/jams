@@ -11,6 +11,7 @@ from jams_worker.providers.segment_labeling import (
     ExistingSegment,
     LabelingResult,
     SegmentLabelingProvider,
+    _label_array_from_response,
     apply_labeling,
     validate_labeling_response,
 )
@@ -159,6 +160,17 @@ def test_rejection_reasons(response: object, reason: str) -> None:
         validate_labeling_response(response, segment_count=segment_count)
 
 
+def test_object_wrapped_response_is_accepted() -> None:
+    labels = _label_array_from_response(
+        {"labels": [{"segment_index": 1, "name": "Configure Alerts"}]}
+    )
+
+    instructions = validate_labeling_response(labels, segment_count=3)
+
+    assert instructions[0].segment_index == 1
+    assert instructions[0].name == "Configure Alerts"
+
+
 def test_provider_skips_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENROUTER_API_KEY", "key")
     monkeypatch.setenv("JAMS_LABELING_MODEL", "cheap/model")
@@ -220,6 +232,32 @@ def test_provider_uses_mocked_http_client_for_merge(monkeypatch: pytest.MonkeyPa
         call[0].startswith("delete from measures")
         and call[1] == (RUN_ID, 0, 10_000, 10_000, 20_000)
         for call in conn.calls
+    )
+
+
+def test_provider_updates_time_segment_payload_for_rename(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "key")
+    monkeypatch.setenv("JAMS_LABELING_MODEL", "cheap/model")
+    monkeypatch.delenv("CI", raising=False)
+    conn = _Conn()
+    context = _context(conn, config={"llm_labeling": {"enabled": True}})
+
+    def client(**_kwargs: object) -> LabelingResult:
+        raw = [{"segment_index": 1, "name": "Configure Alerts"}]
+        return LabelingResult(
+            instructions=validate_labeling_response(raw, segment_count=3),
+            raw_response=raw,
+            usage={"prompt_tokens": 100, "completion_tokens": 20},
+        )
+
+    measures = SegmentLabelingProvider(client=client).run(context)
+
+    assert measures == []
+    assert context.provider_summaries["segment_labeling"]["renamed_count"] == 1
+    assert any(
+        call[0].startswith("update measures set payload = payload ||") for call in conn.calls
     )
 
 

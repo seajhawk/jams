@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -14,6 +17,41 @@ from psycopg.types.json import Jsonb
 from jams_worker.errors import PipelineError
 
 MeasureRow = dict[str, Any]
+
+
+def log_event(event: str, **fields: Any) -> None:
+    """Emit one structured, flushed log line."""
+
+    record = {
+        "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "event": event,
+        **fields,
+    }
+    print(json.dumps(record, default=str, separators=(",", ":")), flush=True)
+
+
+def _provider_outcome_message(provider_id: str, summary: dict[str, Any]) -> str:
+    if provider_id == "segment_labeling":
+        status = str(summary.get("status") or "ok")
+        if status == "skipped":
+            return f"skipped:{summary.get('reason') or summary.get('skipped_reason') or 'unknown'}"
+        if status == "rejected":
+            return f"rejected:{summary.get('reason') or 'unknown'}"
+        if status == "error":
+            return f"error:{summary.get('reason') or 'unknown'}"
+
+        usage = summary.get("usage") if isinstance(summary.get("usage"), dict) else {}
+        prompt_tokens = usage.get("prompt_tokens", 0)
+        completion_tokens = usage.get("completion_tokens", 0)
+        return (
+            f"applied {summary.get('renamed_count', 0)} renames, "
+            f"{summary.get('merge_count', 0)} merges, "
+            f"usage {prompt_tokens}/{completion_tokens} tokens"
+        )
+
+    status = str(summary.get("status") or "ok")
+    reason = summary.get("reason")
+    return f"{status}:{reason}" if reason else status
 
 
 @dataclass(slots=True)
@@ -137,6 +175,14 @@ def run_pipeline(
 
     for provider in providers:
         provider_versions[provider.id] = provider.version
+        started_at = time.perf_counter()
+        measures: list[MeasureRow] = []
+        log_event(
+            "provider_start",
+            run_id=context.run_id,
+            provider_id=provider.id,
+            provider_version=provider.version,
+        )
         context.heartbeat(provider.id, 5, f"Starting {provider.id}")
 
         try:
@@ -149,10 +195,49 @@ def run_pipeline(
                 provider_version=provider.version,
                 measures=measures,
             )
-        except PipelineError:
+        except PipelineError as exc:
+            duration_ms = round((time.perf_counter() - started_at) * 1000)
+            context.report_provider_summary(
+                provider.id,
+                {
+                    "status": "error",
+                    "reason": f"pipeline_error:{exc.error_code}",
+                    "error": str(exc),
+                },
+            )
+            log_event(
+                "provider_error",
+                run_id=context.run_id,
+                provider_id=provider.id,
+                duration_ms=duration_ms,
+                error=f"pipeline_error:{exc.error_code}",
+            )
             raise
         except Exception as exc:  # pragma: no cover - defensive partial semantics
             failures.append((provider.id, str(exc)))
+            context.report_provider_summary(
+                provider.id,
+                {
+                    "status": "partial",
+                    "reason": f"error:{type(exc).__name__}",
+                    "error": str(exc),
+                },
+            )
+        finally:
+            duration_ms = round((time.perf_counter() - started_at) * 1000)
+            summary = context.provider_summaries.get(
+                provider.id,
+                {"status": "ok", "measure_count": len(measures)},
+            )
+            context.provider_summaries[provider.id] = summary
+            log_event(
+                "provider_outcome",
+                run_id=context.run_id,
+                provider_id=provider.id,
+                duration_ms=duration_ms,
+                outcome=_provider_outcome_message(provider.id, summary),
+                **summary,
+            )
 
     partial_summaries = [
         summary

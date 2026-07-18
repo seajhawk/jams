@@ -113,6 +113,7 @@ function analysisRun(overrides: Partial<AnalysisRunRow> = {}): AnalysisRunRow {
     config: {},
     pipelineVersion: "f3-worker-spine.1",
     providerVersions: {},
+    providerResults: {},
     status: "queued",
     stage: "queued",
     progressPct: 0,

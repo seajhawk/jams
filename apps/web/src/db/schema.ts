@@ -149,6 +149,7 @@ export const analysisRuns = pgTable(
     config: jsonb("config").notNull().default({}),
     pipelineVersion: text("pipeline_version").notNull(),
     providerVersions: jsonb("provider_versions").notNull().default({}),
+    providerResults: jsonb("provider_results").notNull().default({}),
     status: analysisStatusEnum("status").notNull().default("queued"),
     stage: text("stage").notNull().default("queued"),
     progressPct: integer("progress_pct").notNull().default(0),

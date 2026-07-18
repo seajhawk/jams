@@ -17,7 +17,18 @@ PIPELINE_VERSION = "f3-worker-spine.1"
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("video_id")
+    parser.add_argument(
+        "--config",
+        default="{}",
+        help='Analysis config JSON, for example {"llm_labeling":{"enabled":true}}.',
+    )
     args = parser.parse_args()
+    try:
+        config = json.loads(args.config)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"--config must be valid JSON: {exc}") from exc
+    if not isinstance(config, dict):
+        raise SystemExit("--config must be a JSON object")
 
     database_url = os.environ.get("DATABASE_URL", "postgresql://jams:jams@localhost:5432/jams")
     storage = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
@@ -38,9 +49,9 @@ def main() -> None:
                     id, org_id, video_id, config, pipeline_version, status,
                     stage, progress_pct, stage_detail
                 )
-                values (%s, %s, %s, '{}'::jsonb, %s, 'queued', 'queued', 0, 'Waiting for worker')
+                values (%s, %s, %s, %s::jsonb, %s, 'queued', 'queued', 0, 'Waiting for worker')
                 """,
-                (run_id, org_id, args.video_id, PIPELINE_VERSION),
+                (run_id, org_id, args.video_id, json.dumps(config), PIPELINE_VERSION),
             )
             conn.execute(
                 """

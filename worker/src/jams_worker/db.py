@@ -17,6 +17,7 @@ select
     ar.attempt,
     ar.config,
     ar.provider_versions,
+    ar.provider_results,
     v.blob_path,
     v.poster_blob_path,
     v.duration_ms,
@@ -110,6 +111,18 @@ class RunRepository:
             where id = %s
             """,
             (json.dumps(provider_versions), run_id),
+        )
+        self.conn.commit()
+
+    def set_provider_results(self, run_id: str, provider_results: dict[str, Any]) -> None:
+        self.conn.execute(
+            """
+            update analysis_runs
+            set provider_results = %s::jsonb,
+                updated_at = now()
+            where id = %s
+            """,
+            (json.dumps(provider_results), run_id),
         )
         self.conn.commit()
 

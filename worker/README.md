@@ -14,17 +14,20 @@ Local run:
    cd worker
    $env:DATABASE_URL = "postgresql://jams:jams@localhost:5432/jams"
    $env:AZURE_STORAGE_CONNECTION_STRING = "UseDevelopmentStorage=true"
-   uv run jams-worker
+   uv run jams-worker --drain
    ```
 
 3. For sign-in-free local checks, enqueue an uploaded video directly:
 
    ```powershell
    uv run python scripts/enqueue_local.py <video-id>
+   uv run python scripts/enqueue_local.py <video-id> --config '{"llm_labeling":{"enabled":true}}'
    ```
 
-The loop long-polls `analysis-jobs`, writes run heartbeats to Postgres, and
-places third-failure messages on `analysis-jobs-poison`.
+`--drain` processes available `analysis-jobs` messages, writes run heartbeats to
+Postgres, emits one structured summary line per run, and exits when the queue is
+empty. Without `--drain`, the worker keeps polling indefinitely. Third-failure
+messages are placed on `analysis-jobs-poison`.
 
 Sentiment model cache:
 

@@ -90,6 +90,7 @@ function makeRun(overrides: Partial<Record<string, unknown>> = {}) {
     config: {},
     pipelineVersion: "f4-test.1",
     providerVersions: {},
+    providerResults: {},
     status: "succeeded",
     stage: "finalize",
     progressPct: 100,

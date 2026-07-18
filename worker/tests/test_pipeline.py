@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from jams_worker.pipeline import (
@@ -111,7 +112,7 @@ def test_write_provider_measures_deletes_then_inserts() -> None:
     assert params["payload"].obj == {"cut": True}
 
 
-def test_run_pipeline_marks_partial_from_provider_summary(tmp_path) -> None:
+def test_run_pipeline_marks_partial_from_provider_summary(tmp_path, capsys) -> None:
     conn = _Conn()
     context = PipelineContext(
         run={"id": "run_1", "video_id": "video_1"},
@@ -127,3 +128,7 @@ def test_run_pipeline_marks_partial_from_provider_summary(tmp_path) -> None:
 
     assert result.status == "partial"
     assert result.provider_summaries["fake"]["reason"] == "no_speech"
+    events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    assert [event["event"] for event in events] == ["provider_start", "provider_outcome"]
+    assert events[1]["provider_id"] == "fake"
+    assert events[1]["outcome"] == "partial:no_speech"

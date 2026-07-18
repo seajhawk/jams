@@ -10,10 +10,12 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from psycopg.types.json import Jsonb
+
 from jams_worker.pipeline import PipelineContext
 
 PROVIDER_ID = "segment_labeling"
-PROVIDER_VERSION = "1.0.0"
+PROVIDER_VERSION = "1.0.1"
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 TIMEOUT_SECONDS = 15
 MAX_MERGES = 2
@@ -191,6 +193,12 @@ def validate_labeling_response(
     return instructions
 
 
+def _label_array_from_response(response: Any) -> Any:
+    if isinstance(response, dict) and set(response) == {"labels"}:
+        return response["labels"]
+    return response
+
+
 def apply_labeling(
     *,
     run_id: str,
@@ -301,6 +309,30 @@ def _write_segments_and_delete_merged_measures(
                     segment.source,
                 ),
             )
+            if len(segment.original_segment_ids) == 1 and segment.llm_name_applied:
+                context.db_conn.execute(
+                    """
+                    update measures
+                    set payload = payload || %s
+                    where run_id = %s
+                      and kind = 'time_segment'
+                      and provider_id = 'segmentation'
+                      and t_start_ms = %s
+                      and t_end_ms = %s
+                    """,
+                    (
+                        Jsonb(
+                            {
+                                "segment_name": segment.name,
+                                "segment_source": segment.source,
+                                "llm_labeling": "accepted",
+                            }
+                        ),
+                        context.run_id,
+                        segment.t0_ms,
+                        segment.t1_ms,
+                    ),
+                )
         for first, second in merged_pairs:
             context.db_conn.execute(
                 """
@@ -326,12 +358,15 @@ def _request_openrouter_labels(
 ) -> LabelingResult:
     payload = {
         "model": model,
+        "temperature": 0.2,
         "messages": [
             {
                 "role": "system",
                 "content": (
                     "Name task segments from deterministic candidates. "
-                    "Do not change boundaries. Return only JSON matching the requested schema."
+                    "Do not change boundaries. Replace generic/provisional names with "
+                    "short concrete task labels from the narration. Return only JSON "
+                    "matching the requested schema."
                 ),
             },
             {
@@ -357,8 +392,11 @@ def _request_openrouter_labels(
                             for utterance in utterances
                         ],
                         "contract": (
-                            "Return an array of objects: "
-                            "{segment_index, name, merge_with_next?}. "
+                            "Return an object with a labels array. Each array item is "
+                            "{segment_index, name, merge_with_next}. "
+                            "Return exactly one item for every segment_index. "
+                            "Do not reuse names that look like 'Segment 1' or long "
+                            "raw utterance snippets; produce concise verb-noun labels. "
                             "Names must be 3-60 characters. "
                             "merge_with_next may merge only with the immediately next segment."
                         ),
@@ -373,15 +411,28 @@ def _request_openrouter_labels(
                 "name": "segment_labels",
                 "strict": True,
                 "schema": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["segment_index", "name"],
-                        "properties": {
-                            "segment_index": {"type": "integer"},
-                            "name": {"type": "string", "minLength": 3, "maxLength": 60},
-                            "merge_with_next": {"type": "boolean"},
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["labels"],
+                    "properties": {
+                        "labels": {
+                            "type": "array",
+                            "minItems": len(segments),
+                            "maxItems": len(segments),
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["segment_index", "name", "merge_with_next"],
+                                "properties": {
+                                    "segment_index": {"type": "integer"},
+                                    "name": {
+                                        "type": "string",
+                                        "minLength": 3,
+                                        "maxLength": 60,
+                                    },
+                                    "merge_with_next": {"type": "boolean"},
+                                },
+                            },
                         },
                     },
                 },
@@ -402,9 +453,10 @@ def _request_openrouter_labels(
 
     content = body["choices"][0]["message"]["content"]
     parsed = json.loads(content)
+    labels = _label_array_from_response(parsed)
     return LabelingResult(
-        instructions=validate_labeling_response(parsed, segment_count=len(segments)),
-        raw_response=parsed,
+        instructions=validate_labeling_response(labels, segment_count=len(segments)),
+        raw_response=labels,
         usage=dict(body.get("usage", {})),
     )
 
@@ -432,7 +484,7 @@ class SegmentLabelingProvider:
     def _skip(self, context: PipelineContext, reason: str) -> list[dict[str, Any]]:
         context.report_provider_summary(
             self.id,
-            {"status": "skipped", "skipped_reason": reason},
+            {"status": "skipped", "reason": reason, "skipped_reason": reason},
         )
         return []
 
@@ -475,29 +527,47 @@ class SegmentLabelingProvider:
             )
             measures = _time_segment_measures(labeled_segments, merged_pairs)
             _write_segments_and_delete_merged_measures(context, labeled_segments, merged_pairs)
-        except (
-            TimeoutError,
-            urllib.error.URLError,
-            KeyError,
-            IndexError,
-            json.JSONDecodeError,
-        ) as exc:
+        except urllib.error.HTTPError as exc:
             context.report_provider_summary(
                 self.id,
-                {"status": "skipped", "skipped_reason": f"api_error:{type(exc).__name__}"},
+                {"status": "error", "reason": f"http_{exc.code}", "llm_labeling": "error"},
+            )
+            return []
+        except (TimeoutError, urllib.error.URLError) as exc:
+            context.report_provider_summary(
+                self.id,
+                {
+                    "status": "error",
+                    "reason": type(exc).__name__,
+                    "llm_labeling": "error",
+                },
+            )
+            return []
+        except (KeyError, IndexError, json.JSONDecodeError) as exc:
+            context.report_provider_summary(
+                self.id,
+                {
+                    "status": "error",
+                    "reason": f"response_shape:{type(exc).__name__}",
+                    "llm_labeling": "error",
+                },
             )
             return []
         except ValueError as exc:
             reason = str(exc) or "invalid_response"
             context.report_provider_summary(
                 self.id,
-                {"status": "ok", "llm_labeling": f"rejected:{reason}"},
+                {"status": "rejected", "reason": reason, "llm_labeling": f"rejected:{reason}"},
             )
             return []
         except Exception as exc:  # pragma: no cover - provider must never fail a run
             context.report_provider_summary(
                 self.id,
-                {"status": "skipped", "skipped_reason": f"api_error:{type(exc).__name__}"},
+                {
+                    "status": "error",
+                    "reason": type(exc).__name__,
+                    "llm_labeling": "error",
+                },
             )
             return []
 
