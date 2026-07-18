@@ -1,0 +1,14 @@
+{
+  "name": "jams",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "test": "pnpm --filter web test",
+    "lint": "pnpm --filter web lint"
+  },
+  "packageManager": "pnpm@10.11.0"
+}

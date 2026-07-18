@@ -1,0 +1,52 @@
+[project]
+name = "jams-worker"
+version = "0.1.0"
+description = "JAMS analysis pipeline worker"
+readme = "README.md"
+authors = [
+    { name = "seajhawk", email = "chris@harriskids.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "azure-storage-blob>=12.30.0",
+    "azure-storage-queue>=12.17.0",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.14.2",
+    "pydantic>=2.13.4",
+    # static-ffmpeg exposes both ffmpeg and ffprobe paths; imageio-ffmpeg only
+    # gives us ffmpeg, but probe tests and the spine need real ffprobe.
+    "static-ffmpeg>=3.0",
+    "scenedetect[opencv-headless]==0.6.4",
+    "opencv-python-headless==4.10.0.84",
+    "faster-whisper==1.1.1",
+    "ctranslate2==4.5.0",
+    "tokenizers>=0.15",
+    "vaderSentiment>=3.3.2",
+    "setuptools<81",
+]
+
+[project.scripts]
+jams-worker = "jams_worker.main:main"
+
+[dependency-groups]
+dev = [
+    "jiwer>=3.0.5",
+    "pytest>=8",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+markers = [
+    "whisper_model: requires cached/downloaded faster-whisper model weights",
+]
