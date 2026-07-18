@@ -108,13 +108,18 @@ def _cue_lists(config: dict[str, Any] | None) -> dict[str, tuple[str, ...]]:
     cues = {key: tuple(values) for key, values in DEFAULT_CUES.items()}
     segmentation_config = config.get("segmentation") if isinstance(config, dict) else None
     raw_cues = segmentation_config.get("cues") if isinstance(segmentation_config, dict) else None
-    if not isinstance(raw_cues, dict):
-        return cues
+    if isinstance(raw_cues, dict):
+        for key in ("start", "next", "done"):
+            value = raw_cues.get(key)
+            if isinstance(value, list) and all(isinstance(item, str) for item in value):
+                cues[key] = tuple(item.strip() for item in value if item.strip())
 
-    for key in ("start", "next", "done"):
-        value = raw_cues.get(key)
-        if isinstance(value, list) and all(isinstance(item, str) for item in value):
-            cues[key] = tuple(item for item in value if item.strip())
+    extra_cues = (
+        segmentation_config.get("extra_cues") if isinstance(segmentation_config, dict) else None
+    )
+    if isinstance(extra_cues, list) and all(isinstance(item, str) for item in extra_cues):
+        extras = tuple(item.strip() for item in extra_cues if item.strip())
+        cues["next"] = tuple(dict.fromkeys(cues["next"] + extras))
     return cues
 
 

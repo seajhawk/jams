@@ -52,6 +52,10 @@ docker compose up -d
 
 See `.env.example` for required environment variables.
 
+`/admin` is hidden unless the signed-in Clerk user id is listed in
+`ADMIN_USER_IDS`. For local admin work, set it to Chris's local Clerk user id
+in `.env`.
+
 ### Clerk setup
 
 Create a Clerk application with Organizations enabled, then copy these values

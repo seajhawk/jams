@@ -111,6 +111,7 @@ function analysisRun(overrides: Partial<AnalysisRunRow> = {}): AnalysisRunRow {
     orgId: "org_test",
     videoId: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
     config: {},
+    configSource: null,
     pipelineVersion: "f3-worker-spine.1",
     providerVersions: {},
     providerResults: {},
@@ -184,6 +185,67 @@ describe("analyses API route handlers", () => {
     })
     expect(db.updates[0]).toMatchObject({ supersededBy: body.analysis.id })
     expect(mocks.enqueueAnalysisRun).toHaveBeenCalledWith(body.analysis.id)
+  })
+
+  it("stores canonical analysis config and source text when supplied", async () => {
+    const db = new MockDb()
+    db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
+    db.onInsert = (input) =>
+      analysisRun({
+        ...(input as Partial<AnalysisRunRow>),
+        createdAt: new Date("2026-07-17T12:00:00.000Z"),
+        updatedAt: new Date("2026-07-17T12:00:00.000Z"),
+      })
+    installContext(db)
+
+    const configSource = "sentiment:\n  fallback: vader\n"
+    const response = await createAnalysis(
+      jsonRequest("/api/analyses", {
+        video_id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
+        config: {
+          sentiment: { fallback: "vader" },
+          llm_labeling: { enabled: true },
+        },
+        config_source: configSource,
+      })
+    )
+    const body = (await response.json()) as {
+      analysis: { config: { sentiment: { fallback: string } }; config_source: string }
+    }
+
+    expect(response.status).toBe(201)
+    expect(db.inserts[0]).toMatchObject({
+      config: expect.objectContaining({
+        probe: { enabled: true },
+        context_switch: { enabled: true, detector_impl: "adaptive" },
+        transcription: { enabled: true },
+        sentiment: { enabled: true, fallback: "vader" },
+        llm_labeling: { enabled: true },
+      }),
+      configSource,
+    })
+    expect(body.analysis.config.sentiment.fallback).toBe("vader")
+    expect(body.analysis.config_source).toBe(configSource)
+  })
+
+  it("rejects invalid analysis config with a path-aware error", async () => {
+    const db = new MockDb()
+    db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
+    installContext(db)
+
+    const response = await createAnalysis(
+      jsonRequest("/api/analyses", {
+        video_id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
+        config: { context_switch: { enabled: false } },
+        config_source: "context_switch:\n  enabled: false\n",
+      })
+    )
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toContain("context_switch.enabled")
+    expect(db.inserts).toHaveLength(0)
+    expect(mocks.enqueueAnalysisRun).not.toHaveBeenCalled()
   })
 
   it("rejects analysis before upload completion", async () => {

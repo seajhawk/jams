@@ -218,6 +218,8 @@ export default async function VideoDetailPage({
               pipeline_version: run.pipelineVersion,
               status: run.status,
               total_score: scoresByRun.get(run.id) ?? null,
+              config: run.config,
+              config_source: run.configSource,
               created_at: run.createdAt.toISOString(),
               completed_at: run.completedAt?.toISOString() ?? null,
               superseded_by: run.supersededBy,

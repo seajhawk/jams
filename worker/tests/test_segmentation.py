@@ -5,6 +5,7 @@ from __future__ import annotations
 from jams_worker.providers.segmentation import (
     MIN_SEGMENT_MS,
     UtteranceCue,
+    _cue_lists,
     build_segments,
     time_segment_measures,
 )
@@ -61,3 +62,22 @@ def test_time_segment_measures_reference_deterministic_segment_ids() -> None:
     assert len(measures) == 1
     assert measures[0]["value_num"] == 20_000
     assert measures[0]["payload"]["segment_id"] == segments[0].id
+
+
+def test_extra_cues_are_union_boundaries() -> None:
+    cues = _cue_lists({"segmentation": {"extra_cues": ["new checkpoint"]}})
+    segments = build_segments(
+        run_id=RUN_ID,
+        duration_ms=40_000,
+        utterances=[
+            UtteranceCue(12_000, 13_000, "New checkpoint, configure billing."),
+        ],
+        switches=[],
+        cues=cues,
+    )
+
+    assert [(segment.t0_ms, segment.t1_ms) for segment in segments] == [
+        (0, 12_000),
+        (12_000, 40_000),
+    ]
+    assert segments[1].origin == "next:new checkpoint"

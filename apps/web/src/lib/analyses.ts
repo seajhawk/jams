@@ -1,6 +1,11 @@
 import { z } from "zod"
 
 import { analysisRuns } from "@/db/schema"
+import {
+  analysisConfigSchema,
+  formatAnalysisConfigError,
+  parseAnalysisConfig,
+} from "@/lib/analysis-config"
 
 export const analysisStatuses = [
   "queued",
@@ -24,13 +29,34 @@ export type AnalysisRunRow = typeof analysisRuns.$inferSelect
 
 export const createAnalysisSchema = z.object({
   video_id: z.string().uuid(),
-  config: z.record(z.string(), z.unknown()).optional(),
+  config: z.unknown().optional(),
+  config_source: z.string().max(65_536).nullable().optional(),
 })
+
+export function validateAnalysisConfig(input: unknown) {
+  const parsed = analysisConfigSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      success: false as const,
+      error: formatAnalysisConfigError(parsed.error),
+    }
+  }
+  return {
+    success: true as const,
+    config: parsed.data,
+  }
+}
+
+export function canonicalAnalysisConfig(input: unknown) {
+  return parseAnalysisConfig(input)
+}
 
 export function serializeAnalysisRun(run: AnalysisRunRow) {
   return {
     id: run.id,
     video_id: run.videoId,
+    config: run.config,
+    config_source: run.configSource,
     pipeline_version: run.pipelineVersion,
     status: run.status,
     stage: run.stage,

@@ -1,17 +1,18 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { Loader2, RotateCcw } from "lucide-react"
+import { useState } from "react"
 import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { ReanalyzeDialog } from "@/components/upload/ReanalyzeDialog"
 
 type RunHistoryItem = {
   id: string
   pipeline_version: string
   status: string
   total_score: number | null
+  config: Record<string, unknown>
+  config_source: string | null
   created_at: string
   completed_at: string | null
   superseded_by: string | null
@@ -24,52 +25,9 @@ export function RunHistoryPanel({
   videoId: string
   runs: RunHistoryItem[]
 }) {
-  const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [localRuns, setLocalRuns] = useState(runs)
-
-  const reanalyze = useCallback(async () => {
-    setCreating(true)
-    setError(null)
-    try {
-      const response = await fetch("/api/analyses", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ video_id: videoId }),
-      })
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null
-        throw new Error(body?.error ?? "Failed to start analysis")
-      }
-      const body = (await response.json()) as {
-        analysis: {
-          id: string
-          pipeline_version?: string
-          status: string
-          superseded_by: string | null
-          timestamps: { created_at: string; completed_at: string | null }
-        }
-      }
-      setLocalRuns((current) => [
-        {
-          id: body.analysis.id,
-          pipeline_version: body.analysis.pipeline_version ?? "current",
-          status: body.analysis.status,
-          total_score: null,
-          created_at: body.analysis.timestamps.created_at,
-          completed_at: body.analysis.timestamps.completed_at,
-          superseded_by: body.analysis.superseded_by,
-        },
-        ...current.map((run) =>
-          run.superseded_by === null ? { ...run, superseded_by: body.analysis.id } : run
-        ),
-      ])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start analysis")
-    } finally {
-      setCreating(false)
-    }
-  }, [videoId])
+  const currentRun =
+    localRuns.find((run) => run.superseded_by === null) ?? localRuns[0] ?? null
 
   return (
     <div className="rounded-lg border bg-card p-4 ring-1 ring-foreground/10">
@@ -80,14 +38,31 @@ export function RunHistoryPanel({
             Previous analyses for this recording.
           </p>
         </div>
-        <Button size="sm" variant="outline" disabled={creating} onClick={reanalyze}>
-          {creating ? (
-            <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
-          ) : (
-            <RotateCcw data-icon="inline-start" className="size-4" />
-          )}
-          Re-analyze
-        </Button>
+        <ReanalyzeDialog
+          videoId={videoId}
+          currentConfig={currentRun?.config ?? null}
+          currentConfigSource={currentRun?.config_source ?? null}
+          onCreated={(analysis) => {
+            setLocalRuns((current) => [
+              {
+                id: analysis.id,
+                pipeline_version: analysis.pipeline_version ?? "current",
+                status: analysis.status,
+                total_score: null,
+                config: analysis.config ?? {},
+                config_source: analysis.config_source ?? null,
+                created_at: analysis.timestamps.created_at,
+                completed_at: analysis.timestamps.completed_at,
+                superseded_by: analysis.superseded_by,
+              },
+              ...current.map((run) =>
+                run.superseded_by === null
+                  ? { ...run, superseded_by: analysis.id }
+                  : run
+              ),
+            ])
+          }}
+        />
       </div>
 
       <div className="mt-4 space-y-2">
@@ -126,8 +101,6 @@ export function RunHistoryPanel({
           )
         })}
       </div>
-
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
     </div>
   )
 }

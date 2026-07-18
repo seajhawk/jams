@@ -146,7 +146,8 @@ export const analysisRuns = pgTable(
     videoId: uuid("video_id")
       .notNull()
       .references(() => videos.id, { onDelete: "cascade" }),
-    config: jsonb("config").notNull().default({}),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    configSource: text("config_source"),
     pipelineVersion: text("pipeline_version").notNull(),
     providerVersions: jsonb("provider_versions").notNull().default({}),
     providerResults: jsonb("provider_results").notNull().default({}),

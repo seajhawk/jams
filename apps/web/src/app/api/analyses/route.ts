@@ -3,7 +3,11 @@ import { NextResponse } from "next/server"
 
 import { analysisRuns, videos } from "@/db/schema"
 import { HttpError, handleRouteError, parseJsonBody } from "@/lib/api"
-import { createAnalysisSchema, serializeAnalysisRun } from "@/lib/analyses"
+import {
+  createAnalysisSchema,
+  serializeAnalysisRun,
+  validateAnalysisConfig,
+} from "@/lib/analyses"
 import { PIPELINE_VERSION } from "@/lib/pipeline-version"
 import { enqueueAnalysisRun } from "@/lib/queue"
 import { withOrg } from "@/lib/with-org"
@@ -29,6 +33,14 @@ export async function POST(request: Request) {
         throw new HttpError(400, "Video must be uploaded before analysis")
       }
 
+      const configResult =
+        body.config === undefined
+          ? null
+          : validateAnalysisConfig(body.config)
+      if (configResult?.success === false) {
+        throw new HttpError(400, configResult.error)
+      }
+
       const runId = crypto.randomUUID()
       const [run] = await scopedDb.db
         .insert(analysisRuns)
@@ -36,7 +48,8 @@ export async function POST(request: Request) {
           id: runId,
           orgId,
           videoId: body.video_id,
-          config: body.config ?? {},
+          config: configResult?.config ?? {},
+          configSource: body.config_source ?? null,
           pipelineVersion: PIPELINE_VERSION,
           status: "queued",
           stage: "queued",
