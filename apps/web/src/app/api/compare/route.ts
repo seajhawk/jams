@@ -1,7 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm"
+import { inArray } from "drizzle-orm"
 import { z } from "zod"
 
-import { db } from "@/db/client"
 import { analysisRuns, videos } from "@/db/schema"
 import { handleRouteError, jsonError } from "@/lib/api"
 import { computeComparison } from "@/lib/compare"
@@ -38,16 +37,13 @@ export async function GET(request: Request) {
       return jsonError("Both run IDs must be different", 400)
     }
 
-    return await withOrg(async ({ orgId }) => {
+    return await withOrg(async ({ orgId, scopedDb }) => {
       // Fetch both runs, org-scoped
-      const runs = await db
+      const runs = await scopedDb.db
         .select()
         .from(analysisRuns)
         .where(
-          and(
-            eq(analysisRuns.orgId, orgId),
-            inArray(analysisRuns.id, [idA, idB]),
-          ),
+          scopedDb.orgFilter(analysisRuns, inArray(analysisRuns.id, [idA, idB])),
         )
 
       const runA = runs.find((r) => r.id === idA)
@@ -70,14 +66,11 @@ export async function GET(request: Request) {
       }
 
       // Check same task_id via their videos
-      const videoRows = await db
+      const videoRows = await scopedDb.db
         .select()
         .from(videos)
         .where(
-          and(
-            eq(videos.orgId, orgId),
-            inArray(videos.id, [runA.videoId, runB.videoId]),
-          ),
+          scopedDb.orgFilter(videos, inArray(videos.id, [runA.videoId, runB.videoId])),
         )
 
       const videoA = videoRows.find((v) => v.id === runA.videoId)
@@ -96,8 +89,8 @@ export async function GET(request: Request) {
 
       // Assemble both report payloads
       const [a, b] = await Promise.all([
-        assembleReportPayload(idA, orgId),
-        assembleReportPayload(idB, orgId),
+        assembleReportPayload(idA, orgId, scopedDb),
+        assembleReportPayload(idB, orgId, scopedDb),
       ])
 
       const comparison = computeComparison(

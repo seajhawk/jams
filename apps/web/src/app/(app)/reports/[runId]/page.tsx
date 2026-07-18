@@ -1,12 +1,11 @@
-import { and, eq } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { redirect } from "next/navigation"
 
-import { db } from "@/db/client"
 import { analysisRuns } from "@/db/schema"
 import { assembleReportPayload, ReportNotFoundError, ReportNotReadyError } from "@/lib/report-assembly"
-import { resolveOrgContext } from "@/lib/with-org"
+import { withOrg } from "@/lib/with-org"
 import { Badge } from "@/components/ui/badge"
 import { ReportShell } from "@/components/report/ReportShell"
 import { FailedRunBanner, PartialBanner } from "./report-banners"
@@ -31,64 +30,64 @@ export default async function ReportPage({
   const { runId } = await params
   if (!UUID_RE.test(runId)) notFound()
 
-  const context = await resolveOrgContext()
-
-  const [run] = await db
-    .select()
-    .from(analysisRuns)
-    .where(
-      and(eq(analysisRuns.id, runId), eq(analysisRuns.orgId, context.orgId))
-    )
-    .limit(1)
-
-  if (!run) notFound()
-
-  if (run.status === "failed") {
-    return (
-      <section className="mx-auto w-full max-w-2xl px-4">
-        <FailedRunBanner videoId={run.videoId} errorCode={run.errorCode ?? null} />
-      </section>
-    )
-  }
-
-  if (run.status === "queued" || run.status === "running") {
-    redirect(`/library/${run.videoId}`)
-  }
-
-  const [newerRun] = run.supersededBy
-    ? await db
+  return withOrg(async ({ orgId, scopedDb }) => {
+    const [run] = await scopedDb.db
       .select()
       .from(analysisRuns)
-      .where(
-        and(
-          eq(analysisRuns.id, run.supersededBy),
-          eq(analysisRuns.orgId, context.orgId)
-        )
-      )
+      .where(scopedDb.orgFilter(analysisRuns, eq(analysisRuns.id, runId)))
       .limit(1)
-    : []
 
-  const payload = await assembleReportPayload(run.id, context.orgId).catch((error: unknown) => {
-    if (error instanceof ReportNotFoundError || error instanceof ReportNotReadyError) {
-      notFound()
+    if (!run) notFound()
+
+    if (run.status === "failed") {
+      return (
+        <section className="mx-auto w-full max-w-2xl px-4">
+          <FailedRunBanner videoId={run.videoId} errorCode={run.errorCode ?? null} />
+        </section>
+      )
     }
-    throw error
-  })
 
-  return (
-    <>
-      {newerRun && (
-        <SupersededRunBanner
-          runId={newerRun.id}
-          status={newerRun.status}
-        />
-      )}
-      {run.status === "partial" && (
-        <PartialBanner videoId={run.videoId} warnings={payload.run.warnings} />
-      )}
-      <ReportShell payload={payload} />
-    </>
-  )
+    if (run.status === "queued" || run.status === "running") {
+      redirect(`/library/${run.videoId}`)
+    }
+
+    const [newerRun] = run.supersededBy
+      ? await scopedDb.db
+        .select()
+        .from(analysisRuns)
+        .where(
+          scopedDb.orgFilter(analysisRuns, eq(analysisRuns.id, run.supersededBy))
+        )
+        .limit(1)
+      : []
+
+    const payload = await assembleReportPayload(run.id, orgId, scopedDb).catch(
+      (error: unknown) => {
+        if (
+          error instanceof ReportNotFoundError ||
+          error instanceof ReportNotReadyError
+        ) {
+          notFound()
+        }
+        throw error
+      }
+    )
+
+    return (
+      <>
+        {newerRun && (
+          <SupersededRunBanner
+            runId={newerRun.id}
+            status={newerRun.status}
+          />
+        )}
+        {run.status === "partial" && (
+          <PartialBanner videoId={run.videoId} warnings={payload.run.warnings} />
+        )}
+        <ReportShell payload={payload} />
+      </>
+    )
+  })
 }
 
 function SupersededRunBanner({

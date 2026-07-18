@@ -18,8 +18,8 @@ export async function GET(
       return jsonError("Not found", 404)
     }
 
-    return await withOrg(async ({ orgId }) => {
-      const payload = await assembleReportPayload(id, orgId)
+    return await withOrg(async ({ orgId, scopedDb }) => {
+      const payload = await assembleReportPayload(id, orgId, scopedDb)
       return Response.json({ payload })
     })
   } catch (error) {

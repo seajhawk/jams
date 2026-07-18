@@ -1,7 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm"
+import { inArray } from "drizzle-orm"
 import { notFound } from "next/navigation"
 
-import { db } from "@/db/client"
 import { analysisRuns, videos } from "@/db/schema"
 import { computeComparison } from "@/lib/compare"
 import {
@@ -9,7 +8,7 @@ import {
   ReportNotFoundError,
   ReportNotReadyError,
 } from "@/lib/report-assembly"
-import { resolveOrgContext } from "@/lib/with-org"
+import { withOrg } from "@/lib/with-org"
 import { CompareShell } from "@/components/compare/CompareShell"
 
 const UUID_RE =
@@ -49,96 +48,89 @@ export default async function ComparePage({
 
   const [idA, idB] = parts
 
-  const context = await resolveOrgContext()
-  const { orgId } = context
+  return withOrg(async ({ orgId, scopedDb }) => {
+    // Fetch both runs, org-scoped
+    const runs = await scopedDb.db
+      .select()
+      .from(analysisRuns)
+      .where(
+        scopedDb.orgFilter(analysisRuns, inArray(analysisRuns.id, [idA, idB]))
+      )
 
-  // Fetch both runs, org-scoped
-  const runs = await db
-    .select()
-    .from(analysisRuns)
-    .where(
-      and(
-        eq(analysisRuns.orgId, orgId),
-        inArray(analysisRuns.id, [idA, idB]),
-      ),
-    )
+    const runA = runs.find((r) => r.id === idA)
+    const runB = runs.find((r) => r.id === idB)
 
-  const runA = runs.find((r) => r.id === idA)
-  const runB = runs.find((r) => r.id === idB)
+    if (!runA || !runB) notFound()
 
-  if (!runA || !runB) notFound()
+    const readyStatuses = ["succeeded", "partial"] as const
+    type ReadyStatus = (typeof readyStatuses)[number]
+    const isReady = (s: string): s is ReadyStatus =>
+      readyStatuses.includes(s as ReadyStatus)
 
-  const readyStatuses = ["succeeded", "partial"] as const
-  type ReadyStatus = (typeof readyStatuses)[number]
-  const isReady = (s: string): s is ReadyStatus =>
-    readyStatuses.includes(s as ReadyStatus)
-
-  if (!isReady(runA.status) || !isReady(runB.status)) {
-    return (
-      <ErrorPage message="Both runs must be succeeded or partial to compare." />
-    )
-  }
-
-  // Fetch videos to verify same task_id and get labels
-  const videoRows = await db
-    .select()
-    .from(videos)
-    .where(
-      and(
-        eq(videos.orgId, orgId),
-        inArray(videos.id, [runA.videoId, runB.videoId]),
-      ),
-    )
-
-  const videoA = videoRows.find((v) => v.id === runA.videoId)
-  const videoB = videoRows.find((v) => v.id === runB.videoId)
-
-  if (!videoA || !videoB) notFound()
-
-  if (!videoA.taskId || videoA.taskId !== videoB.taskId) {
-    return (
-      <ErrorPage message="Both runs must belong to the same task to compare." />
-    )
-  }
-
-  // Assemble both payloads (server-side, no extra network hop)
-  const assembleOrNull = async (runId: string) => {
-    try {
-      return await assembleReportPayload(runId, orgId)
-    } catch (err) {
-      if (
-        err instanceof ReportNotFoundError ||
-        err instanceof ReportNotReadyError
-      ) {
-        return null
-      }
-      throw err
+    if (!isReady(runA.status) || !isReady(runB.status)) {
+      return (
+        <ErrorPage message="Both runs must be succeeded or partial to compare." />
+      )
     }
-  }
 
-  const [payloadA, payloadB] = await Promise.all([
-    assembleOrNull(idA),
-    assembleOrNull(idB),
-  ])
+    // Fetch videos to verify same task_id and get labels
+    const videoRows = await scopedDb.db
+      .select()
+      .from(videos)
+      .where(
+        scopedDb.orgFilter(videos, inArray(videos.id, [runA.videoId, runB.videoId]))
+      )
 
-  if (!payloadA || !payloadB) notFound()
+    const videoA = videoRows.find((v) => v.id === runA.videoId)
+    const videoB = videoRows.find((v) => v.id === runB.videoId)
 
-  const comparison = computeComparison(
-    payloadA,
-    payloadB,
-    { subject_label: videoA.subjectLabel, variant_label: videoA.variantLabel },
-    { subject_label: videoB.subjectLabel, variant_label: videoB.variantLabel },
-  )
+    if (!videoA || !videoB) notFound()
 
-  const taskName =
-    payloadA.task?.name ?? payloadB.task?.name ?? "Untitled task"
+    if (!videoA.taskId || videoA.taskId !== videoB.taskId) {
+      return (
+        <ErrorPage message="Both runs must belong to the same task to compare." />
+      )
+    }
 
-  return (
-    <CompareShell
-      a={payloadA}
-      b={payloadB}
-      comparison={comparison}
-      taskName={taskName}
-    />
-  )
+    // Assemble both payloads (server-side, no extra network hop)
+    const assembleOrNull = async (runId: string) => {
+      try {
+        return await assembleReportPayload(runId, orgId, scopedDb)
+      } catch (err) {
+        if (
+          err instanceof ReportNotFoundError ||
+          err instanceof ReportNotReadyError
+        ) {
+          return null
+        }
+        throw err
+      }
+    }
+
+    const [payloadA, payloadB] = await Promise.all([
+      assembleOrNull(idA),
+      assembleOrNull(idB),
+    ])
+
+    if (!payloadA || !payloadB) notFound()
+
+    const comparison = computeComparison(
+      payloadA,
+      payloadB,
+      { subject_label: videoA.subjectLabel, variant_label: videoA.variantLabel },
+      { subject_label: videoB.subjectLabel, variant_label: videoB.variantLabel },
+    )
+
+    const taskName =
+      payloadA.task?.name ?? payloadB.task?.name ?? "Untitled task"
+
+    return (
+      <CompareShell
+        a={payloadA}
+        b={payloadB}
+        comparison={comparison}
+        taskName={taskName}
+      />
+    )
+  })
 }

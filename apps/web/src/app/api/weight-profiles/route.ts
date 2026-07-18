@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
-    return await withOrg(async ({ orgId }) => {
-      const profile = await getOrCreateDefaultProfile(orgId)
+    return await withOrg(async ({ orgId, scopedDb }) => {
+      const profile = await getOrCreateDefaultProfile(orgId, scopedDb)
       return Response.json({ profile })
     })
   } catch (error) {

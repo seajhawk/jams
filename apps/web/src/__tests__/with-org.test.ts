@@ -62,7 +62,6 @@ describe("withOrg context resolution", () => {
 
     expect(context.userId).toBe("user_123")
     expect(context.orgId).toBe("org_active")
-    expect(context.scopedDb.orgId).toBe("org_active")
   })
 
   it("falls back to an existing hidden personal org", async () => {

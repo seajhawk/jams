@@ -48,6 +48,7 @@ const { insertQueue, selectQueue, updateQueue, mockDb } = vi.hoisted(() => {
   }
 
   const mockDb = {
+    execute: () => Promise.resolve([]),
     select: () => makeChain(),
     insert: () => ({
       values: (v: Record<string, unknown>) => ({
@@ -64,6 +65,7 @@ const { insertQueue, selectQueue, updateQueue, mockDb } = vi.hoisted(() => {
         }),
       }),
     }),
+    transaction: (handler: (tx: unknown) => unknown) => handler(mockDb),
   }
 
   return { insertQueue, selectQueue, updateQueue, mockDb }

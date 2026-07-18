@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm"
 
-import { db } from "@/db/client"
+import { adminDb } from "@/db/admin-client.server"
 import { orgs, users, webhookEvents, weightProfiles } from "@/db/schema"
 import {
   DEFAULT_WEIGHT_PROFILE_NAME,
@@ -20,7 +20,8 @@ function isPersonalOrg(metadata: unknown): boolean {
 
 export const drizzleMirrorStore: MirrorStore = {
   async reserveWebhookEvent(input) {
-    const inserted = await db
+    // Bypass RLS: webhook idempotency is global and has no tenant org_id.
+    const inserted = await adminDb
       .insert(webhookEvents)
       .values({
         source: input.source,
@@ -34,14 +35,17 @@ export const drizzleMirrorStore: MirrorStore = {
   },
 
   async markWebhookEventProcessed(externalId) {
-    await db
+    // Bypass RLS: webhook idempotency is global and has no tenant org_id.
+    await adminDb
       .update(webhookEvents)
       .set({ processedAt: new Date() })
       .where(eq(webhookEvents.externalId, externalId))
   },
 
   async upsertOrg(org) {
-    await db
+    // Bypass RLS: Clerk can create/update org mirror rows before the web app
+    // has an app.org_id scope for that org.
+    await adminDb
       .insert(orgs)
       .values({
         id: org.id,
@@ -60,7 +64,8 @@ export const drizzleMirrorStore: MirrorStore = {
         },
       })
 
-    await db
+    // Bypass RLS: seeding the org default profile is part of trusted org mirroring.
+    await adminDb
       .insert(weightProfiles)
       .values({
         orgId: org.id,
@@ -75,14 +80,16 @@ export const drizzleMirrorStore: MirrorStore = {
   },
 
   async markOrgDeleted(id) {
-    await db
+    // Bypass RLS: Clerk deletion events are trusted mirror maintenance.
+    await adminDb
       .update(orgs)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(orgs.id, id))
   },
 
   async upsertUser(user) {
-    await db
+    // Bypass RLS: users are a global Clerk mirror table, not tenant-owned rows.
+    await adminDb
       .insert(users)
       .values({
         id: user.id,
@@ -103,7 +110,8 @@ export const drizzleMirrorStore: MirrorStore = {
   },
 
   async markUserDeleted(id) {
-    await db
+    // Bypass RLS: users are a global Clerk mirror table, not tenant-owned rows.
+    await adminDb
       .update(users)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id))

@@ -41,7 +41,14 @@ const mocks = vi.hoisted(() => {
     selectQueue,
     assembleReportPayload: vi.fn(),
     computeComparison: vi.fn(),
-    context: { orgId: "org_compare_route" } as unknown,
+    context: {
+      orgId: "org_compare_route",
+      scopedDb: {
+        orgId: "org_compare_route",
+        db: mockDb,
+        orgFilter: (_table: unknown, extra?: unknown) => extra,
+      },
+    } as unknown,
   }
 })
 

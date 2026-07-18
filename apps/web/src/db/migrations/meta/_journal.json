@@ -50,6 +50,13 @@
       "when": 1784381841376,
       "tag": "0006_many_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784385000000,
+      "tag": "0007_postgres_rls",
+      "breakpoints": true
     }
   ]
 }

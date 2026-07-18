@@ -21,10 +21,16 @@ const mocks = vi.hoisted(() => {
     return chain
   }
 
+  const mockDb = {
+    execute: () => Promise.resolve([]),
+    select: () => makeChain(),
+    transaction: (handler: (tx: unknown) => unknown) => handler(mockDb),
+  }
+
   return {
     selectQueue,
-    mockDb: { select: () => makeChain() },
-    assembleReportPayload: vi.fn(),
+    mockDb,
+    assembleReportPayloadInScope: vi.fn(),
     notFound: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND")
     }),
@@ -34,7 +40,7 @@ const mocks = vi.hoisted(() => {
 vi.mock("@/db/client", () => ({ db: mocks.mockDb }))
 
 vi.mock("@/lib/report-assembly", () => ({
-  assembleReportPayload: mocks.assembleReportPayload,
+  assembleReportPayloadInScope: mocks.assembleReportPayloadInScope,
   ReportNotFoundError: class ReportNotFoundError extends Error {},
   ReportNotReadyError: class ReportNotReadyError extends Error {},
 }))
@@ -58,20 +64,24 @@ async function renderShare(token: string) {
 describe("/share/[token]", () => {
   beforeEach(() => {
     mocks.selectQueue.length = 0
-    mocks.assembleReportPayload.mockReset()
+    mocks.assembleReportPayloadInScope.mockReset()
     mocks.notFound.mockClear()
   })
 
   it("renders a valid token without auth and passes readOnly to ReportShell", async () => {
     mocks.selectQueue.push([{ runId: RUN_ID, orgId: ORG_ID }])
-    mocks.assembleReportPayload.mockResolvedValue({
+    mocks.assembleReportPayloadInScope.mockResolvedValue({
       run: { id: RUN_ID },
       video: { title: "Shared report" },
     })
 
     const element = await renderShare(VALID_TOKEN)
 
-    expect(mocks.assembleReportPayload).toHaveBeenCalledWith(RUN_ID, ORG_ID)
+    expect(mocks.assembleReportPayloadInScope).toHaveBeenCalledWith(
+      RUN_ID,
+      ORG_ID,
+      expect.objectContaining({ orgId: ORG_ID, db: mocks.mockDb })
+    )
     expect(element.props.readOnly).toBe(true)
   })
 

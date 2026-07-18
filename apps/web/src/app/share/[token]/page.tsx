@@ -1,13 +1,13 @@
 import { and, eq, gt, isNull } from "drizzle-orm"
 import { notFound } from "next/navigation"
 
-import { db } from "@/db/client"
 import { shareLinks } from "@/db/schema"
 import {
-  assembleReportPayload,
+  assembleReportPayloadInScope,
   ReportNotFoundError,
   ReportNotReadyError,
 } from "@/lib/report-assembly"
+import { bindOrgToTransaction, withDbTransaction } from "@/lib/with-org"
 import { ReportShell } from "@/components/report/ReportShell"
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/
@@ -29,31 +29,39 @@ export default async function SharedReportPage({
   const { token } = await params
   if (!TOKEN_RE.test(token)) notFound()
 
-  const [link] = await db
-    .select({
-      runId: shareLinks.runId,
-      orgId: shareLinks.orgId,
-    })
-    .from(shareLinks)
-    .where(
-      and(
-        eq(shareLinks.token, token),
-        isNull(shareLinks.revokedAt),
-        gt(shareLinks.expiresAt, new Date())
+  return withDbTransaction(async (tx) => {
+    const [link] = await tx
+      .select({
+        runId: shareLinks.runId,
+        orgId: shareLinks.orgId,
+      })
+      .from(shareLinks)
+      .where(
+        and(
+          eq(shareLinks.token, token),
+          isNull(shareLinks.revokedAt),
+          gt(shareLinks.expiresAt, new Date())
+        )
       )
-    )
-    .limit(1)
+      .limit(1)
 
-  if (!link) notFound()
+    if (!link) notFound()
 
-  const payload = await assembleReportPayload(link.runId, link.orgId).catch(
-    (error: unknown) => {
-      if (error instanceof ReportNotFoundError || error instanceof ReportNotReadyError) {
+    const scopedDb = await bindOrgToTransaction(tx, link.orgId)
+    const payload = await assembleReportPayloadInScope(
+      link.runId,
+      link.orgId,
+      scopedDb
+    ).catch((error: unknown) => {
+      if (
+        error instanceof ReportNotFoundError ||
+        error instanceof ReportNotReadyError
+      ) {
         notFound()
       }
       throw error
-    }
-  )
+    })
 
-  return <ReportShell payload={payload} readOnly />
+    return <ReportShell payload={payload} readOnly />
+  })
 }

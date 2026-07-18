@@ -288,7 +288,11 @@ describe("export route handlers", () => {
 
     expect(response.status).toBe(200)
     expect(body.run.id).toBe(RUN_ID)
-    expect(mocks.assembleReportPayload).toHaveBeenCalledWith(RUN_ID, "org_test")
+    expect(mocks.assembleReportPayload).toHaveBeenCalledWith(
+      RUN_ID,
+      "org_test",
+      expect.objectContaining({ orgId: "org_test", db })
+    )
   })
 
   it("does not export runs outside the active org scope", async () => {

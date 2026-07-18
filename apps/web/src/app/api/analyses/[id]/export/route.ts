@@ -50,7 +50,7 @@ export async function GET(
       }
 
       if (format.data === "json") {
-        const payload = await assembleReportPayload(id, orgId)
+        const payload = await assembleReportPayload(id, orgId, scopedDb)
         return new Response(reportJson(payload), {
           headers: exportHeaders(id, "json"),
         })

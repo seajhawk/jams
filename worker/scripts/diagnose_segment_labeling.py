@@ -54,7 +54,9 @@ def main() -> None:
     parser.add_argument("run_id")
     args = parser.parse_args()
 
-    database_url = os.environ.get("DATABASE_URL", "postgresql://jams:jams@localhost:5432/jams")
+    database_url = os.environ.get(
+        "DATABASE_URL", "postgresql://jams_worker:jams_worker@localhost:5432/jams"
+    )
     with psycopg.connect(database_url) as conn:
         run = _read_run(conn, args.run_id)
         repo = RunRepository(conn)

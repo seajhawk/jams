@@ -12,12 +12,11 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import type React from "react"
 
-import { db } from "@/db/client"
 import { analysisRuns, effortScores, tasks, videos } from "@/db/schema"
 import { mintReadSas } from "@/lib/blob"
 import { formatMs } from "@/lib/format-ms"
 import { serializeAnalysisRun } from "@/lib/analyses"
-import { resolveOrgContext } from "@/lib/with-org"
+import { withOrg } from "@/lib/with-org"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -46,70 +45,63 @@ export default async function VideoDetailPage({
   const { id } = await params
   if (!UUID_RE.test(id)) notFound()
 
-  const context = await resolveOrgContext()
-
-  const [row] = await db
-    .select({ video: videos, taskName: tasks.name })
-    .from(videos)
-    .leftJoin(
-      tasks,
-      and(eq(videos.taskId, tasks.id), eq(tasks.orgId, context.orgId))
-    )
-    .where(
-      and(eq(videos.id, id), eq(videos.orgId, context.orgId))
-    )
-    .limit(1)
-
-  if (!row) notFound()
-
-  const { video, taskName } = row
-  const [[latestRun], runRows] = await Promise.all([
-    db
-      .select()
-      .from(analysisRuns)
-      .where(
-        and(
-          eq(analysisRuns.videoId, video.id),
-          eq(analysisRuns.orgId, context.orgId),
-          isNull(analysisRuns.supersededBy)
-        )
+  return withOrg(async ({ scopedDb }) => {
+    const [row] = await scopedDb.db
+      .select({ video: videos, taskName: tasks.name })
+      .from(videos)
+      .leftJoin(
+        tasks,
+        and(eq(videos.taskId, tasks.id), eq(tasks.orgId, scopedDb.orgId))
       )
-      .orderBy(desc(analysisRuns.createdAt))
-      .limit(1),
-    db
-      .select()
-      .from(analysisRuns)
-      .where(
-        and(
-          eq(analysisRuns.videoId, video.id),
-          eq(analysisRuns.orgId, context.orgId)
-        )
-      )
-      .orderBy(desc(analysisRuns.createdAt)),
-  ])
+      .where(scopedDb.orgFilter(videos, eq(videos.id, id)))
+      .limit(1)
 
-  const scoreRows = runRows.length
-    ? await db
+    if (!row) notFound()
+
+    const { video, taskName } = row
+    const [[latestRun], runRows] = await Promise.all([
+      scopedDb.db
+        .select()
+        .from(analysisRuns)
+        .where(
+          scopedDb.orgFilter(
+            analysisRuns,
+            and(eq(analysisRuns.videoId, video.id), isNull(analysisRuns.supersededBy))
+          )
+        )
+        .orderBy(desc(analysisRuns.createdAt))
+        .limit(1),
+      scopedDb.db
+        .select()
+        .from(analysisRuns)
+        .where(
+          scopedDb.orgFilter(analysisRuns, eq(analysisRuns.videoId, video.id))
+        )
+        .orderBy(desc(analysisRuns.createdAt)),
+    ])
+
+    const scoreRows = runRows.length
+      ? await scopedDb.db
         .select({
           runId: effortScores.runId,
           total: effortScores.total,
         })
         .from(effortScores)
         .where(
-          and(
-            eq(effortScores.orgId, context.orgId),
+          scopedDb.orgFilter(
+            effortScores,
             inArray(effortScores.runId, runRows.map((run) => run.id))
           )
         )
-    : []
-  const scoresByRun = new Map(scoreRows.map((scoreRow) => [scoreRow.runId, scoreRow.total]))
+      : []
+    const scoresByRun = new Map(scoreRows.map((scoreRow) => [scoreRow.runId, scoreRow.total]))
 
-  const [playbackSas, posterSas] = await Promise.all([
-    mintReadSas(video.blobPath),
-    video.posterBlobPath
-      ? mintReadSas(video.posterBlobPath)
-      : Promise.resolve(null),
-  ])
+    const [playbackSas, posterSas] = await Promise.all([
+      mintReadSas(video.blobPath),
+      video.posterBlobPath
+        ? mintReadSas(video.posterBlobPath)
+        : Promise.resolve(null),
+    ])
 
   const uploadedAt = video.createdAt.toLocaleString("en-US", {
     year: "numeric",
@@ -119,8 +111,8 @@ export default async function VideoDetailPage({
     minute: "2-digit",
   })
 
-  return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
+    return (
+      <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
       {/* Back link */}
       <Button
         variant="ghost"
@@ -233,8 +225,9 @@ export default async function VideoDetailPage({
           />
         </aside>
       </div>
-    </section>
-  )
+      </section>
+    )
+  })
 }
 
 function MetaRow({

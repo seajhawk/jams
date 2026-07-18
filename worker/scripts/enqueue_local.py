@@ -30,7 +30,9 @@ def main() -> None:
     if not isinstance(config, dict):
         raise SystemExit("--config must be a JSON object")
 
-    database_url = os.environ.get("DATABASE_URL", "postgresql://jams:jams@localhost:5432/jams")
+    database_url = os.environ.get(
+        "DATABASE_URL", "postgresql://jams_worker:jams_worker@localhost:5432/jams"
+    )
     storage = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
 
     run_id = str(uuid.uuid4())

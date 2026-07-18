@@ -1,6 +1,5 @@
 import { and, asc, eq } from "drizzle-orm"
 
-import { db } from "@/db/client"
 import {
   analysisRuns,
   effortScores,
@@ -19,7 +18,7 @@ import {
   DEFAULT_WEIGHT_PROFILE_NORMALIZATION,
   DEFAULT_WEIGHT_PROFILE_WEIGHTS,
 } from "@/lib/weight-profiles"
-import { createScopedDb } from "@/lib/with-org"
+import { withScopedDb, type OrgContext } from "@/lib/with-org"
 
 export class ReportNotFoundError extends Error {
   readonly status = 404
@@ -35,9 +34,10 @@ export class ReportNotReadyError extends Error {
   }
 }
 
-export async function getOrCreateDefaultProfile(orgId: string) {
-  const scopedDb = createScopedDb(orgId)
-
+async function getOrCreateDefaultProfileInScope(
+  orgId: string,
+  scopedDb: OrgContext["scopedDb"]
+) {
   const selectDefaultProfile = () =>
     scopedDb.db
       .select()
@@ -104,6 +104,19 @@ export async function getOrCreateDefaultProfile(orgId: string) {
   if (finalDefault) return finalDefault
 
   throw new Error(`Unable to create default weight profile for org ${orgId}`)
+}
+
+export async function getOrCreateDefaultProfile(
+  orgId: string,
+  scopedDb?: OrgContext["scopedDb"]
+) {
+  if (scopedDb) {
+    return getOrCreateDefaultProfileInScope(orgId, scopedDb)
+  }
+
+  return withScopedDb(orgId, (scoped) =>
+    getOrCreateDefaultProfileInScope(orgId, scoped)
+  )
 }
 
 function warningsFromRun(
@@ -219,12 +232,11 @@ function mapMeasure(m: DbMeasure): Record<string, unknown> | null {
   }
 }
 
-export async function assembleReportPayload(
+export async function assembleReportPayloadInScope(
   runId: string,
-  orgId: string
+  orgId: string,
+  scopedDb: OrgContext["scopedDb"]
 ): Promise<ReportPayload> {
-  const scopedDb = createScopedDb(orgId)
-
   const [run] = await scopedDb.db
     .select()
     .from(analysisRuns)
@@ -237,11 +249,11 @@ export async function assembleReportPayload(
     throw new ReportNotReadyError()
   }
 
-  const [videoRow] = await db
+  const [videoRow] = await scopedDb.db
     .select({ video: videos, taskName: tasks.name, taskId: tasks.id })
     .from(videos)
     .leftJoin(tasks, and(eq(videos.taskId, tasks.id), eq(tasks.orgId, orgId)))
-    .where(and(eq(videos.id, run.videoId), eq(videos.orgId, orgId)))
+    .where(scopedDb.orgFilter(videos, eq(videos.id, run.videoId)))
     .limit(1)
 
   if (!videoRow) throw new ReportNotFoundError("Video not found")
@@ -260,7 +272,7 @@ export async function assembleReportPayload(
       .select()
       .from(measures)
       .where(scopedDb.orgFilter(measures, eq(measures.runId, runId))),
-    getOrCreateDefaultProfile(orgId),
+    getOrCreateDefaultProfileInScope(orgId, scopedDb),
     mintReadSas(video.blobPath),
   ])
 
@@ -268,10 +280,9 @@ export async function assembleReportPayload(
     .select()
     .from(effortScores)
     .where(
-      and(
-        eq(effortScores.runId, runId),
-        eq(effortScores.profileId, defaultProfile.id),
-        eq(effortScores.orgId, orgId)
+      scopedDb.orgFilter(
+        effortScores,
+        and(eq(effortScores.runId, runId), eq(effortScores.profileId, defaultProfile.id))
       )
     )
     .limit(1)
@@ -362,4 +373,18 @@ export async function assembleReportPayload(
   }
 
   return reportPayloadSchema.parse(payload)
+}
+
+export async function assembleReportPayload(
+  runId: string,
+  orgId: string,
+  scopedDb?: OrgContext["scopedDb"]
+): Promise<ReportPayload> {
+  if (scopedDb) {
+    return assembleReportPayloadInScope(runId, orgId, scopedDb)
+  }
+
+  return withScopedDb(orgId, (scoped) =>
+    assembleReportPayloadInScope(runId, orgId, scoped)
+  )
 }

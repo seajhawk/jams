@@ -12,7 +12,7 @@ Local run:
 
    ```powershell
    cd worker
-   $env:DATABASE_URL = "postgresql://jams:jams@localhost:5432/jams"
+   $env:DATABASE_URL = "postgresql://jams_worker:jams_worker@localhost:5432/jams"
    $env:AZURE_STORAGE_CONNECTION_STRING = "UseDevelopmentStorage=true"
    uv run jams-worker --drain
    ```
