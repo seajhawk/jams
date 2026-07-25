@@ -22,7 +22,7 @@ dependencies = [
     "ctranslate2==4.5.0",
     "tokenizers>=0.15",
     "vaderSentiment>=3.3.2",
-    "setuptools<81",
+    "setuptools<84",
 ]
 
 [project.scripts]
