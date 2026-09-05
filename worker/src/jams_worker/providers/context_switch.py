@@ -15,6 +15,7 @@ from scenedetect.detectors import AdaptiveDetector
 
 from jams_worker.errors import PipelineError
 from jams_worker.ffmpeg import MEDIA_TIMEOUT_SECONDS, ffmpeg_path, run_media_command
+from jams_worker.media import get_authoritative_duration_ms
 from jams_worker.pipeline import PipelineContext
 from jams_worker.providers.probe import DERIVED_CONTAINER
 
@@ -170,14 +171,23 @@ def build_proxy(source: Path, proxy: Path) -> None:
     )
 
 
-def extract_thumbnail(source: Path, target: Path, cut_ms: int) -> None:
+def extract_thumbnail(
+    source: Path,
+    target: Path,
+    cut_ms: int,
+    max_duration_ms: int | None = None,
+) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
+    seek_s = cut_ms / 1000 + THUMB_OFFSET_SECONDS
+    if max_duration_ms is not None and max_duration_ms > 0:
+        max_seek_s = max(0.0, (max_duration_ms / 1000.0) - 0.05)
+        seek_s = min(seek_s, max_seek_s)
     _run_ffmpeg(
         [
             ffmpeg_path(),
             "-y",
             "-ss",
-            f"{cut_ms / 1000 + THUMB_OFFSET_SECONDS:.3f}",
+            f"{seek_s:.3f}",
             "-i",
             str(source),
             "-frames:v",
@@ -623,6 +633,7 @@ class ContextSwitchProvider:
 
         measures: list[dict[str, Any]] = []
         total = max(1, len(cuts))
+        authoritative_duration = get_authoritative_duration_ms(context)
         for index, cut in enumerate(cuts, start=1):
             context.heartbeat(
                 self.id,
@@ -630,7 +641,7 @@ class ContextSwitchProvider:
                 f"Extracting thumbnail {index}/{len(cuts)}",
             )
             thumb = context.workdir / "context_switch_thumbs" / f"{cut.t_start_ms}.jpg"
-            extract_thumbnail(source, thumb, cut.t_start_ms)
+            extract_thumbnail(source, thumb, cut.t_start_ms, max_duration_ms=authoritative_duration)
             blob_path = f"runs/{context.run_id}/context_switch/{cut.t_start_ms}.jpg"
             _upload_derived(context, thumb, blob_path)
             artifact_id = context.register_artifact("thumbnail", blob_path)
@@ -645,11 +656,16 @@ class ContextSwitchProvider:
             if fallback_reason is not None:
                 payload["fallback_reason"] = fallback_reason
 
+            cut_t_start = (
+                min(authoritative_duration, cut.t_start_ms)
+                if authoritative_duration > 0
+                else cut.t_start_ms
+            )
             measures.append(
                 {
                     "kind": "context_switch",
                     "category": "cognitive",
-                    "t_start_ms": cut.t_start_ms,
+                    "t_start_ms": cut_t_start,
                     "t_end_ms": None,
                     "value_num": 1,
                     "value_text": None,

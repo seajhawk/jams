@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from jams_worker.media import get_authoritative_duration_ms
 from jams_worker.pipeline import PipelineContext
 
 PROVIDER_ID = "segmentation"
@@ -70,14 +71,7 @@ class Segment:
 
 
 def _video_duration_ms(context: PipelineContext) -> int:
-    value = context.run.get("duration_ms")
-    if value is None:
-        row = context.db_conn.execute(
-            "select duration_ms from videos where id = %s and org_id = %s",
-            (context.video_id, context.org_id),
-        ).fetchone()
-        value = row[0] if row is not None else None
-    return int(value or 0)
+    return get_authoritative_duration_ms(context)
 
 
 def _read_inputs(context: PipelineContext) -> tuple[list[UtteranceCue], list[int]]:

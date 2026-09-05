@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -11,27 +10,14 @@ from azure.core.exceptions import ResourceExistsError
 
 from jams_worker import ffmpeg as ffmpeg_tools
 from jams_worker.errors import PipelineError
+from jams_worker.media import MediaMetadata
 from jams_worker.pipeline import PipelineContext
 
 VIDEOS_CONTAINER = "videos"
 DERIVED_CONTAINER = "derived"
 MAX_DURATION_SECONDS = 20 * 60
 
-
-def ffmpeg_paths() -> tuple[str, str]:
-    return ffmpeg_tools.ffmpeg_paths()
-
-
-@dataclass(frozen=True, slots=True)
-class ProbeResult:
-    container: str
-    video_codec: str
-    width: int
-    height: int
-    fps: float | None
-    duration_ms: int
-    has_audio: bool
-    audio_codec: str | None
+ProbeResult = MediaMetadata
 
 
 def _run_json(args: list[str]) -> dict[str, Any]:
@@ -66,7 +52,7 @@ def _fps(value: str | None) -> float | None:
         return None
 
 
-def probe_file(path: Path) -> ProbeResult:
+def probe_file(path: Path) -> MediaMetadata:
     data = _run_json(
         [
             ffmpeg_tools.ffprobe_path(),
@@ -89,11 +75,29 @@ def probe_file(path: Path) -> ProbeResult:
 
     audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
     fmt = data.get("format") if isinstance(data.get("format"), dict) else {}
-    duration = video_stream.get("duration") or fmt.get("duration")
+
+    v_start = float(video_stream.get("start_time") or 0.0)
+    v_dur_raw = video_stream.get("duration")
+    fmt_dur_raw = fmt.get("duration")
+
     try:
-        duration_seconds = float(duration)
-    except (TypeError, ValueError) as exc:
-        raise PipelineError("corrupt_file", "Video duration is missing") from exc
+        v_dur = float(v_dur_raw) if v_dur_raw is not None else None
+    except (TypeError, ValueError):
+        v_dur = None
+
+    try:
+        fmt_dur = float(fmt_dur_raw) if fmt_dur_raw is not None else None
+    except (TypeError, ValueError):
+        fmt_dur = None
+
+    if v_dur is not None and fmt_dur is not None:
+        duration_seconds = max(v_start + v_dur, fmt_dur)
+    elif v_dur is not None:
+        duration_seconds = v_start + v_dur
+    elif fmt_dur is not None:
+        duration_seconds = fmt_dur
+    else:
+        raise PipelineError("corrupt_file", "Video duration is missing")
 
     if duration_seconds > MAX_DURATION_SECONDS:
         raise PipelineError("too_long", "Video exceeds the 20 minute limit")
@@ -104,15 +108,41 @@ def probe_file(path: Path) -> ProbeResult:
     except (KeyError, TypeError, ValueError) as exc:
         raise PipelineError("corrupt_file", "Video dimensions are missing") from exc
 
-    return ProbeResult(
+    has_audio = isinstance(audio_stream, dict)
+    audio_codec = str(audio_stream.get("codec_name")) if has_audio else None
+
+    a_start: float | None = None
+    a_dur: float | None = None
+    audio_offset_ms = 0
+    if has_audio and isinstance(audio_stream, dict):
+        try:
+            a_start = float(audio_stream.get("start_time") or 0.0)
+        except (TypeError, ValueError):
+            a_start = 0.0
+        try:
+            a_dur = float(audio_stream.get("duration") or 0.0)
+        except (TypeError, ValueError):
+            a_dur = None
+        audio_offset_ms = round((a_start - 0.0) * 1000)
+
+    duration_ms = round(duration_seconds * 1000)
+
+    return MediaMetadata(
         container=str(fmt.get("format_name") or "unknown"),
         video_codec=str(video_stream.get("codec_name") or "unknown"),
         width=width,
         height=height,
         fps=_fps(str(video_stream.get("avg_frame_rate") or "")),
-        duration_ms=round(duration_seconds * 1000),
-        has_audio=isinstance(audio_stream, dict),
-        audio_codec=str(audio_stream.get("codec_name")) if isinstance(audio_stream, dict) else None,
+        duration_ms=duration_ms,
+        has_audio=has_audio,
+        audio_codec=audio_codec,
+        time_origin_seconds=0.0,
+        video_start_seconds=v_start,
+        video_duration_seconds=v_dur if v_dur is not None else duration_seconds,
+        audio_start_seconds=a_start,
+        audio_duration_seconds=a_dur,
+        audio_offset_ms=audio_offset_ms,
+        audio_normalized_aligned=True,
     )
 
 
@@ -200,6 +230,13 @@ class ProbeProvider:
         context.heartbeat("probe", 10, "Validating container")
         result = probe_file(original)
 
+        context.media = result
+        context.run["duration_ms"] = result.duration_ms
+        context.run["width"] = result.width
+        context.run["height"] = result.height
+        context.run["fps"] = result.fps
+        context.run["has_audio"] = result.has_audio
+
         context.db_conn.execute(
             """
             update videos
@@ -229,25 +266,36 @@ class ProbeProvider:
             str(original),
             "-map",
             "0:v:0",
-            "-map",
-            "0:a:0?",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-pix_fmt",
-            "yuv420p",
-            "-fps_mode",
-            "cfr",
-            "-c:a",
-            "aac",
-            "-movflags",
-            "+faststart",
-            "-progress",
-            "pipe:1",
-            "-nostats",
-            str(normalized),
         ]
+        if result.has_audio:
+            normalize_args.extend(
+                [
+                    "-map",
+                    "0:a:0",
+                    "-af",
+                    "aresample=async=1:first_pts=0",
+                    "-c:a",
+                    "aac",
+                ]
+            )
+        normalize_args.extend(
+            [
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-pix_fmt",
+                "yuv420p",
+                "-fps_mode",
+                "cfr",
+                "-movflags",
+                "+faststart",
+                "-progress",
+                "pipe:1",
+                "-nostats",
+                str(normalized),
+            ]
+        )
         _run_ffmpeg_with_progress(
             normalize_args,
             duration_ms=result.duration_ms,
@@ -262,6 +310,8 @@ class ProbeProvider:
 
         if result.has_audio:
             context.heartbeat("probe", 75, "Extracting audio")
+            duration_s = max(0.001, result.duration_ms / 1000.0)
+            audio_filter = f"aresample=async=1:first_pts=0,apad=whole_dur={duration_s:.6f}"
             _run_ffmpeg(
                 [
                     ffmpeg,
@@ -269,12 +319,16 @@ class ProbeProvider:
                     "-i",
                     str(original),
                     "-vn",
+                    "-af",
+                    audio_filter,
                     "-ac",
                     "1",
                     "-ar",
                     "16000",
                     "-c:a",
                     "pcm_s16le",
+                    "-t",
+                    f"{duration_s:.6f}",
                     str(audio),
                 ]
             )
@@ -286,12 +340,13 @@ class ProbeProvider:
 
         if not context.run.get("poster_blob_path"):
             context.heartbeat("probe", 85, "Extracting poster frame")
+            poster_ss = min(0.5, max(0.0, (result.duration_ms / 1000.0) - 0.1))
             _run_ffmpeg(
                 [
                     ffmpeg,
                     "-y",
                     "-ss",
-                    "0.5",
+                    f"{poster_ss:.3f}",
                     "-i",
                     str(original),
                     "-frames:v",
