@@ -12,6 +12,12 @@ const mocks = vi.hoisted(() => ({
   markStuckRunsFailed: vi.fn(),
   requirePlatformAdminApi: vi.fn(),
   requeueAdminRun: vi.fn(),
+  reconcilePendingDispatches: vi.fn().mockResolvedValue({
+    reconciledCount: 0,
+    failedCount: 0,
+    skippedCount: 0,
+    dispatchedRunIds: [],
+  }),
 }))
 
 vi.mock("@/lib/admin-auth", () => ({
@@ -22,6 +28,7 @@ vi.mock("@/lib/admin-runs", () => ({
   markAdminRunFailed: mocks.markAdminRunFailed,
   markStuckRunsFailed: mocks.markStuckRunsFailed,
   requeueAdminRun: mocks.requeueAdminRun,
+  reconcilePendingDispatches: mocks.reconcilePendingDispatches,
 }))
 
 function params(id = RUN_ID) {

@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     context: null as unknown,
+    dispatchAnalysisRun: vi.fn(),
     enqueueAnalysisRun: vi.fn(),
     MockUnauthorizedError,
   }
@@ -24,6 +25,14 @@ const mocks = vi.hoisted(() => {
 vi.mock("@/lib/queue", () => ({
   enqueueAnalysisRun: mocks.enqueueAnalysisRun,
 }))
+
+vi.mock("@/lib/analysis-dispatch", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/analysis-dispatch")>()
+  return {
+    ...actual,
+    dispatchAnalysisRun: mocks.dispatchAnalysisRun,
+  }
+})
 
 vi.mock("@/lib/with-org", () => ({
   UnauthorizedError: mocks.MockUnauthorizedError,
@@ -154,6 +163,7 @@ function jsonRequest(path: string, body: unknown) {
 describe("analyses API route handlers", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.dispatchAnalysisRun.mockResolvedValue({ dispatched: true })
     mocks.enqueueAnalysisRun.mockResolvedValue(undefined)
   })
 
@@ -161,11 +171,18 @@ describe("analyses API route handlers", () => {
     const db = new MockDb()
     db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
     db.onInsert = (input) =>
-      analysisRun({
-        ...(input as Partial<AnalysisRunRow>),
-        createdAt: new Date("2026-07-17T12:00:00.000Z"),
-        updatedAt: new Date("2026-07-17T12:00:00.000Z"),
-      })
+      "videoId" in input
+        ? analysisRun({
+            ...(input as Partial<AnalysisRunRow>),
+            createdAt: new Date("2026-07-17T12:00:00.000Z"),
+            updatedAt: new Date("2026-07-17T12:00:00.000Z"),
+          })
+        : {
+            id: "outbox_test",
+            ...input,
+            createdAt: new Date("2026-07-17T12:00:00.000Z"),
+            updatedAt: new Date("2026-07-17T12:00:00.000Z"),
+          }
     installContext(db)
 
     const response = await createAnalysis(
@@ -183,19 +200,34 @@ describe("analyses API route handlers", () => {
       status: "queued",
       stage: "queued",
     })
+    expect(db.inserts[1]).toMatchObject({
+      orgId: "org_test",
+      runId: body.analysis.id,
+      status: "pending",
+    })
     expect(db.updates[0]).toMatchObject({ supersededBy: body.analysis.id })
-    expect(mocks.enqueueAnalysisRun).toHaveBeenCalledWith(body.analysis.id)
+    expect(mocks.dispatchAnalysisRun).toHaveBeenCalledWith({
+      runId: body.analysis.id,
+      outboxId: "outbox_test",
+    })
   })
 
   it("stores canonical analysis config and source text when supplied", async () => {
     const db = new MockDb()
     db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
     db.onInsert = (input) =>
-      analysisRun({
-        ...(input as Partial<AnalysisRunRow>),
-        createdAt: new Date("2026-07-17T12:00:00.000Z"),
-        updatedAt: new Date("2026-07-17T12:00:00.000Z"),
-      })
+      "videoId" in input
+        ? analysisRun({
+            ...(input as Partial<AnalysisRunRow>),
+            createdAt: new Date("2026-07-17T12:00:00.000Z"),
+            updatedAt: new Date("2026-07-17T12:00:00.000Z"),
+          })
+        : {
+            id: "outbox_test",
+            ...input,
+            createdAt: new Date("2026-07-17T12:00:00.000Z"),
+            updatedAt: new Date("2026-07-17T12:00:00.000Z"),
+          }
     installContext(db)
 
     const configSource = "sentiment:\n  fallback: vader\n"
@@ -224,8 +256,13 @@ describe("analyses API route handlers", () => {
       }),
       configSource,
     })
+    expect(db.inserts[1]).toMatchObject({
+      orgId: "org_test",
+      status: "pending",
+    })
     expect(body.analysis.config.sentiment.fallback).toBe("vader")
     expect(body.analysis.config_source).toBe(configSource)
+    expect(mocks.dispatchAnalysisRun).toHaveBeenCalled()
   })
 
   it("rejects invalid analysis config with a path-aware error", async () => {
@@ -245,7 +282,7 @@ describe("analyses API route handlers", () => {
     expect(response.status).toBe(400)
     expect(body.error).toContain("context_switch.enabled")
     expect(db.inserts).toHaveLength(0)
-    expect(mocks.enqueueAnalysisRun).not.toHaveBeenCalled()
+    expect(mocks.dispatchAnalysisRun).not.toHaveBeenCalled()
   })
 
   it("rejects analysis before upload completion", async () => {
@@ -261,7 +298,7 @@ describe("analyses API route handlers", () => {
 
     expect(response.status).toBe(400)
     expect(db.inserts).toHaveLength(0)
-    expect(mocks.enqueueAnalysisRun).not.toHaveBeenCalled()
+    expect(mocks.dispatchAnalysisRun).not.toHaveBeenCalled()
   })
 
   it("returns the polling payload for an org-scoped run", async () => {

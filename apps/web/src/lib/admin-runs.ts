@@ -1,8 +1,8 @@
-import { and, desc, eq, lte } from "drizzle-orm"
+import { and, desc, eq, lte, or } from "drizzle-orm"
 
 import { adminDb } from "@/db/admin-client.server"
-import { analysisRuns, videos } from "@/db/schema"
-import { enqueueAnalysisRun } from "@/lib/queue"
+import { analysisDispatchOutbox, analysisRuns, videos } from "@/db/schema"
+import { dispatchAnalysisRun, reconcilePendingDispatches } from "@/lib/analysis-dispatch"
 
 export const stuckRunAgeMs = 60 * 60 * 1000
 
@@ -30,7 +30,10 @@ export function stuckCutoff(now = new Date()) {
 export function adminRunFilterCondition(filter: AdminRunFilter, now = new Date()) {
   if (filter === "stuck") {
     return and(
-      eq(analysisRuns.status, "running"),
+      or(
+        eq(analysisRuns.status, "running"),
+        eq(analysisRuns.status, "queued")
+      ),
       lte(analysisRuns.updatedAt, stuckCutoff(now))
     )
   }
@@ -65,6 +68,7 @@ export async function requeueAdminRun(runId: string, adminUserId: string) {
   const [run] = await adminDb
     .select({
       id: analysisRuns.id,
+      orgId: analysisRuns.orgId,
       status: analysisRuns.status,
     })
     .from(analysisRuns)
@@ -75,20 +79,31 @@ export async function requeueAdminRun(runId: string, adminUserId: string) {
   if (run.status === "queued") return { status: "already_queued" as const }
   if (run.status === "succeeded") return { status: "not_requeued" as const }
 
-  await adminDb
-    .update(analysisRuns)
-    .set({
-      status: "queued",
-      stage: "queued",
-      progressPct: 0,
-      stageDetail: "Requeued by platform admin",
-      errorCode: null,
-      completedAt: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(analysisRuns.id, runId))
+  const [outbox] = await adminDb.transaction(async (tx) => {
+    await tx
+      .update(analysisRuns)
+      .set({
+        status: "queued",
+        stage: "queued",
+        progressPct: 0,
+        stageDetail: "Requeued by platform admin",
+        errorCode: null,
+        completedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(analysisRuns.id, runId))
 
-  await enqueueAnalysisRun(runId)
+    return tx
+      .insert(analysisDispatchOutbox)
+      .values({
+        runId,
+        orgId: run.orgId,
+        status: "pending",
+      })
+      .returning()
+  })
+
+  await dispatchAnalysisRun({ runId, outboxId: outbox?.id })
   console.info("admin_run_requeued", { runId, adminUserId })
   return { status: "requeued" as const }
 }
@@ -106,7 +121,10 @@ export async function markAdminRunFailed(runId: string, adminUserId: string) {
 
   if (!run) return { status: "not_found" as const }
   if (run.status === "failed") return { status: "already_failed" as const }
-  if (run.status !== "running" || run.updatedAt > stuckCutoff()) {
+  if (
+    (run.status !== "running" && run.status !== "queued") ||
+    run.updatedAt > stuckCutoff()
+  ) {
     return { status: "not_stuck" as const }
   }
 
@@ -145,3 +163,5 @@ export async function markStuckRunsFailed(adminUserId: string) {
   })
   return rows
 }
+
+export { reconcilePendingDispatches }

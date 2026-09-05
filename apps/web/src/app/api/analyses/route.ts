@@ -8,8 +8,8 @@ import {
   serializeAnalysisRun,
   validateAnalysisConfig,
 } from "@/lib/analyses"
+import { dispatchAnalysisRun, recordDispatchIntent } from "@/lib/analysis-dispatch"
 import { PIPELINE_VERSION } from "@/lib/pipeline-version"
-import { enqueueAnalysisRun } from "@/lib/queue"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   try {
     const body = await parseJsonBody(request, createAnalysisSchema)
 
-    return await withOrg(async ({ orgId, scopedDb }) => {
+    const created = await withOrg(async ({ orgId, scopedDb }) => {
       const [video] = await scopedDb.db
         .select({ id: videos.id, status: videos.status })
         .from(videos)
@@ -70,13 +70,24 @@ export async function POST(request: Request) {
           )
         )
 
-      await enqueueAnalysisRun(run.id)
+      const outbox = await recordDispatchIntent(scopedDb.db, {
+        runId: run.id,
+        orgId,
+      })
 
-      return NextResponse.json(
-        { analysis: serializeAnalysisRun(run) },
-        { status: 201 }
-      )
+      return { run, outboxId: outbox.id }
     })
+
+    // Transaction is committed and visible in PostgreSQL. Dispatch outside the transaction.
+    await dispatchAnalysisRun({
+      runId: created.run.id,
+      outboxId: created.outboxId,
+    })
+
+    return NextResponse.json(
+      { analysis: serializeAnalysisRun(created.run) },
+      { status: 201 }
+    )
   } catch (error) {
     return handleRouteError(error)
   }

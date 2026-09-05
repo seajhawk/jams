@@ -77,7 +77,9 @@ def process_run(
 ) -> str:
     repo = RunRepository(conn)
     run = repo.claim(run_id)
-    if run is None or run["status"] == "succeeded":
+    if run is None:
+        raise PipelineError("transient", f"Analysis run {run_id} is not visible in database")
+    if run["status"] in ("succeeded", "partial", "failed"):
         return "skipped"
 
     with tempfile.TemporaryDirectory(prefix=f"jams-{run_id}-") as temp_dir:
@@ -158,6 +160,11 @@ def handle_message(
             return MessageResult(run_id, "poisoned", poisoned=True)
         else:
             conn.rollback()
+            if hasattr(queue, "update_message"):
+                try:
+                    queue.update_message(message.id, message.pop_receipt, visibility_timeout=2)
+                except Exception:
+                    pass
             return MessageResult(run_id, "redelivery")
     except Exception as exc:
         if getattr(message, "dequeue_count", 1) >= MAX_DEQUEUE_ATTEMPTS:
@@ -167,6 +174,11 @@ def handle_message(
             return MessageResult(run_id, "poisoned", poisoned=True)
         else:
             conn.rollback()
+            if hasattr(queue, "update_message"):
+                try:
+                    queue.update_message(message.id, message.pop_receipt, visibility_timeout=2)
+                except Exception:
+                    pass
             return MessageResult(run_id, "redelivery")
     else:
         queue.delete_message(message.id, message.pop_receipt)
