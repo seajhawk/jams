@@ -157,6 +157,9 @@ export const analysisRuns = pgTable(
     stageDetail: text("stage_detail"),
     errorCode: analysisErrorCodeEnum("error_code"),
     attempt: integer("attempt").notNull().default(0),
+    ownerId: text("owner_id"),
+    leaseToken: text("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
     supersededBy: uuid("superseded_by").references(
       (): AnyPgColumn => analysisRuns.id,
       { onDelete: "set null" }
@@ -169,6 +172,7 @@ export const analysisRuns = pgTable(
     index("analysis_runs_org_id_video_id_idx").on(table.orgId, table.videoId),
     index("analysis_runs_org_id_status_idx").on(table.orgId, table.status),
     index("analysis_runs_superseded_by_idx").on(table.supersededBy),
+    index("analysis_runs_lease_expires_at_idx").on(table.leaseExpiresAt),
     check(
       "analysis_runs_progress_pct_check",
       sql`${table.progressPct} >= 0 and ${table.progressPct} <= 100`
@@ -206,6 +210,7 @@ export const analysisArtifacts = pgTable(
       .references(() => analysisRuns.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     blobPath: text("blob_path").notNull(),
+    attempt: integer("attempt"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

@@ -64,6 +64,13 @@
       "when": 1784385076495,
       "tag": "0008_lethal_moondragon",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788633107744,
+      "tag": "0009_third_abomination",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,8 @@ export type AdminRunRow = {
   stageDetail: string | null
   errorCode: string | null
   attempt: number
+  ownerId: string | null
+  leaseExpiresAt: Date | null
   startedAt: Date | null
   updatedAt: Date
   providerResults: unknown
@@ -50,6 +52,8 @@ export async function listAdminRuns(filter: AdminRunFilter) {
       stageDetail: analysisRuns.stageDetail,
       errorCode: analysisRuns.errorCode,
       attempt: analysisRuns.attempt,
+      ownerId: analysisRuns.ownerId,
+      leaseExpiresAt: analysisRuns.leaseExpiresAt,
       startedAt: analysisRuns.startedAt,
       updatedAt: analysisRuns.updatedAt,
       providerResults: analysisRuns.providerResults,
@@ -83,6 +87,9 @@ export async function requeueAdminRun(runId: string, adminUserId: string) {
       progressPct: 0,
       stageDetail: "Requeued by platform admin",
       errorCode: null,
+      ownerId: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
       completedAt: null,
       updatedAt: new Date(),
     })
@@ -116,6 +123,9 @@ export async function markAdminRunFailed(runId: string, adminUserId: string) {
       status: "failed",
       stageDetail: "Marked failed by platform admin watchdog",
       errorCode: "unknown",
+      ownerId: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
       completedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -132,6 +142,9 @@ export async function markStuckRunsFailed(adminUserId: string) {
       status: "failed",
       stageDetail: "Marked failed by platform admin watchdog",
       errorCode: "unknown",
+      ownerId: null,
+      leaseToken: null,
+      leaseExpiresAt: null,
       completedAt: new Date(),
       updatedAt: new Date(),
     })

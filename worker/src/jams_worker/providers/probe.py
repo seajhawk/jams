@@ -256,7 +256,7 @@ class ProbeProvider:
             progress_end=70,
         )
 
-        normalized_path = f"{context.org_id}/{context.video_id}/normalized.mp4"
+        normalized_path = f"runs/{context.run_id}/attempts/{context.attempt}/probe/normalized.mp4"
         _upload_blob(context, normalized, normalized_path)
         context.register_artifact("normalized_video", normalized_path)
 
@@ -278,7 +278,7 @@ class ProbeProvider:
                     str(audio),
                 ]
             )
-            audio_path = f"{context.org_id}/{context.video_id}/audio.wav"
+            audio_path = f"runs/{context.run_id}/attempts/{context.attempt}/probe/audio.wav"
             _upload_blob(context, audio, audio_path)
             context.register_artifact("audio_wav", audio_path)
         else:

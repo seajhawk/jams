@@ -14,7 +14,7 @@ from azure.storage.blob import BlobServiceClient
 from psycopg import Connection
 from psycopg.types.json import Jsonb
 
-from jams_worker.errors import PipelineError
+from jams_worker.errors import PipelineError, StaleLeaseError
 
 MeasureRow = dict[str, Any]
 
@@ -63,8 +63,10 @@ class PipelineContext:
     blob_service_client: BlobServiceClient
     db_conn: Connection[Any]
     workdir: Path
-    register_artifact: Callable[[str, str], str]
+    register_artifact: Callable[..., str]
     heartbeat: Callable[[str, int, str | None], None]
+    owner_id: str | None = None
+    lease_token: str | None = None
     provider_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     @property
@@ -74,6 +76,10 @@ class PipelineContext:
     @property
     def video_id(self) -> str:
         return str(self.run["video_id"])
+
+    @property
+    def attempt(self) -> int:
+        return int(self.run.get("attempt") or 1)
 
     def report_provider_summary(self, provider_id: str, summary: dict[str, Any]) -> None:
         self.provider_summaries[provider_id] = summary
@@ -124,10 +130,32 @@ def write_provider_measures(
     provider_id: str,
     provider_version: str,
     measures: Sequence[MeasureRow],
+    owner_id: str | None = None,
+    lease_token: str | None = None,
 ) -> None:
-    """Delete then insert one provider's measures so retries are idempotent."""
+    """Delete then insert one provider's measures so retries are idempotent and fenced."""
+
+    if conn is None:
+        return
 
     with conn.transaction():
+        if owner_id is not None and lease_token is not None:
+            cur = conn.execute(
+                """
+                select 1 from analysis_runs
+                where id = %s
+                  and owner_id = %s
+                  and lease_token = %s
+                  and lease_expires_at > now()
+                for update
+                """,
+                (run_id, owner_id, lease_token),
+            )
+            if hasattr(cur, "fetchone") and cur.fetchone() is None:
+                raise StaleLeaseError(
+                    f"Write rejected: worker {owner_id} lost lease for run {run_id}"
+                )
+
         conn.execute(
             "delete from measures where run_id = %s and provider_id = %s",
             (run_id, provider_id),
@@ -166,17 +194,129 @@ def write_provider_measures(
             )
 
 
+PROVIDER_DEPENDENTS: dict[str, list[str]] = {
+    "probe": [
+        "context_switch",
+        "transcription",
+        "sentiment",
+        "segmentation",
+        "segment_labeling",
+        "scoring",
+    ],
+    "context_switch": ["segmentation", "scoring"],
+    "transcription": ["sentiment", "segmentation", "segment_labeling", "scoring"],
+    "sentiment": ["scoring"],
+    "segmentation": ["segment_labeling", "scoring"],
+    "segment_labeling": ["scoring"],
+    "scoring": [],
+}
+
+PROVIDER_PREREQUISITES: dict[str, list[str]] = {
+    "context_switch": ["probe"],
+    "transcription": ["probe"],
+    "sentiment": ["transcription"],
+    "segmentation": ["transcription", "context_switch"],
+    "segment_labeling": ["segmentation"],
+    "scoring": ["transcription", "context_switch", "sentiment", "segmentation"],
+}
+
+
+def invalidate_provider_and_dependents(
+    context: PipelineContext,
+    provider_id: str,
+    provider_version: str = "1.0.0",
+) -> None:
+    """Clear failed provider outputs and all downstream dependent stages."""
+    dependents = [provider_id, *PROVIDER_DEPENDENTS.get(provider_id, [])]
+    if context.db_conn is None:
+        return
+
+    try:
+        write_provider_measures(
+            context.db_conn,
+            run_id=context.run_id,
+            org_id=context.org_id,
+            provider_id=provider_id,
+            provider_version=provider_version,
+            measures=[],
+            owner_id=context.owner_id,
+            lease_token=context.lease_token,
+        )
+    except StaleLeaseError:
+        raise
+    except Exception:
+        pass
+
+    try:
+        with context.db_conn.transaction():
+            if context.owner_id is not None and context.lease_token is not None:
+                cur = context.db_conn.execute(
+                    """
+                    select 1 from analysis_runs
+                    where id = %s
+                      and owner_id = %s
+                      and lease_token = %s
+                      and lease_expires_at > now()
+                    for update
+                    """,
+                    (context.run_id, context.owner_id, context.lease_token),
+                )
+                if hasattr(cur, "fetchone") and cur.fetchone() is None:
+                    raise StaleLeaseError(
+                        f"Write rejected: worker {context.owner_id} "
+                        f"lost lease for run {context.run_id}"
+                    )
+
+            for pid in dependents:
+                context.db_conn.execute(
+                    "delete from measures where run_id = %s and provider_id = %s",
+                    (context.run_id, pid),
+                )
+            if "segmentation" in dependents or "segment_labeling" in dependents:
+                context.db_conn.execute(
+                    "delete from segments where run_id = %s",
+                    (context.run_id,),
+                )
+            if "scoring" in dependents:
+                context.db_conn.execute(
+                    "delete from effort_scores where run_id = %s",
+                    (context.run_id,),
+                )
+    except StaleLeaseError:
+        raise
+    except Exception:
+        pass
+
+
 def run_pipeline(
     context: PipelineContext,
     providers: Sequence[MeasureProvider],
 ) -> PipelineResult:
     provider_versions: dict[str, str] = {}
     failures: list[tuple[str, str]] = []
+    failed_provider_ids: set[str] = set()
 
     for provider in providers:
         provider_versions[provider.id] = provider.version
         started_at = time.perf_counter()
         measures: list[MeasureRow] = []
+
+        failed_prereqs = [
+            req
+            for req in PROVIDER_PREREQUISITES.get(provider.id, [])
+            if req in failed_provider_ids
+        ]
+        if failed_prereqs:
+            failed_provider_ids.add(provider.id)
+            context.report_provider_summary(
+                provider.id,
+                {
+                    "status": "partial",
+                    "reason": f"skipped_dependency_failed:{failed_prereqs[0]}",
+                },
+            )
+            continue
+
         log_event(
             "provider_start",
             run_id=context.run_id,
@@ -194,8 +334,14 @@ def run_pipeline(
                 provider_id=provider.id,
                 provider_version=provider.version,
                 measures=measures,
+                owner_id=context.owner_id,
+                lease_token=context.lease_token,
             )
+        except StaleLeaseError:
+            raise
         except PipelineError as exc:
+            failed_provider_ids.add(provider.id)
+            invalidate_provider_and_dependents(context, provider.id, provider.version)
             duration_ms = round((time.perf_counter() - started_at) * 1000)
             context.report_provider_summary(
                 provider.id,
@@ -214,6 +360,8 @@ def run_pipeline(
             )
             raise
         except Exception as exc:  # pragma: no cover - defensive partial semantics
+            failed_provider_ids.add(provider.id)
+            invalidate_provider_and_dependents(context, provider.id, provider.version)
             failures.append((provider.id, str(exc)))
             context.report_provider_summary(
                 provider.id,

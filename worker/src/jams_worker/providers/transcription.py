@@ -692,7 +692,10 @@ class TranscriptionProvider:
         if not context.provider_summaries.get(self.id):
             context.report_provider_summary(self.id, {"status": status, "reason": reason})
 
-        blob_path = f"runs/{context.run_id}/transcription/transcript.json"
+        blob_path = (
+            f"runs/{context.run_id}/attempts/{context.attempt}/"
+            "transcription/transcript.json"
+        )
         _upload_derived(context, transcript_path, blob_path)
         artifact_id = context.register_artifact("transcript_json", blob_path)
         for measure in measures:
