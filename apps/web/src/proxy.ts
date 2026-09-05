@@ -18,5 +18,6 @@ export const config = {
   matcher: [
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|png|gif|svg|webp|ico|woff2?|ttf|map)).*)",
     "/(api|trpc)(.*)",
+    "/__clerk/:path*",
   ],
 }
