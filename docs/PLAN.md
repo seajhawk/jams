@@ -108,10 +108,10 @@ Postgres, DDL owned by **Drizzle migrations in the Next.js repo** (single source
 - **F8 — Billing + quotas (Re-prioritized).** Private pilot usage quotas, admission limits, and unsubsidized unit-economics instrumentation; automated Stripe direct subscriptions deferred until paid customer willingness-to-pay is validated.
 - **F9 — Config authoring + hardening.** Per-run YAML analysis config w/ JSON Schema validation (F9b implemented), Postgres RLS (F9a implemented; isolation hardening ongoing), admin page for failed runs.
 - **F10+ — FROZEN behind explicit evidence gates.** Clicks/keypresses/scrolls CV providers (PR #2), OCR concepts/choices, webcam/prosody fusion, and desktop telemetry agents are strictly frozen until:
-  1. *Reliability Gate:* Timebase integrity (audio stream offset <= 50ms) and durable dispatch/claim fencing pass in CI.
-  2. *Measurement Validation Gate:* 30-video holdout evaluation achieves >=80% scene switch precision/recall and <10% false-negative rate on neutral narration.
+  1. *Reliability Gate:* Timebase integrity (satisfying the sacred timestamp agreement threshold of ±250ms) and durable dispatch/claim fencing pass in CI.
+  2. *Measurement Validation Gate:* 30-video holdout evaluation meets owner-approved benchmark criteria for scene switch precision/recall and neutral-narration sentiment.
   3. *Pilot Demand Gate:* Active private pilot customers explicitly request micro-telemetry to make their redesign decisions.
-  4. *Commercial WTP Gate:* At least 2 pilot customers execute paid renewals under unsubsidized pricing.
+  4. *Commercial WTP Gate:* At least 2 pilot customers execute paid renewals under owner-approved pricing targets.
   *(See `docs/private-pilot-playbook.md` Section 11 for complete freeze details).*
 
 ## Build process: token-efficient delegation

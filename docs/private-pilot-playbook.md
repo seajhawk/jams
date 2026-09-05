@@ -4,14 +4,14 @@
 
 JAMS implements a granted patent (*"Artificial Intelligence Assisted Method for Measuring and Quantifying Physical Effort, Cognitive Effort, and Sentiment While Performing a Task"*). The product processes video recordings (screen capture + audio narration) of users executing software tasks to produce synchronized, timestamped measures of effort and sentiment, an adjustable Effort Score, and an interactive report with video deep links.
 
-As documented in the September 5, 2026 project review, JAMS has demonstrated substantial prototype functionality, but it is **not yet ready for unattended paid launch**. To build a viable, sustainable business, engineering expansion must be paired with disciplined customer discovery and empirical validation.
+As documented in the September 5, 2026 project review, JAMS has demonstrated substantial prototype functionality, but it is **not yet ready for an unattended paid launch**. To build a viable, sustainable business, engineering expansion must be paired with disciplined customer discovery and empirical measurement validation.
 
 ### Four-Tier Status Classification Framework
 
 To eliminate ambiguity between code existence and validated market utility, the repository tracks all capabilities across four distinct tiers:
 
 1. **Implemented (Code in Repo):** The feature or component exists in source code within `apps/web/` or `worker/` and is merged into `master`.
-2. **Locally Tested (Verified in Local Harness):** The capability has executed in local automated tests, mock environments, or synthetic fixture runs. *Crucially, local testing does not prove integration under live network conditions, resilience to real-world edge cases (e.g., audio offsets, speech accents), or scalability on cloud SKUs.*
+2. **Locally Tested (Verified in Local Harness):** The capability has executed in local automated tests, mock environments, or synthetic fixture runs. *Crucially, local testing does not prove integration under live network conditions, resilience to real-world edge cases (e.g., audio stream offsets, speech accents), or scalability on cloud SKUs.*
 3. **Deployed (Running on Production Infrastructure):** The component is provisioned, configured, and operating in a live Azure cloud environment with managed identities, production databases, and monitoring.
 4. **Customer-Validated (Proven with Real External Users):** The workflow has been repeatedly utilized by target external buyers using their own consented data, producing verified business outcomes and demonstrated willingness to pay.
 
@@ -19,13 +19,13 @@ To eliminate ambiguity between code existence and validated market utility, the 
 
 | Area / Feature | Implemented | Locally Tested | Deployed | Customer-Validated | Status Notes & Known Gaps |
 |---|:---:|:---:|:---:|:---:|---|
-| **F0 Delegation Tooling** | ✅ | ✅ | N/A | N/A | Codex & Copilot CLI skills in repo; active in workflow. |
+| **F0 Delegation Tooling** | ✅ | ✅ | N/A | N/A | Codex & Copilot CLI skills in repo; active in development workflow. |
 | **F1 App Shell & Demo Report** | ✅ | ✅ | ❌ | ❌ | Hand-authored demo report renders; local tests pass. Deployed hosting deferred. |
-| **F2 Upload & Video Library** | ✅ | ✅ | ❌ | ❌ | Direct Blob upload with SAS; verified against Azurite. No production quotas. |
-| **F3 Pipeline Spine (Probe, Scenes, Whisper)** | ✅ | ⚠️ Partial | ❌ | ❌ | Whisper INT8 & AdaptiveDetector implemented. **Gaps:** Audio offset bug (~1.94s drift), 2-vCPU ACA CPU benchmark unexecuted, queue race. |
+| **F2 Upload & Video Library** | ✅ | ⚠️ Partial | ❌ | ❌ | Direct Blob upload with SAS client implemented; local unit tests pass. End-to-end integration against live Azurite/Azure Blob under active upload concurrency and production quota enforcement remains to be validated. |
+| **F3 Pipeline Spine (Probe, Scenes, Whisper)** | ✅ | ⚠️ Partial | ❌ | ❌ | Whisper INT8 & AdaptiveDetector implemented. **Gaps:** Audio stream start offset bug (~1.94s drift), 2-vCPU ACA CPU benchmark unexecuted, queue/DB commit race. |
 | **F4 Sentiment, Segmentation, Scoring** | ✅ | ⚠️ Partial | ❌ | ❌ | DistilBERT-SST2 ONNX & rule segmentation. **Gaps:** SST-2 misclassifies neutral software narration as negative; missing data scores as low effort. |
 | **F5 Processing Delight** | ✅ | ✅ | ❌ | ❌ | Skeletons, ETA calculations, measures query route implemented. |
-| **F6a Re-runs, Sharing, Export** | ✅ | ⚠️ Partial | ❌ | ❌ | Versioned re-runs, tokenized sharing, CSV/JSON export. **Gaps:** Web DB role has broad token select permissions; share links persist after org deletion. |
+| **F6a Re-runs, Sharing, Export** | ✅ | ⚠️ Partial | ❌ | ❌ | Versioned re-runs, tokenized sharing, CSV/JSON export. **Gaps:** Web DB role has broad token select permissions; organization deletion does not revoke active share access or purge storage blobs. |
 | **F6b LLM Segment Labeling** | ✅ | ✅ | ❌ | ❌ | Feature-flagged; implemented via OpenRouter proxy (default off). |
 | **F7 Comparison v1** | ✅ | ⚠️ Partial | ❌ | ❌ | Side-by-side run comparison with score deltas. **Gaps:** Positional segment alignment; older runs use historical snapshots. |
 | **F8 Billing & Quotas** | ❌ | ❌ | ❌ | ❌ | **Deferred by design.** Automated Stripe billing held until pilot validates willingness to pay. Admission quotas needed for pilot. |
@@ -49,11 +49,10 @@ Target Workflow: Software Variant Usability Comparison
 [Version A (Baseline / Current / Competitor)] vs. [Version B (Redesign / Candidate)]
 ```
 
-> **The Hypothesis:**
-> If a UX researcher uploading paired video recordings of participants executing the same task under Version A and Version B receives an automated, synchronized comparison of physical pacing, cognitive context-switching, and utterance-level sentiment with deep-linked video proof:
-> 1. They will reduce their qualitative synthesis time by **at least 50%**.
-> 2. They will achieve **higher stakeholder acceptance** of friction findings because observations are tied directly to objective, timestamped metrics rather than subjective notes.
-> 3. They will demonstrate **willingness to pay** for continued access once the pilot concludes.
+> **Proposed Core Hypotheses (Subject to Owner Review & Approval):**
+> 1. *Synthesis Velocity Hypothesis:* UX researchers will reduce qualitative video synthesis time compared to their manual baseline (proposed exploratory target to evaluate: $\ge 50\%$ reduction in hours spent).
+> 2. *Evidence Acceptance Hypothesis:* Product and engineering stakeholders will exhibit higher acceptance of friction findings when supported by synchronized experimental observable proxies (context switches, utterance sentiment) linked directly to video moments, compared to subjective note summaries (proposed exploratory target to evaluate: $\ge 80\%$ stakeholder acceptance).
+> 3. *Commercial Viability Hypothesis:* Buyers will demonstrate willingness to pay for ongoing access once pilot evaluation concludes at an owner-approved price point.
 
 ### Disqualified Segments (Out of Scope for Pilot)
 - **General Meeting / Podcast Summaries:** JAMS is not a general transcription or meeting notes tool (e.g., Otter, Fathom).
@@ -71,10 +70,10 @@ To establish genuine incremental value, JAMS must be positioned relative to the 
 |---|---|---|---|---|
 | **Primary Job to be Done** | Recruit participants and capture unmoderated task sessions. | Organize qualitative research tags, quotes, and insights across studies. | Free-form review and note-taking on a zero-software budget. | **Algorithmic effort quantification & variant comparison with video deep links.** |
 | **Video Processing** | Cloud storage, raw transcription, automated clip creation via keyword search. | Transcription, qualitative tagging by keyword, manual highlight reels. | Manual playback scrubbing at 1.5x speed; manual timestamp copy-paste. | **Automated context-switch detection, word-level audio alignment, utterance sentiment.** |
-| **Effort & Cognitive Load** | Post-task survey proxies only (e.g., SUS, SEQ, System Usability Scale). | None (researcher must interpret and tag sentiment manually). | Subjective researcher impression written in spreadsheet cells. | **Objective, observable physical/cognitive/sentiment proxies with transparent breakdown.** |
+| **Effort & Cognitive Load** | Post-task survey proxies only (e.g., SUS, SEQ, System Usability Scale). | None (researcher must interpret and tag sentiment manually). | Subjective researcher impression written in spreadsheet cells. | **Experimental observable physical, cognitive, and narration sentiment proxies with transparent breakdown.** |
 | **Variant Comparison** | Side-by-side metric tables (completion rate, time-on-task, SUS score). | Cross-project tag search; manual juxtaposition of findings. | Manually aligned spreadsheet rows; side-by-side video windows. | **Segment-aligned timeline comparison with differential Effort Score calculation.** |
 | **Evidence Durability** | Hosted video player behind platform subscription paywall. | Repository highlight reel linked to project tags. | Local MP4 files or unindexed Loom links. | **Canonical timestamped measures, self-contained report, exportable data (CSV/JSON).** |
-| **JAMS Differentiation** | *Complements:* Ingest videos recorded on UserTesting/Maze to analyze friction deeply. | *Complements:* Export JAMS timestamped findings into Dovetail as structured evidence. | *Replaces:* Eliminates manual scrubbing and timestamp logging for comparative tasks. | **The specialized measurement engine for comparative task effort.** |
+| **JAMS Differentiation** | *Complements:* Ingest videos recorded on UserTesting/Maze to analyze friction deeply. | *Complements:* Export JAMS timestamped findings into Dovetail as structured evidence. | *Replaces:* Eliminates manual scrubbing and timestamp logging for comparative tasks. | **Specialized comparative analysis tool evaluating observable task-effort proxies.** |
 
 ---
 
@@ -97,7 +96,7 @@ Determine if the prospect regularly conducts comparative software task research,
 7. "Have you tried automated transcription or AI summarization tools? Where did they fall short for comparative task analysis?"
 
 #### Tooling & Commercial Reality (10 min)
-8. "What tools does your team currently pay for in your research stack (e.g., Dovetail, UserTesting, Figma)? Who signs off on software purchases under $2,000/year?"
+8. "What tools does your team currently pay for in your research stack (e.g., Dovetail, UserTesting, Figma)? What is your team's typical approval process and budget threshold for adopting new research software?"
 9. "If software could take 10 task recordings from Version A and 10 from Version B, automatically identify every screen context switch and frustration cue, and align them side-by-side with click-to-seek video proof, how would that change your delivery timeline?"
 
 #### Pilot Invitation & Data Gate (10 min)
@@ -113,7 +112,7 @@ A prospect is admitted to the private pilot only if they pass all five gates:
 - [ ] **Gate 2 (Video Format Compatibility):** Video format consists of desktop/web screen recordings with clear English audio narration, duration <= 15 minutes per task session, 5–15 participant recordings total.
 - [ ] **Gate 3 (Data Governance & Consent):** Prospect confirms participant consent permits analysis by third-party processing infrastructure under a standard confidentiality/DPA agreement.
 - [ ] **Gate 4 (Stakeholder Access):** Researcher agrees to share the final JAMS report/comparison with their direct product/engineering stakeholders and participate in a joint debrief.
-- [ ] **Gate 5 (Commercial Intent):** Prospect agrees to a structured paid pilot commitment ($500–$1,000 deposit or study fee, creditable toward an annual subscription) or an explicit executive-backed conditional purchase order upon reaching agreed value milestones. *(Note: Actual fee level to be decided by owner; free pilots are prohibited to avoid non-binding feedback).*
+- [ ] **Gate 5 (Commercial Intent):** Prospect agrees to an owner-approved pilot commitment structure (e.g., a paid pilot fee, deposit creditable toward future subscription, or an executive-backed conditional purchase order tied to agreed success milestones, with terms to be determined by the owner).
 
 ---
 
@@ -158,21 +157,21 @@ gantt
 
 ## 5. Measurable Incremental-Value Outcomes
 
-To prove that JAMS provides substantial value beyond status-quo tools, the pilot tracks four quantitative outcome metrics:
+To evaluate whether JAMS provides genuine incremental value beyond status-quo tools, the pilot tracks four quantitative outcome metrics. The baseline values, measurement methodology, and formal target thresholds below are explicitly proposed exploratory hypotheses requiring owner approval:
 
-```
-1. Synthesis Time Saved = (Baseline Synthesis Hours - JAMS Synthesis Hours) / Baseline Synthesis Hours
-   Target: >= 50% reduction in researcher time required to produce a final report.
+1. *Proposed Synthesis Time Saved Hypothesis:*
+   $$\text{Synthesis Time Saved} = \frac{\text{Baseline Manual Synthesis Hours} - \text{JAMS Synthesis Hours}}{\text{Baseline Manual Synthesis Hours}}$$
+   - *Exploratory Target to Evaluate:* $\ge 50\%$ reduction in researcher hours required to produce a final report from 10 task recordings.
 
-2. Stakeholder Evidence Acceptance = (Accepted Findings / Total Presented Findings)
-   Target: >= 80% of identified friction points accepted by engineering/product without requesting raw video re-checks.
+2. *Proposed Stakeholder Evidence Acceptance Hypothesis:*
+   $$\text{Stakeholder Evidence Acceptance} = \frac{\text{Accepted Findings}}{\text{Total Presented Findings}}$$
+   - *Exploratory Target to Evaluate:* $\ge 80\%$ of identified friction points accepted by engineering/product without requesting raw video re-checks.
 
-3. Decision Velocity = Days from last participant session to final design decision
-   Target: Reduced from typical 10–14 days to <= 3 business days.
+3. *Proposed Decision Velocity Hypothesis:*
+   - *Exploratory Target to Evaluate:* Elapsed business days from last participant session to final design decision reduced to $\le 3$ business days (compared to researcher's historical baseline).
 
-4. Defect Discovery Rate = Number of high-friction micro-moments (confusion, excessive back-tracking)
-   Target: JAMS flags at least 2 actionable friction moments per task that were missed in manual note-taking.
-```
+4. *Proposed Defect Discovery Hypothesis:*
+   - *Exploratory Target to Evaluate:* Flags $\ge 2$ actionable friction moments per task that were omitted in manual note-taking.
 
 ---
 
@@ -184,7 +183,7 @@ At the conclusion of the 4-week pilot, JAMS leadership evaluates the commercial 
 flowchart TD
     A[Pilot Completed] --> B{Did customer run 2nd study unprompted within 30 days?}
     B -- No --> C{Did customer offer to pay for continued access?}
-    B -- Yes --> D{Is customer willing to pay >= $150/mo or $50/study?}
+    B -- Yes --> D{Is customer willing to pay at or above owner-defined target price point?}
     C -- No --> E[STOP / PIVOT: Core value proposition unvalidated]
     C -- Yes --> D
     D -- Yes --> F[GO: Proceed with production deployment & billing]
@@ -194,14 +193,14 @@ flowchart TD
 ### Explicit Decision Gates
 1. **Strong Commercial Signal (GO):**
    - At least 2 of 3 pilot organizations execute a second study within 30 days of pilot completion.
-   - The buyer approves a paid ongoing subscription (or per-study package) at a price point that yields >= 75% gross margin over unsubsidized COGS.
+   - The buyer approves a paid ongoing subscription (or per-study package) at a price point that yields a sustainable margin over measured unsubsidized COGS (target margin threshold to be determined by owner).
    - Stakeholders confirm that the comparison report directly influenced a product roadmap or design decision.
 2. **Ambiguous Signal (ITERATE):**
    - Researchers praise the report interface and timestamp links, but report that sentiment analysis is too noisy for client presentations, or that segment alignment required too much manual correction.
    - *Action:* Do not expand to F10. Address measurement validity, refine model calibration, and test again on a single follow-on pilot.
 3. **Negative Commercial Signal (KILL / PIVOT):**
    - Researchers revert to manual notes, citing lack of trust in the Effort Score.
-   - Zero pilot participants agree to pay an unsubsidized fee after the pilot ends.
+   - Zero pilot participants agree to pay an ongoing subscription or study fee after the pilot ends.
    - *Action:* Halt further SaaS development. Review whether the patent method is better commercialized as an enterprise consulting toolkit, a plugin to existing platforms (e.g., Dovetail app), or archived.
 
 ---
@@ -235,18 +234,20 @@ Before commercial claims are made, the following empirical validation study prot
   - Exact timestamps of true application / context transitions.
   - Utterance-level friction / frustration ratings (1 = Calm/Positive, 0 = Neutral/Procedural, −1 = Frustrated/Confused).
   - Overall task cognitive load assessed via standard post-task instruments: Single Ease Question (SEQ, 1–7) and NASA Task Load Index (NASA-TLX, 6 dimensions).
-- **Inter-Rater Reliability:** Inter-annotator agreement measured via Cohen’s kappa ($\kappa$). Annotation is accepted only if $\kappa \ge 0.75$. Disagreements resolved by a third rater.
+- **Inter-Rater Reliability:** Inter-annotator agreement measured via Cohen’s kappa ($\kappa$). Annotation target: $\kappa \ge 0.75$. Disagreements resolved by a third rater.
 
-### Validation Acceptance Thresholds
+### Validation Benchmark Targets (Proposed Hypotheses Subject to Owner Approval)
 
-| Pipeline Stage | Metric | Target Threshold | Validation Purpose |
+The following validation targets are proposed benchmark hypotheses for the measurement validation study, subject to owner review and calibration:
+
+| Pipeline Stage | Metric | Proposed Benchmark Target | Validation Purpose |
 |---|---|:---:|---|
-| **Audio Extraction** | Stream Time Offset Error | $\le 50\text{ ms}$ | Ensures audio origin matches video origin perfectly across formats. |
-| **Transcription** | Word Error Rate (WER) | $< 5.0\%$ | Baseline accuracy on clear English audio; document degradation on accented clips. |
-| **Context Switches** | Precision & Recall | $\ge 80\%$ Precision / $\ge 80\%$ Recall | Ensures scrolling is not misclassified as scene cuts (AdaptiveDetector tuning). |
-| **Sentiment Proxy** | False Negative Rate on Neutral Narration | $< 10.0\%$ | Prevents procedural narration (*"I click submit"*) from being marked as user frustration. |
-| **Effort Score Correlation** | Spearman's $\rho$ vs. NASA-TLX & SEQ | $\rho \ge 0.65$ ($p < 0.01$) | Validates that higher Effort Scores correlate with validated subjective workload. |
-| **Cross-Stage Timebase** | Max Seek Error to Video Event | $\le 250\text{ ms}$ | Guarantees the patent promise of instant, accurate video deep-linking. |
+| **Audio Extraction** | Stream Time Offset Error | $\le 250\text{ ms}$ (aspirational target: $\le 50\text{ ms}$) | Ensures audio origin matches video origin within PLAN.md's sacred timestamp threshold across media formats. |
+| **Transcription** | Word Error Rate (WER) | $< 5.0\%$ | Baseline accuracy on clear English audio; document degradation on accented clips (aligned with PLAN.md). |
+| **Context Switches** | Precision & Recall | $\ge 80\%$ Precision / $\ge 80\%$ Recall (exploratory target) | Evaluates whether scrolling is misclassified as scene cuts (AdaptiveDetector tuning). |
+| **Sentiment Proxy** | False Negative Rate on Neutral Narration | $< 10.0\%$ (exploratory target) | Evaluates whether procedural narration (*"I click submit"*) is misclassified as user frustration. |
+| **Effort Score Correlation** | Spearman's $\rho$ vs. NASA-TLX & SEQ | $\rho \ge 0.65$ ($p < 0.01$) (exploratory target) | Evaluates whether composite Effort Scores correlate positively with validated subjective workload proxies. |
+| **Cross-Stage Timebase** | Max Seek Error to Video Event | $\le 250\text{ ms}$ | Enforces the PLAN's sacred timestamp threshold for accurate video deep-linking. |
 
 *Note: All validation results must be published in `docs/benchmarks/` with exact fixture hashes. JAMS documentation must never claim validated accuracy until this protocol is executed and passed.*
 
@@ -305,16 +306,19 @@ flowchart LR
 
 | Subprocessor | Role in JAMS | Data Sent / Processed | Data Transit Security | Storage Location | Default Setting |
 |---|---|---|---|---|---|
-| **Microsoft Azure** | Infrastructure Host (ACA, Blob Storage, PostgreSQL Flexible Server) | Raw video/audio files, derived media (WAV, keyframes, normalized MP4), application metadata, user accounts, measures. | TLS 1.3 in transit; AES-256 at rest. Managed identity access; no static storage keys. | East US (or selected Azure region) | Mandatory |
-| **Clerk, Inc.** | User authentication, organization tenancy, session tokens. | User email, display name, organization memberships, login IP. | TLS 1.3, encrypted session JWTs, Svix-verified webhook signatures. | United States | Mandatory |
-| **OpenRouter** *(if LLM labeling enabled)* | API proxy for optional segment naming and merge recommendations. | **Text transcripts and segment timestamp boundaries only.** No raw video or audio frames are ever transmitted. | HTTPS / TLS 1.3 with API token authorization. | United States | **Optional (Default: OFF)** |
+| **Microsoft Azure** | Infrastructure Host (ACA, Blob Storage, PostgreSQL Flexible Server) | Raw video/audio files, derived media (WAV, keyframes, normalized MP4), application metadata, user accounts, measures. | TLS in transit; encryption at rest depends on Azure provisioning configuration (currently deferred). Managed identity access planned; no static storage keys in production architecture. | East US (or selected Azure region) | Mandatory |
+| **Clerk, Inc.** | User authentication, organization tenancy, session tokens. | User email, display name, organization memberships, login IP. | TLS in transit, encrypted session JWTs, Svix-verified webhook signatures implemented in code. | United States | Mandatory |
+| **OpenRouter** *(if LLM labeling enabled)* | API proxy for optional segment naming and merge recommendations. | **Text transcripts and segment timestamp boundaries only.** No raw video or audio frames are ever transmitted. | HTTPS in transit with API token authorization. | United States | **Optional (Default: OFF)** |
 | **Anthropic, PBC** *(via OpenRouter)* | Underlying LLM provider executing segment naming. | Segment transcript text snippets. | Encrypted API transit via OpenRouter proxy. | United States | **Optional (Default: OFF)** |
 
-### Customer Data Protection Checklist
-- [ ] **Upload Hygiene Guidelines Provided:** Customer instructed to use test/staging accounts, dummy data, and avoid displaying passwords or personal data during usability sessions.
-- [ ] **Pilot Data Protection Agreement (DPA):** Signed DPA specifying tenant isolation via Clerk `withOrg()` and database row segregation.
-- [ ] **Explicit OpenRouter Disclosure:** If LLM segment labeling is toggled on, customer must explicitly opt in with knowledge of the OpenRouter/Anthropic data path.
-- [ ] **Zero Model Training Commitment:** Explicit confirmation that customer video, audio, and transcript data is **never** used to train foundation models (Whisper weights are static local INT8; ONNX is static; OpenRouter/Anthropic requests carry zero-data-retention headers where supported).
+### Customer Data Protection Audit & Policy Status
+- **In-Container Local Models (Whisper, PySceneDetect, ONNX DistilBERT):**
+  - *Current Status:* Inference runs locally in the worker container on CPU using static weights. No video frames, audio samples, or transcripts are transmitted to external APIs by these local stages.
+- **External LLM Path (OpenRouter / Anthropic):**
+  - *Current Status:* `segment_labeling.py` makes a standard HTTP POST request to OpenRouter. No zero-data-retention (ZDR) headers or enterprise data-protection agreements are configured in repository code.
+  - *Required Policy Action:* Before enabling segment labeling for pilot customer data, the owner must decide whether to execute an enterprise agreement with OpenRouter/Anthropic, configure zero-data-retention headers, or route requests to a private Azure OpenAI deployment.
+- **Upload Hygiene Guidelines Provided:** Customer instructed to use test/staging accounts, dummy data, and avoid displaying passwords or personal data during usability sessions.
+- **Pilot Data Protection Agreement (DPA):** Signed DPA specifying tenant isolation via Clerk `withOrg()` and database row segregation.
 
 ---
 
@@ -330,23 +334,23 @@ flowchart LR
 
 ### Retention & Lifecycle Policies
 1. **Raw Video Files (Original Uploads):**
-   - Retained in Azure Blob Storage Hot tier for **30 days** by default.
-   - At day 31, customer can elect to: (a) delete the original video while retaining derived measures/transcripts, (b) transition to Azure Blob Cool/Cold tier for long-term audit, or (c) retain on Hot tier under an active storage quota.
+   - Retained in Azure Blob Storage Hot tier for an owner-defined retention period (e.g., 30 days default).
+   - At expiration, customer can elect to: (a) delete the original video while retaining derived measures/transcripts, (b) transition to Azure Blob Cool/Cold tier for long-term audit, or (c) retain on Hot tier under an active storage quota.
 2. **Derived Analysis Artifacts (Normalized MP4, WAV, Keyframes):**
-   - Co-located with video lifecycle; purgable independently to save storage costs.
+   - Co-located with video lifecycle; purgable independently to manage storage footprint.
 3. **Canonical Measures, Transcripts & Scores:**
-   - Retained indefinitely in PostgreSQL while the organization account remains active.
+   - Retained in PostgreSQL while the organization account remains active.
    - Exportable at any time via JSON/CSV export.
 
 ### Deletion Mechanics & Hardening (Addressing Review Findings 11 & 12)
-- **Single-Video Deletion:**
-  - Triggered by user from Video Library (`DELETE /api/videos/:id`).
-  - Atomically marks video deleted in DB, cascades deletion to `analysis_runs`, `measures`, `segments`, and `effort_scores`.
-  - Enqueues background blob deletion job to purge `videos/{org_id}/{video_id}/*` from Azure Storage.
-- **Organization Deletion:**
-  - Triggered via Clerk org deletion webhook.
-  - **Immediate Invalidation:** Public share links revoked immediately; web app denies any fresh SAS generation for the tenant.
-  - **Asynchronous Storage Purge:** Complete purge of all Azure Blob storage prefixes matching `videos/{org_id}/*`.
+- **Current Implementation State:**
+  - User-facing single-video deletion API and automatic blob purge are not yet implemented.
+  - Organization deletion webhook currently sets `orgs.deleted_at` in the database, but does not revoke public share links or delete storage blobs from Azure.
+  - Under the `jams_web` DB role, share tokens are selectable without tenant isolation filters (Finding 11).
+- **Proposed Policy & Implementation Required Before External Pilot:**
+  - Implement single-video deletion API (`DELETE /api/videos/:id`) cascading to DB measures and enqueuing blob cleanup.
+  - Update public share link lookup to verify `orgs.deleted_at IS NULL` and reject requests for deleted organizations.
+  - Implement asynchronous blob purge for deleted organizations.
 - **SAS Token Expiration Boundary:**
   - Active read SAS tokens have a hard expiration of **60 minutes**. Customers must be informed that while revoking database access prevents *new* link creation immediately, an already-issued browser URL remains readable until its 60-minute Azure timestamp expires.
 
@@ -355,36 +359,49 @@ flowchart LR
 ## 10. Unsubsidized Unit Economics & Scenarios
 
 ### The Sponsorship Illusion
-Azure sponsorship credits currently cover cloud infrastructure cash outlays. However, commercial pricing and viability cannot be evaluated using subsidized costs. The pilot must instrument and calculate **true, unsubsidized Cost of Goods Sold (COGS)** per processed video minute.
+Azure sponsorship credits currently cover cloud infrastructure cash outlays. However, commercial pricing and viability cannot be evaluated using subsidized costs. The pilot must instrument and calculate **true, unsubsidized Cost of Goods Sold (COGS)** per processed video minute using verified provider rate cards.
 
-### Key Cost Drivers
-1. **Compute (Worker ACA Job):** 2 vCPU / 4 GiB running at ~$0.000048/vCPU-s + ~$0.0000053/GiB-s.
-   - Execution time: ~0.4x real-time (a 10-minute video processes in ~4 minutes = 240 seconds).
-   - Compute cost per 10-min video: $0.028.
-2. **Compute (Web App Base):** Next.js ACA container (0.5 vCPU / 1 GiB) shared across tenants.
-3. **Storage (Azure Blob):** Hot tier @ ~$0.018/GB-month.
-   - 10-min 1080p video @ 3 Mbps = ~225 MB original.
-   - Derived WAV (16kHz mono) = ~19 MB.
-   - Normalized MP4 + keyframes = ~150 MB.
-   - Total storage per video: ~0.4 GB = ~$0.0072/month.
-4. **Bandwidth (Egress):** Direct Blob playback streaming @ ~$0.087/GB.
-   - Watching a 10-minute video twice: ~0.45 GB egress = ~$0.039.
-5. **Database (PostgreSQL Flexible Server):** Base server (~$15/mo) + storage growth (~150 measures rows per video minute).
-6. **Optional LLM Calls (OpenRouter):** ~$0.005–$0.02 per video when segment naming is toggled on.
+### Parameterized Cost Model
+The direct unit cost of processing and storing a single task video is modeled as:
 
-### Unsubsidized Cost Scenarios Matrix
+$$\text{COGS}_{\text{video}} = \text{Compute}_{\text{worker}} + \text{Compute}_{\text{web}} + \text{Storage}_{\text{blob}} + \text{Egress}_{\text{blob}} + \text{DB}_{\text{overhead}} + \text{LLM}_{\text{external}}$$
 
-| Scenario | Video Duration | Resolution / Bitrate | Retention Period | Reanalysis Rate | Estimated Total Direct COGS (per video) | Implied Floor Price (@ 80% Gross Margin) |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **A: Quick Task** | 5 minutes | 720p (1.5 Mbps) | 30 days | 1x (initial) | **$0.035** | **$0.18** |
-| **B: Standard Usability** | 15 minutes | 1080p (3.5 Mbps) | 60 days | 1x (initial) | **$0.145** | **$0.73** |
-| **C: High-Res Heavy Review** | 15 minutes | 1080p (4.0 Mbps) | 90 days | 3x (re-runs) | **$0.385** | **$1.93** |
-| **D: Edge Max Cap** | 20 minutes | 4K (12.0 Mbps) | 180 days | 2x (re-runs) | **$1.120** | **$5.60** |
+Where the individual components are defined by physical resource consumption multiplied by owner-supplied rate parameters ($R$):
 
-### Commercial Pricing Implications
-- Even with conservative 4x reanalysis and heavy playback, raw compute/storage COGS per 15-minute video remains under **$0.50**.
-- Therefore, infrastructure COGS is **not** the primary pricing driver; **support, onboarding, domain trust, and software R&D amortization** dominate.
-- A pilot offering 10 video analyses per study at $250–$500/study yields gross software margins well above 90%, confirming that pricing is constrained by buyer value perception rather than Azure compute costs.
+$$\text{Compute}_{\text{worker}} = (\text{vCPU-seconds} \times R_{\text{vCPU}}) + (\text{GiB-seconds} \times R_{\text{RAM}})$$
+
+$$\text{Storage}_{\text{blob}} = (\text{Bytes}_{\text{original}} + \text{Bytes}_{\text{derived}}) \times R_{\text{storage}} \times \text{RetentionMonths}$$
+
+$$\text{Egress}_{\text{blob}} = \text{Bytes}_{\text{streamed}} \times R_{\text{egress}}$$
+
+$$\text{LLM}_{\text{external}} = (\text{Tokens}_{\text{input}} \times R_{\text{in}}) + (\text{Tokens}_{\text{output}} \times R_{\text{out}}) \quad (\text{if enabled})$$
+
+- $R_{\text{vCPU}}, R_{\text{RAM}}$: Azure Container Apps Consumption execution rates per vCPU-second and GiB-second.
+- $R_{\text{storage}}$: Azure Blob Storage rate per GB-month (Hot tier).
+- $R_{\text{egress}}$: Azure Blob data egress rate per GB.
+- $R_{\text{in}}, R_{\text{out}}$: LLM API token rates (if segment labeling is enabled).
+
+### Physical Resource Consumption Scenarios Matrix
+
+Rather than inventing speculative dollar rates or profit margins, the table below defines the **physical resource quantities** consumed across operational scenarios:
+
+| Scenario | Video Duration | Resolution / Bitrate | Retention Period | Reanalysis Rate | Estimated Worker Compute Time | Estimated Storage Footprint (Original + Derived) | Estimated Egress (per 2 playback reviews) |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **A: Quick Task** | 5 minutes | 720p (1.5 Mbps) | 30 days | 1x (initial) | ~120 s (2 vCPU / 4 GiB) | ~100 MB | ~110 MB |
+| **B: Standard Usability** | 15 minutes | 1080p (3.5 Mbps) | 60 days | 1x (initial) | ~360 s (2 vCPU / 4 GiB) | ~400 MB | ~450 MB |
+| **C: High-Res Heavy Review** | 15 minutes | 1080p (4.0 Mbps) | 90 days | 3x (re-runs) | ~1,080 s (2 vCPU / 4 GiB) | ~450 MB | ~900 MB |
+| **D: Edge Max Cap** | 20 minutes | 4K (12.0 Mbps) | 180 days | 2x (re-runs) | ~1,200 s (2 vCPU / 4 GiB) | ~2,200 MB | ~2,400 MB |
+
+*Note: Execution duration estimates assume ~0.4x real-time worker processing, pending validation on the actual 2-vCPU ACA hardware SKU. Dollar COGS calculations must be computed by the owner using their actual Azure pricing tier.*
+
+### Instrumentation Instructions for Pilot Logging
+To calibrate the parameterized cost model with empirical data, the private pilot must log the following metrics for every analysis run:
+1. `worker_execution_duration_ms`: Total wall-clock runtime of the ACA Job container.
+2. `worker_peak_memory_bytes`: Peak RAM utilized during Whisper and ONNX model execution.
+3. `original_file_size_bytes`: Exact byte size of uploaded video.
+4. `derived_artifacts_size_bytes`: Total byte size of WAV audio, normalized MP4, and keyframe images.
+5. `reanalysis_count`: Number of analysis runs executed per video ID.
+6. `playback_egress_bytes`: Cumulative bytes transferred via read SAS URLs per video.
 
 ---
 
@@ -409,22 +426,22 @@ As established in the September 5, 2026 project review:
 
 Broader F10 expansion will be resumed **only** when all four of the following gates are satisfied:
 
-- [ ] **Gate 1 (Reliability & Timebase Foundation):** Review Findings 1–4 and 9–10 are resolved. Audio start offset is eliminated ($\le 50\text{ ms}$ error in CI); worker dispatch is durable; worker claim fencing is verified under duplicate delivery.
-- [ ] **Gate 2 (Measurement Validation Holdout):** The measurement validation study protocol (Section 7) is executed on the 30-video dataset. AdaptiveDetector achieves $\ge 80\%$ precision/recall; DistilBERT-SST2 false-negative rate on neutral narration is $< 10\%$.
+- [ ] **Gate 1 (Reliability & Timebase Foundation):** Review Findings 1–4 and 9–10 are resolved. Audio stream start offset is eliminated, satisfying PLAN.md's sacred timestamp agreement threshold of $\le 250\text{ ms}$ (with $\le 50\text{ ms}$ evaluated as an aspirational target in CI); worker dispatch is durable; worker claim fencing is verified under duplicate delivery.
+- [ ] **Gate 2 (Measurement Validation Holdout):** The measurement validation study protocol (Section 7) is executed on the 30-video dataset, meeting owner-approved benchmark criteria on held-out recordings.
 - [ ] **Gate 3 (Customer Demand Evidence):** At least two active private pilot customers explicitly state in debrief interviews that macro-effort (time, context switches, narration sentiment) is insufficient, and provide specific examples where click/scroll micro-telemetry would alter their design decision.
-- [ ] **Gate 4 (Commercial WTP Gate):** At least two pilot organizations execute paid commercial renewals under unsubsidized pricing.
+- [ ] **Gate 4 (Commercial WTP Gate):** At least two pilot organizations execute paid commercial renewals at or above owner-approved pricing targets.
 
 ---
 
 ## 12. Unresolved Owner Decisions
 
-The following structural and business decisions cannot be resolved by autonomous engineering and are cataloged for explicit decision by the product owner (Chris):
+The following structural and business decisions cannot be resolved by autonomous engineering and are cataloged neutrally for explicit decision by the product owner (Chris):
 
 | # | Decision Item | Context & Tradeoffs | Owner Options | Decision Status |
 |---|---|---|---|:---:|
-| **1** | **Private Pilot Pricing Model** | Free pilots generate tire-kickers and low-urgency feedback; paid pilots prove commercial intent but increase sales friction. | **A:** $500–$1,000 paid pilot fee (creditable toward annual plan).<br>**B:** Free pilot conditioned on signed PO with agreed value gates.<br>**C:** Completely free pilot (unconditionally). | **PENDING OWNER DECISION** |
-| **2** | **LLM Subprocessor Routing** | F6b segment labeling currently calls OpenRouter.ai (`anthropic/claude-3-haiku`). PLAN.md originally envisioned direct Anthropic API. | **A:** Retain OpenRouter (disclose in DPA; easy model switching).<br>**B:** Migrate to direct Anthropic API (fewer subprocessor hops).<br>**C:** Migrate to Azure OpenAI (consolidates data inside Azure tenant). | **PENDING OWNER DECISION** |
-| **3** | **Cloud Deployment Authorization** | Code is currently developed and tested locally (docker-compose: Azurite + Postgres). Azure provisioning has been deferred to conserve credits. | **A:** Authorize initial Bicep staging deployment for pilot kickoff.<br>**B:** Maintain local-only testing until 3 pilot customers sign DPAs. | **PENDING OWNER DECISION** |
-| **4** | **Default Video Retention Window** | Retaining original videos on Hot Blob storage costs ~$0.018/GB-mo. Longer retention increases customer convenience but raises liability and storage costs. | **A:** 30 days default, then automatic purge of raw video.<br>**B:** 90 days default, then transition to Cool storage.<br>**C:** Indefinite retention while subscription is active. | **PENDING OWNER DECISION** |
-| **5** | **Disposition of PR #2 (`f10-cv-providers`)** | Branch has open PR #2 exploring clicks/scrolls CV providers. | **A:** Keep PR #2 open in draft state as reference.<br>**B:** Close PR #2 with explicit cross-reference to this playbook's freeze gates.<br>**C:** Rebase PR #2 and continue CV development in parallel. | **PENDING OWNER DECISION** |
-| **6** | **Pilot Customer Recruitment Channel** | Identifying the first 3 pilot prospects. | **A:** Direct founder outreach to existing network of UX research leads.<br>**B:** Cold outreach to boutique UX research agencies.<br>**C:** Public call for pilot participants on LinkedIn/Twitter. | **PENDING OWNER DECISION** |
+| **1** | **Private Pilot Pricing Structure & Commercial Terms** | Balances validating commercial willingness to pay against sales friction during customer recruitment. | **Option A:** Require an upfront paid pilot fee (amount to be determined by owner).<br>**Option B:** Require an executive-sponsored conditional purchase order tied to agreed success milestones.<br>**Option C:** Offer a free pilot in exchange for structured participation and data access commitments. | **PENDING OWNER DECISION** |
+| **2** | **LLM Subprocessor Routing** | F6b segment labeling currently calls OpenRouter.ai (`anthropic/claude-3-haiku`). PLAN.md originally envisioned direct Anthropic API. | **Option A:** Retain OpenRouter (disclose in DPA; maintain multi-model flexibility).<br>**Option B:** Migrate to direct Anthropic API (fewer subprocessor hops).<br>**Option C:** Migrate to Azure OpenAI (consolidates data transit inside Azure).<br>**Option D:** Keep segment labeling permanently disabled for customer pilots. | **PENDING OWNER DECISION** |
+| **3** | **Cloud Deployment Authorization** | Code is currently developed and tested locally (docker-compose: Azurite + Postgres). Azure provisioning has been deferred to conserve credits. | **Option A:** Authorize staging deployment on Azure Container Apps when first pilot candidate is qualified.<br>**Option B:** Authorize staging deployment only after signed pilot agreement.<br>**Option C:** Run pilot on local/managed demo server without cloud provisioning. | **PENDING OWNER DECISION** |
+| **4** | **Default Video Retention & Storage Lifecycle Policy** | Balances Azure storage costs against customer review convenience. | **Option A:** 30 days default retention, then automatic purge of raw video.<br>**Option B:** 90 days retention with transition to Cool storage tier.<br>**Option C:** Retain derived measures and transcripts; delete raw video upon analysis completion unless customer opts into storage. | **PENDING OWNER DECISION** |
+| **5** | **Disposition of PR #2 (`f10-cv-providers`)** | PR #2 explores clicks/scrolls CV providers on branch `f10-cv-providers`. | **Option A:** Keep PR #2 open in draft state as an experimental reference.<br>**Option B:** Close PR #2 with explicit reference to the evidence freeze gates in this playbook.<br>**Option C:** Authorize continued development on F10 in a separate branch. | **PENDING OWNER DECISION** |
+| **6** | **Pilot Candidate Recruitment Strategy** | Approach for identifying the first 3 pilot research teams. | **Option A:** Direct outreach to owner's professional network of UX research leads.<br>**Option B:** Targeted outreach to boutique UX research agencies.<br>**Option C:** Open call for pilot participants via professional channels. | **PENDING OWNER DECISION** |
