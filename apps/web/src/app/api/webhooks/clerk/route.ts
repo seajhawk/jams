@@ -5,6 +5,7 @@ import {
   applyClerkWebhookEvent,
   clerkWebhookId,
   verifyClerkWebhook,
+  WebhookEventInProgressError,
   WebhookVerificationError,
 } from "@/lib/clerk/webhook"
 
@@ -26,6 +27,12 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof WebhookVerificationError) {
       return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+    if (error instanceof WebhookEventInProgressError) {
+      return NextResponse.json(
+        { error: error.message, status: "processing" },
+        { status: 409, headers: { "Retry-After": "5" } }
+      )
     }
 
     throw error

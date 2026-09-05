@@ -19,6 +19,12 @@ import {
 
 export const planEnum = pgEnum("plan", ["free"])
 export const webhookSourceEnum = pgEnum("webhook_source", ["clerk", "stripe"])
+export const webhookEventStatusEnum = pgEnum("webhook_event_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+])
 export const videoStatusEnum = pgEnum("video_status", [
   "uploading",
   "uploaded",
@@ -85,10 +91,19 @@ export const webhookEvents = pgTable(
     source: webhookSourceEnum("source").notNull(),
     externalId: text("external_id").primaryKey(),
     payload: jsonb("payload").notNull(),
+    status: webhookEventStatusEnum("status").notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
     processedAt: timestamp("processed_at", { withTimezone: true }),
+    failedAt: timestamp("failed_at", { withTimezone: true }),
+    lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [uniqueIndex("webhook_events_external_id_idx").on(table.externalId)]
+  (table) => [
+    uniqueIndex("webhook_events_external_id_idx").on(table.externalId),
+    index("webhook_events_status_idx").on(table.status),
+  ]
 )
 
 export const tasks = pgTable(

@@ -10,12 +10,20 @@ export type ClerkUser = {
   displayName: string | null
 }
 
+export type WebhookReservationStatus = "claimed" | "completed" | "in_progress"
+
 export type MirrorStore = {
   reserveWebhookEvent(input: {
-    source: "clerk"
+    source: "clerk" | "stripe"
     externalId: string
     payload: unknown
-  }): Promise<"inserted" | "duplicate">
+  }): Promise<WebhookReservationStatus | "inserted" | "duplicate">
+  markWebhookEventCompleted(externalId: string): Promise<void>
+  markWebhookEventFailed(externalId: string, error: unknown): Promise<void>
+  commitEvent?<T>(
+    externalId: string,
+    mutate?: (store: MirrorStore) => Promise<T>
+  ): Promise<void>
   markWebhookEventProcessed(externalId: string): Promise<void>
   upsertOrg(org: ClerkOrg): Promise<void>
   markOrgDeleted(id: string): Promise<void>
