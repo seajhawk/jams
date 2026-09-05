@@ -1,13 +1,13 @@
-import { eq, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 import { adminDb } from "@/db/admin-client.server"
-import { orgs, users, webhookEvents, weightProfiles } from "@/db/schema"
+import { orgs, userProvisioningLocks, users, webhookEvents, weightProfiles } from "@/db/schema"
 import {
   DEFAULT_WEIGHT_PROFILE_NAME,
   DEFAULT_WEIGHT_PROFILE_NORMALIZATION,
   DEFAULT_WEIGHT_PROFILE_WEIGHTS,
 } from "@/lib/weight-profiles"
-import type { MirrorStore } from "./types"
+import { type MirrorStore, StaleClaimError } from "./types"
 
 function isPersonalOrg(metadata: unknown): boolean {
   return (
@@ -28,6 +28,7 @@ export function createDrizzleMirrorStore(
     async reserveWebhookEvent(input) {
       const now = new Date()
       const leaseCutoff = new Date(now.getTime() - DEFAULT_LEASE_TIMEOUT_MS)
+      const claimToken = crypto.randomUUID()
 
       // Bypass RLS: webhook idempotency is global and has no tenant org_id.
       const claimed = await dbClient
@@ -37,6 +38,7 @@ export function createDrizzleMirrorStore(
           externalId: input.externalId,
           payload: input.payload,
           status: "processing",
+          claimToken,
           attemptCount: 1,
           lastAttemptAt: now,
           updatedAt: now,
@@ -45,6 +47,7 @@ export function createDrizzleMirrorStore(
           target: webhookEvents.externalId,
           set: {
             status: "processing",
+            claimToken,
             attemptCount: sql`${webhookEvents.attemptCount} + 1`,
             lastAttemptAt: now,
             updatedAt: now,
@@ -55,10 +58,14 @@ export function createDrizzleMirrorStore(
         .returning({
           externalId: webhookEvents.externalId,
           status: webhookEvents.status,
+          claimToken: webhookEvents.claimToken,
         })
 
       if (claimed.length > 0) {
-        return "claimed"
+        return {
+          status: "claimed",
+          claimToken: claimed[0].claimToken ?? claimToken,
+        }
       }
 
       // Row was not inserted or updated. Query the existing event's status.
@@ -71,16 +78,16 @@ export function createDrizzleMirrorStore(
         .limit(1)
 
       if (existing[0]?.status === "completed") {
-        return "completed"
+        return { status: "completed" }
       }
 
-      return "in_progress"
+      return { status: "in_progress" }
     },
 
-    async markWebhookEventCompleted(externalId) {
+    async markWebhookEventCompleted(externalId, claimToken) {
       // Bypass RLS: webhook idempotency is global and has no tenant org_id.
       const now = new Date()
-      await dbClient
+      const updated = await dbClient
         .update(webhookEvents)
         .set({
           status: "completed",
@@ -88,13 +95,24 @@ export function createDrizzleMirrorStore(
           updatedAt: now,
           lastError: null,
         })
-        .where(eq(webhookEvents.externalId, externalId))
+        .where(
+          and(
+            eq(webhookEvents.externalId, externalId),
+            eq(webhookEvents.status, "processing"),
+            eq(webhookEvents.claimToken, claimToken)
+          )
+        )
+        .returning({ externalId: webhookEvents.externalId })
+
+      if (updated.length === 0) {
+        throw new StaleClaimError(externalId, claimToken)
+      }
     },
 
-    async markWebhookEventFailed(externalId, error) {
+    async markWebhookEventFailed(externalId, claimToken, error) {
       // Bypass RLS: webhook idempotency is global and has no tenant org_id.
       const now = new Date()
-      await dbClient
+      const updated = await dbClient
         .update(webhookEvents)
         .set({
           status: "failed",
@@ -102,11 +120,23 @@ export function createDrizzleMirrorStore(
           updatedAt: now,
           lastError: error instanceof Error ? error.message : String(error),
         })
-        .where(eq(webhookEvents.externalId, externalId))
+        .where(
+          and(
+            eq(webhookEvents.externalId, externalId),
+            eq(webhookEvents.status, "processing"),
+            eq(webhookEvents.claimToken, claimToken)
+          )
+        )
+        .returning({ externalId: webhookEvents.externalId })
+
+      if (updated.length === 0) {
+        throw new StaleClaimError(externalId, claimToken)
+      }
     },
 
     async commitEvent<T>(
       externalId: string,
+      claimToken: string,
       mutate?: (store: MirrorStore) => Promise<T>
     ): Promise<void> {
       // Bypass RLS: webhook idempotency and mirror operations are trusted admin work.
@@ -117,18 +147,56 @@ export function createDrizzleMirrorStore(
           if (mutate) {
             await mutate(txStore)
           }
-          await txStore.markWebhookEventCompleted(externalId)
+          await txStore.markWebhookEventCompleted(externalId, claimToken)
         })
       } else {
         if (mutate) {
           await mutate(store)
         }
-        await store.markWebhookEventCompleted(externalId)
+        await store.markWebhookEventCompleted(externalId, claimToken)
       }
     },
 
-    async markWebhookEventProcessed(externalId) {
-      await store.markWebhookEventCompleted(externalId)
+    async markWebhookEventProcessed(externalId, claimToken) {
+      await store.markWebhookEventCompleted(externalId, claimToken ?? "")
+    },
+
+    async acquirePersonalOrgLock(userId, ownerToken, leaseMs = 15_000) {
+      const now = new Date()
+      const expiresAt = new Date(now.getTime() + leaseMs)
+
+      const acquired = await dbClient
+        .insert(userProvisioningLocks)
+        .values({
+          userId,
+          lockedBy: ownerToken,
+          expiresAt,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: userProvisioningLocks.userId,
+          set: {
+            lockedBy: ownerToken,
+            expiresAt,
+            updatedAt: now,
+          },
+          setWhere: sql`${userProvisioningLocks.expiresAt} < ${now}`,
+        })
+        .returning({ userId: userProvisioningLocks.userId })
+
+      return acquired.length > 0
+    },
+
+    async releasePersonalOrgLock(userId, ownerToken) {
+      await dbClient
+        .delete(userProvisioningLocks)
+        .where(
+          and(
+            eq(userProvisioningLocks.userId, userId),
+            eq(userProvisioningLocks.lockedBy, ownerToken)
+          )
+        )
     },
 
     async upsertOrg(org) {

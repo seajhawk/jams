@@ -71,6 +71,13 @@
       "when": 1788633045746,
       "tag": "0009_elite_whirlwind",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788634370016,
+      "tag": "0010_lovely_human_fly",
+      "breakpoints": true
     }
   ]
 }

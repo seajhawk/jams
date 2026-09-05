@@ -3,13 +3,25 @@ import { clerkClient } from "@clerk/nextjs/server"
 import { drizzleMirrorStore } from "./mirror-store"
 import type { ClerkBackendClient, ClerkOrg, MirrorStore } from "./types"
 
+export type ReconcilePersonalOrgInput = {
+  userId: string
+  fallbackName?: string | null
+  clerk?: ClerkBackendClient
+  store?: Pick<MirrorStore, "acquirePersonalOrgLock" | "releasePersonalOrgLock">
+  onCreated?: () => Promise<void> | void
+  lockLeaseMs?: number
+  lockTimeoutMs?: number
+}
+
 export type EnsurePersonalOrgInput = {
   userId: string
   activeOrgId?: string | null
   fallbackName?: string | null
   clerk?: ClerkBackendClient
-  store?: Pick<MirrorStore, "upsertOrg">
+  store?: Pick<MirrorStore, "upsertOrg" | "acquirePersonalOrgLock" | "releasePersonalOrgLock">
   onCreated?: () => Promise<void> | void
+  lockLeaseMs?: number
+  lockTimeoutMs?: number
 }
 
 function hasPersonalMetadata(org: ClerkOrg): boolean {
@@ -31,72 +43,95 @@ async function realClerkClient(): Promise<ClerkBackendClient> {
   return clerkClient() as Promise<ClerkBackendClient>
 }
 
-// In-process single-flight map to eliminate list-then-create races for concurrent sign-in / webhook calls
-const inFlightPersonalOrgPromises = new Map<string, Promise<string>>()
-
-async function executeEnsurePersonalOrganization({
+/**
+ * Reconciles or creates a Clerk personal organization with durable per-user locking
+ * to eliminate list-then-create races across distributed instances.
+ */
+export async function reconcilePersonalOrganization({
   userId,
   fallbackName,
   clerk,
-  store = drizzleMirrorStore,
+  store,
   onCreated,
-}: {
-  userId: string
-  fallbackName?: string | null
-  clerk?: ClerkBackendClient
-  store?: Pick<MirrorStore, "upsertOrg">
-  onCreated?: () => Promise<void> | void
-}): Promise<string> {
+  lockLeaseMs = 15_000,
+  lockTimeoutMs = 5_000,
+}: ReconcilePersonalOrgInput): Promise<ClerkOrg> {
   const client = clerk ?? (await realClerkClient())
+  const lockToken = crypto.randomUUID()
+  const startTime = Date.now()
 
-  // Step 1: Query existing memberships
-  const memberships = await client.users.getOrganizationMembershipList({
-    userId,
-    limit: 100,
-  })
-  const personalMembership = memberships.data.find((membership) =>
-    hasPersonalMetadata(membership.organization)
-  )
+  let hasLock = false
+  if (store?.acquirePersonalOrgLock) {
+    while (!hasLock) {
+      hasLock = await store.acquirePersonalOrgLock(userId, lockToken, lockLeaseMs)
+      if (hasLock) {
+        break
+      }
 
-  if (personalMembership) {
-    await store.upsertOrg(personalMembership.organization)
-    return personalMembership.organization.id
+      // While waiting for the lock, check if another process already completed provisioning
+      const memberships = await client.users.getOrganizationMembershipList({
+        userId,
+        limit: 100,
+      })
+      const existing = memberships.data.find((m) => hasPersonalMetadata(m.organization))
+      if (existing) {
+        return existing.organization
+      }
+
+      if (Date.now() - startTime >= lockTimeoutMs) {
+        break
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    }
   }
 
-  // Step 2: Attempt creation, reconciling if an external race already created it
-  let created: ClerkOrg
   try {
-    created = await client.organizations.createOrganization({
-      name: personalOrgName(fallbackName, userId),
-      createdBy: userId,
-      maxAllowedMemberships: 1,
-      privateMetadata: { personal: true },
-    })
-  } catch (error) {
-    // Reconcile: If creation failed (e.g. concurrent creation conflict), re-check memberships
-    const retryMemberships = await client.users.getOrganizationMembershipList({
+    // Under the lock (or after timeout), query memberships
+    const memberships = await client.users.getOrganizationMembershipList({
       userId,
       limit: 100,
     })
-    const reconciled = retryMemberships.data.find((membership) =>
-      hasPersonalMetadata(membership.organization)
+    const personalMembership = memberships.data.find((m) =>
+      hasPersonalMetadata(m.organization)
     )
-    if (reconciled) {
-      await store.upsertOrg(reconciled.organization)
-      return reconciled.organization.id
+
+    if (personalMembership) {
+      return personalMembership.organization
     }
-    throw error
+
+    // Attempt creation, reconciling if another process created it concurrently
+    let created: ClerkOrg
+    try {
+      created = await client.organizations.createOrganization({
+        name: personalOrgName(fallbackName, userId),
+        createdBy: userId,
+        maxAllowedMemberships: 1,
+        privateMetadata: { personal: true },
+      })
+    } catch (error) {
+      const retryMemberships = await client.users.getOrganizationMembershipList({
+        userId,
+        limit: 100,
+      })
+      const reconciled = retryMemberships.data.find((m) =>
+        hasPersonalMetadata(m.organization)
+      )
+      if (reconciled) {
+        return reconciled.organization
+      }
+      throw error
+    }
+
+    if (onCreated) {
+      await onCreated()
+    }
+
+    return created
+  } finally {
+    if (hasLock && store?.releasePersonalOrgLock) {
+      await store.releasePersonalOrgLock(userId, lockToken)
+    }
   }
-
-  // Hook for failure-injection immediately after external Clerk org creation
-  if (onCreated) {
-    await onCreated()
-  }
-
-  // Step 3: Mirror the created org to the local store
-  await store.upsertOrg(created)
-
-  return created.id
 }
 
 export async function ensurePersonalOrganization({
@@ -106,30 +141,26 @@ export async function ensurePersonalOrganization({
   clerk,
   store = drizzleMirrorStore,
   onCreated,
+  lockLeaseMs,
+  lockTimeoutMs,
 }: EnsurePersonalOrgInput): Promise<string> {
   if (activeOrgId) {
     return activeOrgId
   }
 
-  const existingPromise = inFlightPersonalOrgPromises.get(userId)
-  if (existingPromise) {
-    return existingPromise
+  const personalOrg = await reconcilePersonalOrganization({
+    userId,
+    fallbackName,
+    clerk,
+    store,
+    onCreated,
+    lockLeaseMs,
+    lockTimeoutMs,
+  })
+
+  if (store?.upsertOrg) {
+    await store.upsertOrg(personalOrg)
   }
 
-  const promise = (async () => {
-    try {
-      return await executeEnsurePersonalOrganization({
-        userId,
-        fallbackName,
-        clerk,
-        store,
-        onCreated,
-      })
-    } finally {
-      inFlightPersonalOrgPromises.delete(userId)
-    }
-  })()
-
-  inFlightPersonalOrgPromises.set(userId, promise)
-  return promise
+  return personalOrg.id
 }

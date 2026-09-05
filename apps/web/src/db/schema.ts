@@ -92,6 +92,7 @@ export const webhookEvents = pgTable(
     externalId: text("external_id").primaryKey(),
     payload: jsonb("payload").notNull(),
     status: webhookEventStatusEnum("status").notNull().default("pending"),
+    claimToken: text("claim_token"),
     attemptCount: integer("attempt_count").notNull().default(0),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
     processedAt: timestamp("processed_at", { withTimezone: true }),
@@ -105,6 +106,14 @@ export const webhookEvents = pgTable(
     index("webhook_events_status_idx").on(table.status),
   ]
 )
+
+export const userProvisioningLocks = pgTable("user_provisioning_locks", {
+  userId: text("user_id").primaryKey(),
+  lockedBy: text("locked_by").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
 
 export const tasks = pgTable(
   "tasks",

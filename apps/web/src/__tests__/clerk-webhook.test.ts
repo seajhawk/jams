@@ -9,12 +9,13 @@ import {
   WebhookVerificationError,
 } from "@/lib/clerk/webhook"
 import { ensurePersonalOrganization } from "@/lib/clerk/personal-org"
-import type {
-  ClerkBackendClient,
-  ClerkOrg,
-  ClerkUser,
-  MirrorStore,
-  WebhookReservationStatus,
+import {
+  type ClerkBackendClient,
+  type ClerkOrg,
+  type ClerkUser,
+  type MirrorStore,
+  StaleClaimError,
+  type WebhookReservation,
 } from "@/lib/clerk/types"
 
 // Constructed at runtime so no secret-shaped literal exists in source
@@ -91,6 +92,7 @@ type MemoryWebhookRecord = {
   externalId: string
   payload: unknown
   status: "pending" | "processing" | "completed" | "failed"
+  claimToken: string | null
   attemptCount: number
   lastAttemptAt: Date | null
   processedAt: Date | null
@@ -98,19 +100,38 @@ type MemoryWebhookRecord = {
   lastError: string | null
 }
 
+type MemoryLockRecord = {
+  lockedBy: string
+  expiresAt: Date
+}
+
 class MemoryMirrorStore implements MirrorStore {
-  readonly events = new Map<string, MemoryWebhookRecord>()
-  readonly users = new Map<string, ClerkUser>()
-  readonly orgs = new Map<string, ClerkOrg>()
+  readonly events: Map<string, MemoryWebhookRecord>
+  readonly users: Map<string, ClerkUser>
+  readonly orgs: Map<string, ClerkOrg>
+  readonly locks: Map<string, MemoryLockRecord>
   leaseTimeoutMs = 60_000
+
+  constructor(sharedState?: {
+    events?: Map<string, MemoryWebhookRecord>
+    users?: Map<string, ClerkUser>
+    orgs?: Map<string, ClerkOrg>
+    locks?: Map<string, MemoryLockRecord>
+  }) {
+    this.events = sharedState?.events ?? new Map()
+    this.users = sharedState?.users ?? new Map()
+    this.orgs = sharedState?.orgs ?? new Map()
+    this.locks = sharedState?.locks ?? new Map()
+  }
 
   async reserveWebhookEvent(input: {
     source: "clerk" | "stripe"
     externalId: string
     payload: unknown
-  }): Promise<WebhookReservationStatus> {
+  }): Promise<WebhookReservation> {
     const now = new Date()
     const existing = this.events.get(input.externalId)
+    const claimToken = crypto.randomUUID()
 
     if (!existing) {
       this.events.set(input.externalId, {
@@ -118,25 +139,27 @@ class MemoryMirrorStore implements MirrorStore {
         externalId: input.externalId,
         payload: input.payload,
         status: "processing",
+        claimToken,
         attemptCount: 1,
         lastAttemptAt: now,
         processedAt: null,
         failedAt: null,
         lastError: null,
       })
-      return "claimed"
+      return { status: "claimed", claimToken }
     }
 
     if (existing.status === "completed") {
-      return "completed"
+      return { status: "completed" }
     }
 
     if (existing.status === "pending" || existing.status === "failed") {
       existing.status = "processing"
+      existing.claimToken = claimToken
       existing.attemptCount += 1
       existing.lastAttemptAt = now
       existing.lastError = null
-      return "claimed"
+      return { status: "claimed", claimToken }
     }
 
     if (existing.status === "processing") {
@@ -144,47 +167,92 @@ class MemoryMirrorStore implements MirrorStore {
         existing.lastAttemptAt &&
         now.getTime() - existing.lastAttemptAt.getTime() >= this.leaseTimeoutMs
       if (isExpired) {
+        existing.claimToken = claimToken
         existing.attemptCount += 1
         existing.lastAttemptAt = now
         existing.lastError = null
-        return "claimed"
+        return { status: "claimed", claimToken }
       }
-      return "in_progress"
+      return { status: "in_progress" }
     }
 
-    return "in_progress"
+    return { status: "in_progress" }
   }
 
-  async markWebhookEventCompleted(externalId: string) {
+  async markWebhookEventCompleted(externalId: string, claimToken: string) {
     const existing = this.events.get(externalId)
-    if (existing) {
-      existing.status = "completed"
-      existing.processedAt = new Date()
-      existing.lastError = null
+    if (!existing || existing.status !== "processing" || existing.claimToken !== claimToken) {
+      throw new StaleClaimError(externalId, claimToken)
     }
+    existing.status = "completed"
+    existing.processedAt = new Date()
+    existing.lastError = null
   }
 
-  async markWebhookEventFailed(externalId: string, error: unknown) {
+  async markWebhookEventFailed(externalId: string, claimToken: string, error: unknown) {
     const existing = this.events.get(externalId)
-    if (existing) {
-      existing.status = "failed"
-      existing.failedAt = new Date()
-      existing.lastError = error instanceof Error ? error.message : String(error)
+    if (!existing || existing.status !== "processing" || existing.claimToken !== claimToken) {
+      throw new StaleClaimError(externalId, claimToken)
     }
+    existing.status = "failed"
+    existing.failedAt = new Date()
+    existing.lastError = error instanceof Error ? error.message : String(error)
   }
 
   async commitEvent<T>(
     externalId: string,
+    claimToken: string,
     mutate?: (store: MirrorStore) => Promise<T>
   ): Promise<void> {
-    if (mutate) {
-      await mutate(this)
+    const existing = this.events.get(externalId)
+    if (!existing || existing.status !== "processing" || existing.claimToken !== claimToken) {
+      throw new StaleClaimError(externalId, claimToken)
     }
-    await this.markWebhookEventCompleted(externalId)
+
+    // Snapshot state before transaction
+    const usersSnapshot = new Map(this.users)
+    const orgsSnapshot = new Map(this.orgs)
+    const eventsSnapshot = new Map(this.events)
+
+    try {
+      if (mutate) {
+        await mutate(this)
+      }
+      await this.markWebhookEventCompleted(externalId, claimToken)
+    } catch (err) {
+      // Rollback memory state on transaction abort
+      this.users.clear()
+      for (const [k, v] of usersSnapshot) this.users.set(k, v)
+      this.orgs.clear()
+      for (const [k, v] of orgsSnapshot) this.orgs.set(k, v)
+      this.events.clear()
+      for (const [k, v] of eventsSnapshot) this.events.set(k, v)
+      throw err
+    }
   }
 
-  async markWebhookEventProcessed(externalId: string) {
-    await this.markWebhookEventCompleted(externalId)
+  async markWebhookEventProcessed(externalId: string, claimToken?: string) {
+    await this.markWebhookEventCompleted(externalId, claimToken ?? "")
+  }
+
+  async acquirePersonalOrgLock(userId: string, ownerToken: string, leaseMs = 15_000): Promise<boolean> {
+    const now = new Date()
+    const existing = this.locks.get(userId)
+    if (!existing || existing.expiresAt.getTime() < now.getTime()) {
+      this.locks.set(userId, {
+        lockedBy: ownerToken,
+        expiresAt: new Date(now.getTime() + leaseMs),
+      })
+      return true
+    }
+    return false
+  }
+
+  async releasePersonalOrgLock(userId: string, ownerToken: string): Promise<void> {
+    const existing = this.locks.get(userId)
+    if (existing && existing.lockedBy === ownerToken) {
+      this.locks.delete(userId)
+    }
   }
 
   async upsertOrg(org: ClerkOrg) {
@@ -356,6 +424,59 @@ describe("Clerk webhook handling", () => {
       expect(record.status).toBe("completed")
       expect(record.attemptCount).toBe(2)
     })
+
+    it("fences stale claim: expired lease reclaimed by attempt B prevents stale attempt A from finalizing", async () => {
+      const store = new MemoryMirrorStore()
+      const event = userCreatedEvent("user_fencing_test")
+
+      // Attempt A claims the event
+      const reservationA = await store.reserveWebhookEvent({
+        source: "clerk",
+        externalId: "msg_fenced",
+        payload: event,
+      })
+      expect(reservationA.status).toBe("claimed")
+      if (reservationA.status !== "claimed") throw new Error("Expected claimed")
+      const tokenA = reservationA.claimToken
+
+      // Simulate Attempt A taking too long and lease expiring
+      const record = store.events.get("msg_fenced")!
+      record.lastAttemptAt = new Date(Date.now() - 120_000)
+
+      // Attempt B reclaims the event with a new claimToken
+      const reservationB = await store.reserveWebhookEvent({
+        source: "clerk",
+        externalId: "msg_fenced",
+        payload: event,
+      })
+      expect(reservationB.status).toBe("claimed")
+      if (reservationB.status !== "claimed") throw new Error("Expected claimed")
+      const tokenB = reservationB.claimToken
+      expect(tokenB).not.toBe(tokenA)
+      expect(record.attemptCount).toBe(2)
+      expect(record.claimToken).toBe(tokenB)
+
+      // Stale Attempt A attempts to complete the event -> MUST fail with StaleClaimError
+      await expect(
+        store.markWebhookEventCompleted("msg_fenced", tokenA)
+      ).rejects.toThrow(StaleClaimError)
+
+      // Stale Attempt A attempts to mark failed -> MUST fail with StaleClaimError
+      await expect(
+        store.markWebhookEventFailed("msg_fenced", tokenA, new Error("stale failure"))
+      ).rejects.toThrow(StaleClaimError)
+
+      // Verify Attempt B's active processing was NOT mutated by Stale Attempt A
+      expect(record.status).toBe("processing")
+      expect(record.claimToken).toBe(tokenB)
+      expect(record.lastError).toBeNull()
+
+      // Active Attempt B completes successfully
+      await expect(
+        store.markWebhookEventCompleted("msg_fenced", tokenB)
+      ).resolves.toBeUndefined()
+      expect(record.status).toBe("completed")
+    })
   })
 
   describe("Failure injection and retry recovery", () => {
@@ -442,7 +563,11 @@ describe("Clerk webhook handling", () => {
       expect(record?.lastError).toBe("Injected failure after external org creation")
       expect(record?.processedAt).toBeNull()
 
-      // Redelivery: ensurePersonalOrganization reconciles existing Clerk org idempotently
+      // Neither user nor org was committed yet because DB writes are atomic with ledger completion
+      expect(store.users.has("user_fail_after_org")).toBe(false)
+      expect(store.orgs.has("org_personal_user_fail_after_org")).toBe(false)
+
+      // Redelivery: reconcilePersonalOrganization reconciles existing Clerk org idempotently
       shouldFail = false
       const redeliveryStatus = await applyClerkWebhookEvent(
         event,
@@ -458,6 +583,8 @@ describe("Clerk webhook handling", () => {
       // Crucial: exactly ONE personal org created in Clerk, NOT two
       expect(clerk.createOrgCallCount).toBe(1)
       expect(clerk.createdOrgs.length).toBe(1)
+      // Both user and org were atomically committed
+      expect(store.users.get("user_fail_after_org")).toBeDefined()
       expect(store.orgs.get("org_personal_user_fail_after_org")).toBeDefined()
 
       // Further redelivery returns duplicate
@@ -472,35 +599,35 @@ describe("Clerk webhook handling", () => {
     })
   })
 
-  describe("Concurrent first sign-ins", () => {
-    it("eliminates list-then-create race when multiple sign-in requests arrive simultaneously", async () => {
-      const store = new MemoryMirrorStore()
-      const clerk = statefulClerk()
-      const userId = "user_concurrent_first_signin"
+  describe("Concurrent first sign-ins across independent instances", () => {
+    it("eliminates list-then-create race using durable locking across two independent store coordinators", async () => {
+      // Shared backend state (simulating shared database tables between two independent web instances)
+      const sharedDbState = {
+        events: new Map<string, MemoryWebhookRecord>(),
+        users: new Map<string, ClerkUser>(),
+        orgs: new Map<string, ClerkOrg>(),
+        locks: new Map<string, MemoryLockRecord>(),
+      }
 
-      // Trigger 10 concurrent first sign-ins for the same user
-      const results = await Promise.all([
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
-        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store }),
+      // Two independent store coordinators simulating scaled instances
+      const coordinatorA = new MemoryMirrorStore(sharedDbState)
+      const coordinatorB = new MemoryMirrorStore(sharedDbState)
+      const clerk = statefulClerk()
+      const userId = "user_scaled_instances_race"
+
+      // Trigger concurrent sign-ins from both independent coordinators simultaneously
+      const [resultA, resultB] = await Promise.all([
+        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store: coordinatorA }),
+        ensurePersonalOrganization({ userId, fallbackName: "Alice", clerk, store: coordinatorB }),
       ])
 
-      // All 10 callers received the identical org id
-      const expectedOrgId = `org_personal_${userId}`
-      for (const orgId of results) {
-        expect(orgId).toBe(expectedOrgId)
-      }
+      // Both instances resolved to the identical personal org ID
+      expect(resultA).toBe(`org_personal_${userId}`)
+      expect(resultB).toBe(`org_personal_${userId}`)
 
       // Exactly ONE organization was created in Clerk
       expect(clerk.createOrgCallCount).toBe(1)
-      expect(store.orgs.has(expectedOrgId)).toBe(true)
+      expect(sharedDbState.orgs.has(`org_personal_${userId}`)).toBe(true)
     })
   })
 
@@ -534,6 +661,46 @@ describe("Clerk webhook handling", () => {
       const record = store.events.get("msg_org_create")
       expect(record?.status).toBe("completed")
       expect(record?.processedAt).toBeInstanceOf(Date)
+    })
+
+    it("atomically commits user.created DB writes and ledger completion, rolling back both if commit fails", async () => {
+      const store = new MemoryMirrorStore()
+      const clerk = statefulClerk()
+      const event = userCreatedEvent("user_atomic_test")
+
+      // Intercept upsertOrg on store to simulate DB write failure inside commitEvent
+      let failDbWrite = true
+      const originalUpsertOrg = store.upsertOrg.bind(store)
+      store.upsertOrg = async (org) => {
+        if (failDbWrite) {
+          throw new Error("Simulated database failure during upsertOrg")
+        }
+        return originalUpsertOrg(org)
+      }
+
+      await expect(
+        applyClerkWebhookEvent(event, "msg_atomic_tx", store, clerk)
+      ).rejects.toThrow("Simulated database failure during upsertOrg")
+
+      // Because upsertUser and upsertOrg are inside commitEvent transaction,
+      // neither user nor org must remain in store when transaction fails
+      expect(store.users.has("user_atomic_test")).toBe(false)
+      expect(store.orgs.has("org_personal_user_atomic_test")).toBe(false)
+
+      // Event is marked failed
+      const record = store.events.get("msg_atomic_tx")
+      expect(record?.status).toBe("failed")
+
+      // Now retry with DB healthy
+      failDbWrite = false
+      const retryStatus = await applyClerkWebhookEvent(event, "msg_atomic_tx", store, clerk)
+      expect(retryStatus).toBe("processed")
+      expect(record?.status).toBe("completed")
+
+      // Both user and org are now atomically committed
+      expect(store.users.has("user_atomic_test")).toBe(true)
+      expect(store.orgs.has("org_personal_user_atomic_test")).toBe(true)
+      expect(clerk.createOrgCallCount).toBe(1)
     })
   })
 })

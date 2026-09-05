@@ -10,25 +10,42 @@ export type ClerkUser = {
   displayName: string | null
 }
 
-export type WebhookReservationStatus = "claimed" | "completed" | "in_progress"
+export type WebhookReservation =
+  | { status: "claimed"; claimToken: string }
+  | { status: "completed" }
+  | { status: "in_progress" }
+
+export class StaleClaimError extends Error {
+  constructor(
+    public readonly externalId: string,
+    public readonly claimToken: string,
+    message = `Stale claim finalized for webhook event ${externalId} (claimToken: ${claimToken})`
+  ) {
+    super(message)
+    this.name = "StaleClaimError"
+  }
+}
 
 export type MirrorStore = {
   reserveWebhookEvent(input: {
     source: "clerk" | "stripe"
     externalId: string
     payload: unknown
-  }): Promise<WebhookReservationStatus | "inserted" | "duplicate">
-  markWebhookEventCompleted(externalId: string): Promise<void>
-  markWebhookEventFailed(externalId: string, error: unknown): Promise<void>
-  commitEvent?<T>(
+  }): Promise<WebhookReservation>
+  markWebhookEventCompleted(externalId: string, claimToken: string): Promise<void>
+  markWebhookEventFailed(externalId: string, claimToken: string, error: unknown): Promise<void>
+  commitEvent<T>(
     externalId: string,
+    claimToken: string,
     mutate?: (store: MirrorStore) => Promise<T>
   ): Promise<void>
-  markWebhookEventProcessed(externalId: string): Promise<void>
+  markWebhookEventProcessed(externalId: string, claimToken?: string): Promise<void>
   upsertOrg(org: ClerkOrg): Promise<void>
   markOrgDeleted(id: string): Promise<void>
   upsertUser(user: ClerkUser): Promise<void>
   markUserDeleted(id: string): Promise<void>
+  acquirePersonalOrgLock?(userId: string, ownerToken: string, leaseMs?: number): Promise<boolean>
+  releasePersonalOrgLock?(userId: string, ownerToken: string): Promise<void>
 }
 
 export type OrganizationMembership = {
