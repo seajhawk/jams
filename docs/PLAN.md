@@ -29,7 +29,14 @@ Design validated by a 7-agent research + judge-panel workflow (verified Azure pr
 | Clicks/keypresses/scrolls §[0017–19] | Future CV providers + telemetry agent (claim 2) | F10+ |
 | Concepts §[0021] / Choices §[0023] | Future OCR+NLP providers | F10+ |
 
-> **Status 2026-07-17:** F1-F4 (MVP) complete and verified locally. **Azure provisioning is deferred by decision** - build and test locally (docker compose: Postgres + Azurite) until Chris green-lights deploy. No Azure meters run before then; deploy becomes Bicep + connection-string swaps when triggered.
+> **Status & Validation State (Updated 2026-09-05):**
+> Following the September 5, 2026 project review, repository status is tracked across four distinct tiers to separate code existence from production and market validation:
+> - **Implemented:** F0–F7, F9a, F9b merged in repo.
+> - **Locally Tested:** Unit test suites, synthetic fixtures, and local dev scripts pass; known reliability gaps identified in the 2026-09-05 review (audio stream offset, missing-data score bias, unbenchmarked 2-vCPU SKU, sentiment model bias on neutral software narration, queue/db commit race, share token select scope) require resolution before production reliance.
+> - **Deployed:** **Not deployed.** Azure provisioning remains deferred by owner decision; local execution via Docker Compose (Postgres + Azurite) is active.
+> - **Customer-Validated:** **Not validated.** Zero external customer studies completed; no confirmed buyer willingness-to-pay.
+>
+> See `docs/private-pilot-playbook.md` for the complete private pilot discovery protocol, measurement-validation study protocol, unsubsidized unit economics, and customer gates.
 
 ## Architecture
 
@@ -98,9 +105,14 @@ Postgres, DDL owned by **Drizzle migrations in the Next.js repo** (single source
 - **F5 — Processing delight.** "Found so far" incremental teasers, duration-based ETA, email-when-done, report-shaped skeletons, keyboard shortcuts.
 - **F6 — Re-run/versioning, Haiku labeling, sharing.** superseded_by run chains, flagged segment naming, expiring share links, CSV/JSON export.
 - **F7 — Comparison v1.** Side-by-side runs of the same task, aligned by segment; score deltas. Pure read-side over canonical measures — *the patent's comparison core.*
-- **F8 — Billing + quotas.** Stripe direct, org subscriptions, free-tier gate (N analyses/mo), entitlements via webhook ledger.
-- **F9 — Config authoring + hardening.** Per-run YAML analysis config w/ JSON Schema validation (patent data-format fidelity), Postgres RLS, admin page for failed runs.
-- **F10+ — designed-for, not built:** clicks/keypresses/scrolls CV providers, OCR concepts/choices, webcam/prosody sentiment fusion, telemetry agent (source='telemetry', clock-offset merge), public API. *New providers and rows — never a re-architecture.*
+- **F8 — Billing + quotas (Re-prioritized).** Private pilot usage quotas, admission limits, and unsubsidized unit-economics instrumentation; automated Stripe direct subscriptions deferred until paid customer willingness-to-pay is validated.
+- **F9 — Config authoring + hardening.** Per-run YAML analysis config w/ JSON Schema validation (F9b implemented), Postgres RLS (F9a implemented; isolation hardening ongoing), admin page for failed runs.
+- **F10+ — FROZEN behind explicit evidence gates.** Clicks/keypresses/scrolls CV providers (PR #2), OCR concepts/choices, webcam/prosody fusion, and desktop telemetry agents are strictly frozen until:
+  1. *Reliability Gate:* Timebase integrity (audio stream offset <= 50ms) and durable dispatch/claim fencing pass in CI.
+  2. *Measurement Validation Gate:* 30-video holdout evaluation achieves >=80% scene switch precision/recall and <10% false-negative rate on neutral narration.
+  3. *Pilot Demand Gate:* Active private pilot customers explicitly request micro-telemetry to make their redesign decisions.
+  4. *Commercial WTP Gate:* At least 2 pilot customers execute paid renewals under unsubsidized pricing.
+  *(See `docs/private-pilot-playbook.md` Section 11 for complete freeze details).*
 
 ## Build process: token-efficient delegation
 
