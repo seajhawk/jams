@@ -223,6 +223,39 @@ def test_duplicate_send_for_completed_run_skipped_and_deleted(
     assert result.status == "skipped"
 
 
+def test_update_message_failure_is_logged_and_message_left_for_redelivery(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    queue = _Queue()
+    poison = _Queue()
+    conn = _Conn()
+
+    def failing_update(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("network failure during visibility update")
+
+    queue.update_message = failing_update  # type: ignore[method-assign]
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+
+    result = handle_message(
+        message=_Message(json.dumps({"run_id": "run_visibility_fail"}), dequeue_count=1),
+        queue=queue,  # type: ignore[arg-type]
+        poison_queue=poison,  # type: ignore[arg-type]
+        conn=conn,  # type: ignore[arg-type]
+        blob_service_client=object(),  # type: ignore[arg-type]
+        providers=[],
+    )
+
+    assert queue.deleted == []
+    assert poison.sent == []
+    assert result.status == "redelivery"
+
+    logs = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    failure_logs = [log for log in logs if log.get("event") == "update_message_failed"]
+    assert len(failure_logs) == 1
+    assert "network failure" in failure_logs[0]["error"]
+    assert failure_logs[0]["run_id"] == "run_visibility_fail"
+
+
 def test_run_loop_drain_exits_when_queue_empty(monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     queue = _Queue()
     poison = _Queue()

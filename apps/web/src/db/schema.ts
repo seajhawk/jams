@@ -231,12 +231,17 @@ export const analysisDispatchOutbox = pgTable(
     attempt: integer("attempt").notNull().default(0),
     lastError: text("last_error"),
     dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [
     index("analysis_dispatch_outbox_status_created_at_idx").on(
       table.status,
       table.createdAt
+    ),
+    index("analysis_dispatch_outbox_status_lease_idx").on(
+      table.status,
+      table.leaseExpiresAt
     ),
     index("analysis_dispatch_outbox_org_id_idx").on(table.orgId),
     index("analysis_dispatch_outbox_run_id_idx").on(table.runId),

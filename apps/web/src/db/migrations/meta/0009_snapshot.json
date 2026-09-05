@@ -1,5 +1,5 @@
 {
-  "id": "a92d4ef7-5851-4acc-a839-d1bdd6b6b8f7",
+  "id": "81b28162-eb7b-4f8f-960f-d83e0afd3117",
   "prevId": "9ba9872f-8471-4b32-8a22-280b82ca83d2",
   "version": "7",
   "dialect": "postgresql",
@@ -162,6 +162,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "lease_expires_at": {
+          "name": "lease_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -195,6 +201,27 @@
             },
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "analysis_dispatch_outbox_status_lease_idx": {
+          "name": "analysis_dispatch_outbox_status_lease_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lease_expires_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

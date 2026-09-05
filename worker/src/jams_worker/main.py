@@ -163,8 +163,13 @@ def handle_message(
             if hasattr(queue, "update_message"):
                 try:
                     queue.update_message(message.id, message.pop_receipt, visibility_timeout=2)
-                except Exception:
-                    pass
+                except Exception as update_exc:
+                    log_event(
+                        "update_message_failed",
+                        run_id=run_id,
+                        message_id=getattr(message, "id", None),
+                        error=str(update_exc),
+                    )
             return MessageResult(run_id, "redelivery")
     except Exception as exc:
         if getattr(message, "dequeue_count", 1) >= MAX_DEQUEUE_ATTEMPTS:
@@ -177,8 +182,13 @@ def handle_message(
             if hasattr(queue, "update_message"):
                 try:
                     queue.update_message(message.id, message.pop_receipt, visibility_timeout=2)
-                except Exception:
-                    pass
+                except Exception as update_exc:
+                    log_event(
+                        "update_message_failed",
+                        run_id=run_id,
+                        message_id=getattr(message, "id", None),
+                        error=str(update_exc),
+                    )
             return MessageResult(run_id, "redelivery")
     else:
         queue.delete_message(message.id, message.pop_receipt)
