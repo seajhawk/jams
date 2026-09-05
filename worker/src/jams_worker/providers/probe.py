@@ -76,7 +76,11 @@ def probe_file(path: Path) -> MediaMetadata:
     audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
     fmt = data.get("format") if isinstance(data.get("format"), dict) else {}
 
-    v_start = float(video_stream.get("start_time") or 0.0)
+    try:
+        v_start = float(video_stream.get("start_time") or 0.0)
+    except (TypeError, ValueError):
+        v_start = 0.0
+
     v_dur_raw = video_stream.get("duration")
     fmt_dur_raw = fmt.get("duration")
 
@@ -124,6 +128,8 @@ def probe_file(path: Path) -> MediaMetadata:
         except (TypeError, ValueError):
             a_dur = None
         audio_offset_ms = round((a_start - 0.0) * 1000)
+        if a_start is not None and a_dur is not None:
+            duration_seconds = max(duration_seconds, a_start + a_dur)
 
     duration_ms = round(duration_seconds * 1000)
 
@@ -143,6 +149,7 @@ def probe_file(path: Path) -> MediaMetadata:
         audio_duration_seconds=a_dur,
         audio_offset_ms=audio_offset_ms,
         audio_normalized_aligned=True,
+        video_normalized_aligned=True,
     )
 
 
@@ -259,6 +266,8 @@ class ProbeProvider:
         )
         context.db_conn.commit()
 
+        duration_s = max(0.001, result.duration_ms / 1000.0)
+
         normalize_args = [
             ffmpeg,
             "-y",
@@ -267,13 +276,29 @@ class ProbeProvider:
             "-map",
             "0:v:0",
         ]
+        if result.video_start_seconds > 0.001:
+            normalize_args.extend(
+                [
+                    "-vf",
+                    f"tpad=start_duration={result.video_start_seconds:.6f}:color=black",
+                ]
+            )
+        elif result.video_start_seconds < -0.001:
+            trim_start = abs(result.video_start_seconds)
+            normalize_args.extend(
+                [
+                    "-vf",
+                    f"trim=start={trim_start:.6f},setpts=PTS-STARTPTS",
+                ]
+            )
+
         if result.has_audio:
             normalize_args.extend(
                 [
                     "-map",
                     "0:a:0",
                     "-af",
-                    "aresample=async=1:first_pts=0",
+                    f"aresample=async=1:first_pts=0,apad=whole_dur={duration_s:.6f}",
                     "-c:a",
                     "aac",
                 ]
@@ -288,6 +313,8 @@ class ProbeProvider:
                 "yuv420p",
                 "-fps_mode",
                 "cfr",
+                "-t",
+                f"{duration_s:.6f}",
                 "-movflags",
                 "+faststart",
                 "-progress",
@@ -310,7 +337,6 @@ class ProbeProvider:
 
         if result.has_audio:
             context.heartbeat("probe", 75, "Extracting audio")
-            duration_s = max(0.001, result.duration_ms / 1000.0)
             audio_filter = f"aresample=async=1:first_pts=0,apad=whole_dur={duration_s:.6f}"
             _run_ffmpeg(
                 [
@@ -348,7 +374,7 @@ class ProbeProvider:
                     "-ss",
                     f"{poster_ss:.3f}",
                     "-i",
-                    str(original),
+                    str(normalized),
                     "-frames:v",
                     "1",
                     "-q:v",

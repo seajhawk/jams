@@ -37,6 +37,7 @@ class MediaMetadata:
     audio_duration_seconds: float | None = None  # Audio stream duration
     audio_offset_ms: int = 0  # Audio stream start offset relative to playback origin (ms)
     audio_normalized_aligned: bool = True  # True if audio.wav extracted with origin alignment
+    video_normalized_aligned: bool = True  # True if normalized.mp4 video padded/aligned with origin
 
     def clamp_timestamp_ms(self, t_ms: int) -> int:
         """Clamp a timestamp in milliseconds to valid playback timeline bounds [0, duration_ms]."""
@@ -58,6 +59,25 @@ class MediaMetadata:
             return max(0, timeline_ms)
         return max(0, timeline_ms - self.audio_offset_ms)
 
+    def video_stream_ms_to_timeline_ms(self, stream_ms: int) -> int:
+        """Map raw unpadded video stream position to playback timeline position.
+
+        If video was delayed by 1500 ms in the original container, stream_ms=0 maps to 1500 ms.
+        If normalized.mp4 was encoded with origin alignment (video_normalized_aligned=True),
+        frame 0 is ALREADY at 0 ms.
+        """
+        if self.video_normalized_aligned:
+            return self.clamp_timestamp_ms(stream_ms)
+        offset_ms = round(self.video_start_seconds * 1000)
+        return self.clamp_timestamp_ms(stream_ms + offset_ms)
+
+    def timeline_ms_to_video_stream_ms(self, timeline_ms: int) -> int:
+        """Map playback timeline millisecond position to unpadded video stream position."""
+        if self.video_normalized_aligned:
+            return max(0, timeline_ms)
+        offset_ms = round(self.video_start_seconds * 1000)
+        return max(0, timeline_ms - offset_ms)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "container": self.container,
@@ -75,6 +95,7 @@ class MediaMetadata:
             "audio_duration_seconds": self.audio_duration_seconds,
             "audio_offset_ms": self.audio_offset_ms,
             "audio_normalized_aligned": self.audio_normalized_aligned,
+            "video_normalized_aligned": self.video_normalized_aligned,
         }
 
 
@@ -96,37 +117,34 @@ def get_authoritative_duration_ms(
 
     db_conn = getattr(context, "db_conn", None)
     if db_conn is not None:
-        try:
-            row = db_conn.execute(
-                "select duration_ms from videos where id = %s and org_id = %s",
-                (context.video_id, context.org_id),
-            ).fetchone()
-            if row is not None and row[0] is not None:
-                return int(row[0])
-        except Exception:
-            pass
+        row = db_conn.execute(
+            "select duration_ms from videos where id = %s and org_id = %s",
+            (context.video_id, context.org_id),
+        ).fetchone()
+        if row is not None and row[0] is not None:
+            return int(row[0])
 
     if fallback_path is not None and fallback_path.exists():
         from jams_worker.ffmpeg import PROBE_TIMEOUT_SECONDS, ffprobe_path, run_media_command
 
-        try:
-            result = run_media_command(
-                [
-                    ffprobe_path(),
-                    "-v",
-                    "error",
-                    "-show_entries",
-                    "format=duration",
-                    "-of",
-                    "csv=p=0",
-                    str(fallback_path),
-                ],
-                timeout_seconds=PROBE_TIMEOUT_SECONDS,
-            )
-            if result.returncode == 0 and result.stdout.strip():
+        result = run_media_command(
+            [
+                ffprobe_path(),
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+                str(fallback_path),
+            ],
+            timeout_seconds=PROBE_TIMEOUT_SECONDS,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            try:
                 return int(math.floor(float(result.stdout.strip()) * 1000 + 0.5))
-        except Exception:
-            pass
+            except ValueError:
+                pass
 
     return int(context.run.get("duration_ms") or 0)
 

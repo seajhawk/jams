@@ -19,10 +19,12 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
+import pytest
+
 from jams_worker.ffmpeg import ffmpeg_path, ffprobe_path
 from jams_worker.media import MediaMetadata, get_authoritative_duration_ms
 from jams_worker.pipeline import PipelineContext
-from jams_worker.providers.context_switch import extract_thumbnail
+from jams_worker.providers.context_switch import ContextSwitchProvider, extract_thumbnail
 from jams_worker.providers.probe import ProbeProvider, probe_file
 from jams_worker.providers.segmentation import UtteranceCue, build_segments
 from jams_worker.providers.transcription import (
@@ -416,6 +418,141 @@ def test_nonzero_video_start_presentation_duration(tmp_path: Path) -> None:
 
     assert ctx.media is not None
     assert abs(ctx.media.duration_ms - 5500) <= 50
+
+    # Presentation duration and stream alignment of normalized.mp4 must match origin T=0
+    norm_path = tmp_path / "normalized.mp4"
+    assert norm_path.exists()
+    norm_probe = json.loads(
+        subprocess.check_output(
+            [
+                ffprobe_path(),
+                "-v",
+                "error",
+                "-show_streams",
+                "-show_format",
+                "-of",
+                "json",
+                str(norm_path),
+            ]
+        )
+    )
+    v_s = next(s for s in norm_probe["streams"] if s["codec_type"] == "video")
+    a_s = next(s for s in norm_probe["streams"] if s["codec_type"] == "audio")
+    assert float(v_s["start_time"]) == 0.0
+    assert float(a_s["start_time"]) == 0.0
+    assert abs(float(v_s["duration"]) - 5.5) <= 0.1
+    assert abs(float(a_s["duration"]) - 5.5) <= 0.1
+    assert abs(float(norm_probe["format"]["duration"]) - 5.5) <= 0.1
+
+
+def test_nonzero_video_start_visual_event_maps_to_original_playback_within_tolerance(
+    tmp_path: Path,
+) -> None:
+    """A visual cut 1.0s into a video stream starting at 1.5s must map to 2.5s within ±250ms."""
+    source = tmp_path / "delayed_cut.mp4"
+    # Create video stream with 1s black + 2s white, offset by 1.5s in container.
+    # In original playback timeline:
+    # 0.0 - 1.5s: before video start (silence / blank)
+    # 1.5 - 2.5s: black
+    # 2.5 - 4.5s: white (visible scene cut at exactly 2.5s / 2500ms)
+    cmd = [
+        ffmpeg_path(),
+        "-v",
+        "error",
+        "-y",
+        "-itsoffset",
+        "1.5",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=160x90:r=30:d=1",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=white:s=160x90:r=30:d=2",
+        "-filter_complex",
+        "[0:v][1:v]concat=n=2:v=1:a=0[v]",
+        "-map",
+        "[v]",
+        "-c:v",
+        "libx264",
+        str(source),
+    ]
+    subprocess.run(cmd, check=True, timeout=60)
+
+    meta = probe_file(source)
+    assert meta.video_start_seconds == 1.5
+    assert meta.video_normalized_aligned is True
+
+    ctx = _make_context(tmp_path)
+    with (
+        patch(
+            "jams_worker.providers.probe._download_blob",
+            side_effect=lambda c, p: shutil.copyfile(source, p),
+        ),
+        patch("jams_worker.providers.probe._upload_blob"),
+    ):
+        ProbeProvider().run(ctx)
+
+    # Assert normalized presentation duration and alignment
+    norm_path = tmp_path / "normalized.mp4"
+    assert norm_path.exists()
+    norm_probe = json.loads(
+        subprocess.check_output(
+            [
+                ffprobe_path(),
+                "-v",
+                "error",
+                "-show_streams",
+                "-show_format",
+                "-of",
+                "json",
+                str(norm_path),
+            ]
+        )
+    )
+    v_s = next(s for s in norm_probe["streams"] if s["codec_type"] == "video")
+    assert float(v_s["start_time"]) == 0.0
+    # Expected span is 1.5s padding + 3.0s video = 4.5s
+    assert abs(float(v_s["duration"]) - 4.5) <= 0.15
+    assert abs(float(norm_probe["format"]["duration"]) - 4.5) <= 0.15
+
+    # Run ContextSwitchProvider on normalized.mp4 and verify timing
+    with patch(
+        "jams_worker.providers.context_switch._upload_derived",
+    ):
+        measures = ContextSwitchProvider().run(ctx)
+
+    switches = [m for m in measures if m["kind"] == "context_switch"]
+    assert len(switches) >= 1
+    cut = switches[0]
+    cut_ms = cut["t_start_ms"]
+
+    # Original playback timestamp of cut is 2500ms; must be within ±250ms
+    assert abs(cut_ms - 2500) <= 250
+
+
+def test_get_authoritative_duration_ms_propagates_db_failure(tmp_path: Path) -> None:
+    """Database query failures must not be swallowed with broad except; must propagate."""
+    class FailingDb:
+        def execute(self, *args: Any, **kwargs: Any) -> Any:
+            raise RuntimeError("Database connection lost")
+
+    ctx = _make_context(tmp_path, client_duration_ms=1000)
+    ctx.db_conn = FailingDb()  # type: ignore[assignment]
+    with pytest.raises(RuntimeError, match="Database connection lost"):
+        get_authoritative_duration_ms(ctx)
+
+
+def test_get_authoritative_duration_ms_justified_absence_falls_back(tmp_path: Path) -> None:
+    """When video record or duration is missing from DB, falls back to client upload."""
+    class EmptyDb:
+        def execute(self, *args: Any, **kwargs: Any) -> Any:
+            return SimpleNamespace(fetchone=lambda: None)
+
+    ctx = _make_context(tmp_path, client_duration_ms=1000)
+    ctx.db_conn = EmptyDb()  # type: ignore[assignment]
+    assert get_authoritative_duration_ms(ctx) == 1000
 
 
 # ==============================================================================
