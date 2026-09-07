@@ -33,8 +33,12 @@ export type OrgContext = {
 
 export type ResolvedOrgContext = Pick<OrgContext, "userId" | "orgId">
 
+type AuthContext = Pick<AuthSession, "userId" | "orgId"> & {
+  sessionClaims: unknown
+}
+
 type ResolveOrgContextDeps = {
-  authFn?: () => Promise<Pick<AuthSession, "userId" | "orgId" | "sessionClaims">>
+  authFn?: () => Promise<AuthContext>
   clerk?: ClerkBackendClient
   store?: Pick<MirrorStore, "upsertOrg">
 }
