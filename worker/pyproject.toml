@@ -27,6 +27,7 @@ dependencies = [
 
 [project.scripts]
 jams-worker = "jams_worker.main:main"
+jams-jem-eval = "jams_worker.jem_eval:main"
 
 [dependency-groups]
 dev = [

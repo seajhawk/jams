@@ -10,6 +10,23 @@ jobs:
   web:
     name: Web
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jams
+          POSTGRES_PASSWORD: jams
+          POSTGRES_DB: jams
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jams -d jams"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://jams:jams@localhost:5432/jams
+      DATABASE_URL_WEB: postgresql://jams_web:jams_web@localhost:5432/jams
     defaults:
       run:
         working-directory: apps/web
@@ -34,6 +51,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Audit dependencies
+        run: pnpm audit
+
+      - name: Migrate fresh integration database
+        run: pnpm db:migrate
+
       - name: Build
         run: pnpm build
 
@@ -56,7 +79,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --locked
 
       - name: Lint
         run: uv run ruff check

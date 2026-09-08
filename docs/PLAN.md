@@ -122,6 +122,10 @@ The scarce resource is Claude usage (81% of a 4-hour window consumed by planning
 
 ## Verification
 
+For the next release sequence, customer-discovery draft, and explicit pilot exit
+gates, see [First customer pilot](PILOT-RELEASE.md). Implementation status does not
+establish deployment readiness or customer validation.
+
 - **F1:** deployed app renders the demo report from fixture JSON; click a timeline event → player seeks to the moment. Playwright smoke: sign-up → demo report interaction.
 - **F2:** upload `videos/SettingUpGoogleVideoAnalyzer...mp4` through the real browser flow (Azurite locally, Blob in staging); verify playback scrubbing via SAS URL.
 - **F3/F4:** golden-fixture CI — fixture videos (2023 samples + scripted scroll-heavy, long-idle, and timestamp-agreement clips) run through the real worker container; assert cut timestamps ±1s, WER <5%, sentiment ±0.1, cross-stage timestamps ±250ms. Whisper benchmark on real ACA SKU recorded before latency promises.

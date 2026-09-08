@@ -110,4 +110,27 @@ describe("Postgres RLS tenant isolation", () => {
     expect(videos).toEqual([])
     expect(measures).toEqual([])
   })
+
+  it("rejects an insert for another tenant", async () => {
+    await expect(web.begin(async (tx) => {
+      await tx`select set_config('app.org_id', ${ORG_A}, true)`
+      await tx`
+        insert into videos (org_id, title, blob_path, status, uploaded_by)
+        values (${ORG_B}, 'Forbidden', 'forbidden.mp4', 'uploaded', 'user_rls')
+      `
+    })).rejects.toMatchObject({ code: "42501" })
+  })
+
+  it("cannot update another tenant's video", async () => {
+    const rows = await web.begin(async (tx) => {
+      await tx`select set_config('app.org_id', ${ORG_A}, true)`
+      return tx`
+        update videos set title = 'Forbidden'
+        where id = ${VIDEO_B} returning id
+      `
+    })
+    expect(rows).toEqual([])
+    const [video] = await admin`select title from videos where id = ${VIDEO_B}`
+    expect(video.title).toBe('RLS Video B')
+  })
 })
