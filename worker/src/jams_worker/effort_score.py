@@ -8,16 +8,22 @@ from typing import Any
 Measure = dict[str, Any]
 
 KIND_CATEGORY = {
+    "clicks": "physical",
     "context_switch": "cognitive",
+    "keypresses": "physical",
     "sentiment": "sentiment",
+    "scrolls": "physical",
     "spoken_word": "physical",
     "time_segment": "time",
     "utterance": "speech",
 }
 
 SCORE_KIND_ORDER = [
+    "clicks",
     "context_switch",
+    "keypresses",
     "sentiment",
+    "scrolls",
     "spoken_word",
     "time_segment",
     "utterance",
@@ -25,6 +31,8 @@ SCORE_KIND_ORDER = [
 
 PER_MINUTE_SCALE = {
     "context_switch": 36.75,
+    "clicks": 1,
+    "keypresses": 1,
     "spoken_word": 2.47,
     "utterance": 10,
 }
@@ -52,7 +60,7 @@ def _duration_minutes(video: dict[str, Any]) -> float:
 
 def _per_minute_raw(kind: str, measures: list[Measure]) -> float:
     kind_measures = _measures_for_kind(measures, kind)
-    if kind == "spoken_word":
+    if kind in {"keypresses", "spoken_word"}:
         return sum(float(measure.get("value_num") or 0) for measure in kind_measures)
     return float(len(kind_measures))
 

@@ -1,0 +1,50 @@
+{
+  "audio": {
+    "click_tolerance_ms": 75,
+    "in_speech_click_precision": 0.85,
+    "in_speech_click_recall": 0.60,
+    "keypress_edge_tolerance_ms": 150,
+    "keypress_max_exact_rate_keys_per_s": 8,
+    "negative_max_rows": 0,
+    "offset_parse_max_drift_ms": 0,
+    "transient_to_speech_db": -6.0
+  },
+  "clicks": {
+    "visual_edge_tolerance_ms": 400,
+    "visual_location_tolerance_px": 80,
+    "visual_precision": 0.70,
+    "visual_recall": 0.70
+  },
+  "context_switch": {
+    "cut_match_tolerance_ms": 1000,
+    "frame_diff_cut_threshold": 40.0
+  },
+  "duration": {
+    "audio_video_alignment_ms": 500,
+    "ffprobe_duration_tolerance_ms": 400
+  },
+  "flash_sync": {
+    "drift_max_ms": 200,
+    "expected_count": 2,
+    "luma_threshold": 245.0,
+    "min_gap_ms": 250
+  },
+  "provider_gates_pending": {
+    "button_click_precision": 0.80,
+    "button_click_recall": 0.80,
+    "hover_false_positive_max": 0,
+    "in_speech_click_recall": 0.60,
+    "keypress_precision": 0.75,
+    "keypress_recall": 0.75,
+    "scroll_precision": 0.90,
+    "scroll_recall": 0.90
+  },
+  "scrolls": {
+    "edge_tolerance_ms": 300,
+    "event_separation_ms": 1000,
+    "percent_relative_tolerance": 0.12
+  },
+  "timestamp": {
+    "cross_stage_agreement_ms": 250
+  }
+}

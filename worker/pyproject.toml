@@ -49,5 +49,6 @@ select = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 markers = [
+    "playwright: requires pnpm-installed Playwright and Chromium",
     "whisper_model: requires cached/downloaded faster-whisper model weights",
 ]

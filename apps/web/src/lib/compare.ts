@@ -60,7 +60,9 @@ export interface ComparisonResult {
  */
 function computeRate(kind: string, raw: number, durationMin: number): number {
   switch (kind) {
+    case "clicks":
     case "context_switch":
+    case "keypresses":
     case "spoken_word":
     case "utterance":
       return durationMin > 0 ? Math.round((raw / durationMin) * 100) / 100 : 0

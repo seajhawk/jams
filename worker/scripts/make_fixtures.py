@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import os
+import random
 import shutil
 import subprocess
 import tempfile
+import wave
+from array import array
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +23,9 @@ DEFAULT_OUT = WORKER_ROOT / "tests" / "fixtures" / "generated"
 
 W, H = 640, 480
 FPS = 30
+AUDIO_SR = 16_000
+AUDIO_SEED = 10_010
+TRANSIENT_TO_SPEECH_DB = -6.0
 _VID = [
     "-c:v",
     "libx264",
@@ -52,6 +60,30 @@ IDLE_TOTAL = 120.0
 
 SILENCE_TOTAL = 60.0
 TONES_TOTAL = 45.0
+TRANSIENT_TOTAL = 24.0
+NARRATED_TRANSIENT_TOTAL = 36.0
+MUSIC_BED_TOTAL = 30.0
+CLICK_BASE_OFFSETS_MS = (1500, 3350, 7120, 12_400, 16_850, 21_100)
+KEYPRESS_BASE_OFFSETS_MS = (
+    1800,
+    1950,
+    2110,
+    2320,
+    2550,
+    4980,
+    5160,
+    5320,
+    5480,
+    5640,
+    11_800,
+    11_980,
+    12_150,
+    12_360,
+    12_520,
+    12_700,
+)
+INTEGRATION_AUDIO_OFFSET_MS = 0
+INTEGRATION_DESYNC_AUDIO_OFFSET_MS = 300
 
 ESPEAK_VOICE = "en-us"
 ESPEAK_SPEED = 150
@@ -96,6 +128,175 @@ REAL_CLIPS: list[dict[str, Any]] = [
 
 def _run_cmd(args: list[str], check: bool = True) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(args, capture_output=True, check=check)
+
+
+def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
+    path.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in rows))
+
+
+def _read_wav_mono16(path: Path) -> list[float]:
+    with wave.open(str(path), "rb") as wav:
+        if wav.getframerate() != AUDIO_SR or wav.getnchannels() != 1 or wav.getsampwidth() != 2:
+            msg = f"{path} must be 16 kHz mono PCM16 before reading"
+            raise ValueError(msg)
+        pcm = array("h")
+        pcm.frombytes(wav.readframes(wav.getnframes()))
+    if pcm.itemsize != 2:
+        pcm.byteswap()
+    return [sample / 32768.0 for sample in pcm]
+
+
+def _write_wav_mono16(path: Path, samples: list[float]) -> None:
+    pcm = array(
+        "h",
+        [max(-32768, min(32767, int(round(sample * 32767.0)))) for sample in samples],
+    )
+    with wave.open(str(path), "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(AUDIO_SR)
+        wav.writeframes(pcm.tobytes())
+
+
+def _rms(samples: list[float]) -> float:
+    if not samples:
+        return 0.0
+    return math.sqrt(sum(sample * sample for sample in samples) / len(samples))
+
+
+def _seeded_offsets(
+    base_offsets_ms: tuple[int, ...],
+    *,
+    seed: int,
+    jitter_ms: int = 22,
+) -> list[int]:
+    rng = random.Random(seed)
+    return [
+        max(250, int(offset + rng.randint(-jitter_ms, jitter_ms)))
+        for offset in base_offsets_ms
+    ]
+
+
+def _click_transient(seed: int) -> list[float]:
+    rng = random.Random(seed)
+    samples: list[float] = []
+    for index in range(int(AUDIO_SR * 0.012)):
+        t = index / AUDIO_SR
+        envelope = math.exp(-index / 26.0)
+        tone = math.sin(2 * math.pi * 2900 * t) + 0.55 * math.sin(2 * math.pi * 6100 * t)
+        samples.append(envelope * (0.58 * tone + 0.14 * rng.uniform(-1.0, 1.0)))
+    return samples
+
+
+def _keypress_transient(seed: int) -> list[float]:
+    rng = random.Random(seed)
+    samples: list[float] = []
+    for index in range(int(AUDIO_SR * 0.026)):
+        t = index / AUDIO_SR
+        body = math.sin(2 * math.pi * 900 * t) * math.exp(-index / 92.0)
+        tick = math.sin(2 * math.pi * 4200 * t) * math.exp(-index / 33.0)
+        samples.append(0.44 * body + 0.24 * tick + 0.05 * rng.uniform(-1.0, 1.0))
+    return samples
+
+
+def _mix_at(base: list[float], overlay: list[float], start_ms: int, gain: float = 1.0) -> None:
+    start = int(AUDIO_SR * start_ms / 1000)
+    for index, sample in enumerate(overlay):
+        target = start + index
+        if 0 <= target < len(base):
+            base[target] += sample * gain
+
+
+def _transient_track(
+    duration_s: float,
+    offsets_ms: list[int],
+    *,
+    kind: str,
+    seed: int,
+) -> tuple[list[float], list[dict[str, Any]], list[float]]:
+    samples = [0.0] * int(duration_s * AUDIO_SR)
+    active_samples: list[float] = []
+    events: list[dict[str, Any]] = []
+    recipe = "mouse_click_v1" if kind == "click" else "mechanical_keypress_v1"
+    for index, offset_ms in enumerate(offsets_ms):
+        transient_seed = seed + index * 97
+        transient = (
+            _click_transient(transient_seed)
+            if kind == "click"
+            else _keypress_transient(transient_seed)
+        )
+        _mix_at(samples, transient, offset_ms)
+        active_samples.extend(transient)
+        events.append(
+            {
+                "t_ms": offset_ms,
+                "kind": kind,
+                "recipe": recipe,
+                "seed": transient_seed,
+                "duration_ms": int(len(transient) * 1000 / AUDIO_SR),
+            }
+        )
+    return samples, events, active_samples
+
+
+def _normalize_peak(samples: list[float], peak: float = 0.92) -> list[float]:
+    current = max((abs(sample) for sample in samples), default=0.0)
+    if current <= 0:
+        return samples
+    gain = peak / current if current > peak else 1.0
+    return [sample * gain for sample in samples]
+
+
+def _write_transcript_artifact_if_available(
+    audio_path: Path,
+    out: Path,
+    fixture_id: str,
+) -> dict[str, Any]:
+    from jams_worker.providers import transcription as tx
+
+    if os.environ.get("JAMS_RUN_WHISPER_TESTS") != "1" or not tx.DEFAULT_MODEL_CACHE.exists():
+        return {
+            "transcript_artifact_pending": True,
+            "transcript_artifact_reason": "set JAMS_RUN_WHISPER_TESTS=1 with cached model",
+        }
+    try:
+        model, model_sha = tx.load_model()
+        utterances = tx.build_utterances(tx._transcribe(model, audio_path, vad_threshold=0.5))
+    except Exception as exc:  # pragma: no cover - exercised only with local model cache.
+        return {
+            "transcript_artifact_pending": True,
+            "transcript_artifact_reason": f"transcription failed: {type(exc).__name__}",
+        }
+
+    payload = {
+        "provider_id": tx.PROVIDER_ID,
+        "provider_version": tx.PROVIDER_VERSION,
+        "model": tx.MODEL_NAME,
+        "model_sha256": model_sha,
+        "vad_regions": [
+            {"t_start_ms": utterance.t0_ms, "t_end_ms": utterance.t1_ms}
+            for utterance in utterances
+        ],
+        "utterances": [
+            {
+                "t_start_ms": utterance.t0_ms,
+                "t_end_ms": utterance.t1_ms,
+                "text": utterance.text,
+                "words": [
+                    {"w": word.text, "t0": word.t0_ms, "t1": word.t1_ms}
+                    for word in utterance.words
+                ],
+            }
+            for utterance in utterances
+        ],
+    }
+    artifact = out / f"{fixture_id}.transcript.json"
+    artifact.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return {
+        "transcript_artifact": artifact.name,
+        "transcript_artifact_pending": False,
+        "vad_region_count": len(payload["vad_regions"]),
+    }
 
 
 def _write_tall_ppm(path: Path) -> None:
@@ -375,6 +576,283 @@ def _gen_tones(ffmpeg: str, out: Path) -> dict[str, Any]:
     }
 
 
+def _gen_click_transients(out: Path) -> dict[str, Any]:
+    offsets = _seeded_offsets(CLICK_BASE_OFFSETS_MS, seed=AUDIO_SEED)
+    samples, events, _active = _transient_track(
+        TRANSIENT_TOTAL,
+        offsets,
+        kind="click",
+        seed=AUDIO_SEED + 100,
+    )
+    _write_wav_mono16(out / "click_transients.wav", _normalize_peak(samples))
+    _write_jsonl(out / "click_transients.offsets.jsonl", events)
+    return {
+        "id": "click_transients",
+        "file": "click_transients.wav",
+        "kind": "audio",
+        "duration_ms": int(TRANSIENT_TOTAL * 1000),
+        "offsets_jsonl": "click_transients.offsets.jsonl",
+        "event_count": len(events),
+        "event_kinds": ["click"],
+        "provider_pending": "F10-c",
+        "tts_pending": False,
+    }
+
+
+def _gen_keypress_transients(out: Path) -> dict[str, Any]:
+    offsets = _seeded_offsets(KEYPRESS_BASE_OFFSETS_MS, seed=AUDIO_SEED + 1, jitter_ms=16)
+    samples, events, _active = _transient_track(
+        TRANSIENT_TOTAL,
+        offsets,
+        kind="keypress",
+        seed=AUDIO_SEED + 200,
+    )
+    _write_wav_mono16(out / "keypress_transients.wav", _normalize_peak(samples))
+    _write_jsonl(out / "keypress_transients.offsets.jsonl", events)
+    return {
+        "id": "keypress_transients",
+        "file": "keypress_transients.wav",
+        "kind": "audio",
+        "duration_ms": int(TRANSIENT_TOTAL * 1000),
+        "offsets_jsonl": "keypress_transients.offsets.jsonl",
+        "event_count": len(events),
+        "event_kinds": ["keypress"],
+        "provider_pending": "F10-c",
+        "tts_pending": False,
+    }
+
+
+def _speech_16k(
+    ffmpeg: str,
+    out: Path,
+    *,
+    filename: str,
+    text: str,
+    duration_s: float,
+) -> bool:
+    if not _espeak_available():
+        return False
+
+    raw = out / f"{Path(filename).stem}_raw.wav"
+    try:
+        _run_espeak(text, raw)
+        _run_cmd(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(raw),
+                "-af",
+                f"aresample={AUDIO_SR},apad=whole_dur={duration_s:g}",
+                "-t",
+                str(duration_s),
+                "-ac",
+                "1",
+                "-c:a",
+                "pcm_s16le",
+                str(out / filename),
+            ]
+        )
+    finally:
+        raw.unlink(missing_ok=True)
+    return True
+
+
+def _gen_pure_speech_negative(ffmpeg: str, out: Path) -> dict[str, Any]:
+    fixture_id = "pure_speech_negative"
+    filename = f"{fixture_id}.wav"
+    if not _speech_16k(
+        ffmpeg,
+        out,
+        filename=filename,
+        text=ESPEAK_TEXT,
+        duration_s=NARRATED_TRANSIENT_TOTAL,
+    ):
+        return _pending_tts_fixture(fixture_id, filename, "audio")
+
+    transcript = _write_transcript_artifact_if_available(out / filename, out, fixture_id)
+    return {
+        "id": fixture_id,
+        "file": filename,
+        "kind": "audio",
+        "duration_ms": int(NARRATED_TRANSIENT_TOTAL * 1000),
+        "event_count": 0,
+        "negative": "pure_speech",
+        "provider_pending": "F10-c",
+        "tts_pending": False,
+        **transcript,
+    }
+
+
+def _gen_music_bed_negative(ffmpeg: str, out: Path) -> dict[str, Any]:
+    _run_cmd(
+        [
+            ffmpeg,
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            (
+                "aevalsrc="
+                "0.35*sin(220*2*PI*t)+0.20*sin(330*2*PI*t)+"
+                "0.12*sin(660*2*PI*t):s=16000:c=mono"
+            ),
+            "-t",
+            str(MUSIC_BED_TOTAL),
+            "-c:a",
+            "pcm_s16le",
+            str(out / "music_bed_negative.wav"),
+        ]
+    )
+    return {
+        "id": "music_bed_negative",
+        "file": "music_bed_negative.wav",
+        "kind": "audio",
+        "duration_ms": int(MUSIC_BED_TOTAL * 1000),
+        "event_count": 0,
+        "negative": "music_bed",
+        "provider_pending": "F10-c",
+        "tts_pending": False,
+    }
+
+
+def _gen_narrated_transients(
+    ffmpeg: str,
+    out: Path,
+    *,
+    fixture_id: str,
+    transient_kind: str,
+    offsets: tuple[int, ...],
+) -> dict[str, Any]:
+    filename = f"{fixture_id}.wav"
+    speech_filename = f"{fixture_id}.speech.wav"
+    if not _speech_16k(
+        ffmpeg,
+        out,
+        filename=speech_filename,
+        text=ESPEAK_TEXT,
+        duration_s=NARRATED_TRANSIENT_TOTAL,
+    ):
+        return _pending_tts_fixture(fixture_id, filename, "audio")
+
+    speech = _read_wav_mono16(out / speech_filename)
+    event_offsets = _seeded_offsets(offsets, seed=AUDIO_SEED + 300 + len(offsets), jitter_ms=18)
+    _track, events, active = _transient_track(
+        NARRATED_TRANSIENT_TOTAL,
+        event_offsets,
+        kind=transient_kind,
+        seed=AUDIO_SEED + 400,
+    )
+    speech_rms = _rms(speech)
+    transient_rms = _rms(active)
+    gain = (
+        0.0
+        if transient_rms <= 0
+        else speech_rms * 10 ** (TRANSIENT_TO_SPEECH_DB / 20) / transient_rms
+    )
+    for event in events:
+        transient = (
+            _click_transient(event["seed"])
+            if transient_kind == "click"
+            else _keypress_transient(event["seed"])
+        )
+        _mix_at(speech, transient, int(event["t_ms"]), gain=gain)
+
+    _write_wav_mono16(out / filename, _normalize_peak(speech))
+    _write_jsonl(out / f"{fixture_id}.offsets.jsonl", events)
+    (out / speech_filename).unlink(missing_ok=True)
+    transcript = _write_transcript_artifact_if_available(out / filename, out, fixture_id)
+    return {
+        "id": fixture_id,
+        "file": filename,
+        "kind": "audio",
+        "duration_ms": int(NARRATED_TRANSIENT_TOTAL * 1000),
+        "offsets_jsonl": f"{fixture_id}.offsets.jsonl",
+        "event_count": len(events),
+        "event_kinds": [transient_kind],
+        "transient_to_speech_db": TRANSIENT_TO_SPEECH_DB,
+        "provider_pending": "F10-c",
+        "tts_pending": False,
+        **transcript,
+    }
+
+
+def _gen_integration_av(
+    ffmpeg: str,
+    out: Path,
+    *,
+    fixture_id: str,
+    audio_offset_ms: int,
+) -> dict[str, Any]:
+    video_path = out / "synth_tabs.mp4"
+    audio_path = out / "narrated_clicks.wav"
+    if not video_path.exists() or not audio_path.exists():
+        return _pending_tts_fixture(fixture_id, f"{fixture_id}.mp4", "video_audio")
+
+    delayed_audio = out / f"{fixture_id}.audio.wav"
+    try:
+        _run_cmd(
+            [
+                ffmpeg,
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"anullsrc=r={AUDIO_SR}:cl=mono",
+                "-i",
+                str(audio_path),
+                "-filter_complex",
+                (
+                    f"[1:a]adelay={audio_offset_ms}|{audio_offset_ms},"
+                    f"apad=whole_dur={SW_TOTAL:g}[a1];"
+                    "[0:a][a1]amix=inputs=2:duration=first[out]"
+                ),
+                "-t",
+                str(SW_TOTAL),
+                "-map",
+                "[out]",
+                "-ar",
+                str(AUDIO_SR),
+                "-ac",
+                "1",
+                "-c:a",
+                "pcm_s16le",
+                str(delayed_audio),
+            ]
+        )
+        _run_cmd(
+            [
+                ffmpeg,
+                "-y",
+                "-i",
+                str(video_path),
+                "-i",
+                str(delayed_audio),
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-shortest",
+                str(out / f"{fixture_id}.mp4"),
+            ]
+        )
+    finally:
+        delayed_audio.unlink(missing_ok=True)
+    return {
+        "id": fixture_id,
+        "file": f"{fixture_id}.mp4",
+        "kind": "video_audio",
+        "duration_ms": int(SW_TOTAL * 1000),
+        "has_audio": True,
+        "fps": FPS,
+        "cuts_ms": SW_CUTS_MS,
+        "audio_source": "narrated_clicks.wav",
+        "audio_offset_ms": audio_offset_ms,
+        "provider_pending": "F10-b/c",
+        "tts_pending": False,
+    }
+
+
 def _pending_tts_fixture(fixture_id: str, filename: str, kind: str) -> dict[str, Any]:
     return {
         "id": fixture_id,
@@ -594,8 +1072,38 @@ def generate_all(output_dir: Path, force: bool = False) -> dict[str, Any]:
             _gen_synth_idle(ffmpeg, output_dir),
             _gen_silence(ffmpeg, output_dir),
             _gen_tones(ffmpeg, output_dir),
+            _gen_click_transients(output_dir),
+            _gen_keypress_transients(output_dir),
             _gen_speech_espeak(ffmpeg, output_dir),
             _gen_speech_offsets(ffmpeg, output_dir),
+            _gen_pure_speech_negative(ffmpeg, output_dir),
+            _gen_music_bed_negative(ffmpeg, output_dir),
+            _gen_narrated_transients(
+                ffmpeg,
+                output_dir,
+                fixture_id="narrated_clicks",
+                transient_kind="click",
+                offsets=CLICK_BASE_OFFSETS_MS,
+            ),
+            _gen_narrated_transients(
+                ffmpeg,
+                output_dir,
+                fixture_id="narrated_keypresses",
+                transient_kind="keypress",
+                offsets=KEYPRESS_BASE_OFFSETS_MS,
+            ),
+            _gen_integration_av(
+                ffmpeg,
+                output_dir,
+                fixture_id="integration_av_0ms",
+                audio_offset_ms=INTEGRATION_AUDIO_OFFSET_MS,
+            ),
+            _gen_integration_av(
+                ffmpeg,
+                output_dir,
+                fixture_id="integration_av_desync_300ms",
+                audio_offset_ms=INTEGRATION_DESYNC_AUDIO_OFFSET_MS,
+            ),
             _gen_av_sync(ffmpeg, output_dir),
         ]
 
