@@ -11,5 +11,8 @@ class Settings(BaseSettings):
     azure_storage_connection_string: str = Field(alias="AZURE_STORAGE_CONNECTION_STRING")
     jobs_queue_name: str = "analysis-jobs"
     poison_queue_name: str = "analysis-jobs-poison"
+    lease_duration_seconds: int = 300
+    visibility_timeout_seconds: int = 300
+    visibility_renew_interval_seconds: int = 60
 
     model_config = SettingsConfigDict(extra="ignore")

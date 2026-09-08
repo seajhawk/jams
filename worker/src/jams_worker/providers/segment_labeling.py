@@ -12,6 +12,7 @@ from typing import Any, Protocol
 
 from psycopg.types.json import Jsonb
 
+from jams_worker.errors import StaleLeaseError
 from jams_worker.pipeline import PipelineContext
 
 PROVIDER_ID = "segment_labeling"
@@ -289,6 +290,23 @@ def _write_segments_and_delete_merged_measures(
     merged_pairs: list[tuple[ExistingSegment, ExistingSegment]],
 ) -> None:
     with context.db_conn.transaction():
+        if context.owner_id is not None and context.lease_token is not None:
+            cur = context.db_conn.execute(
+                """
+                select 1 from analysis_runs
+                where id = %s
+                  and owner_id = %s
+                  and lease_token = %s
+                  and lease_expires_at > now()
+                for update
+                """,
+                (context.run_id, context.owner_id, context.lease_token),
+            )
+            if hasattr(cur, "fetchone") and cur.fetchone() is None:
+                raise StaleLeaseError(
+                    f"Write rejected: worker {context.owner_id} lost lease for run {context.run_id}"
+                )
+
         context.db_conn.execute("delete from segments where run_id = %s", (context.run_id,))
         for segment in segments:
             context.db_conn.execute(

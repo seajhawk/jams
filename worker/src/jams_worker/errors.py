@@ -10,3 +10,7 @@ class PipelineError(Exception):
         super().__init__(message)
         self.error_code = error_code
         self.fatal = fatal
+
+
+class StaleLeaseError(RuntimeError):
+    """Raised when a worker's lease expired, was stolen, or fenced by another owner."""

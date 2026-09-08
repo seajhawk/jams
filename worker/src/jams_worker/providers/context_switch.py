@@ -600,7 +600,10 @@ class ContextSwitchProvider:
             )
             thumb = context.workdir / "context_switch_thumbs" / f"{cut.t_start_ms}.jpg"
             extract_thumbnail(source, thumb, cut.t_start_ms)
-            blob_path = f"runs/{context.run_id}/context_switch/{cut.t_start_ms}.jpg"
+            blob_path = (
+                f"runs/{context.run_id}/attempts/{context.attempt}/"
+                f"context_switch/{cut.t_start_ms}.jpg"
+            )
             _upload_derived(context, thumb, blob_path)
             artifact_id = context.register_artifact("thumbnail", blob_path)
 

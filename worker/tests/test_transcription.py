@@ -177,7 +177,8 @@ def test_no_audio_reports_skipped_no_audio(tmp_path: Path) -> None:
 
     assert measures == []
     assert context.provider_summaries["transcription"]["status"] == "skipped_no_audio"
-    assert blob_service.container.uploads[0][0] == "runs/run_1/transcription/transcript.json"
+    expected_blob = "runs/run_1/attempts/1/transcription/transcript.json"
+    assert blob_service.container.uploads[0][0] == expected_blob
 
 
 @pytest.mark.parametrize(("filename", "tone"), [("silence.wav", False), ("tones.wav", True)])
