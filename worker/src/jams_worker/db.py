@@ -43,7 +43,7 @@ class RunRepository:
                 row = cur.fetchone()
                 if row is None:
                     return None
-                if row["status"] == "succeeded":
+                if row["status"] in ("succeeded", "partial", "failed"):
                     return row
                 cur.execute(
                     """

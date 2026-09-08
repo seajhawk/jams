@@ -1,0 +1,25 @@
+name: Watchdog and Dispatch Reconciliation
+
+on:
+  schedule:
+    # Run periodically to sweep stuck runs (>60 min) and reconcile pending outbox dispatches
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    name: Trigger Watchdog and Reconciliation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger watchdog endpoint
+        env:
+          APP_URL: ${{ secrets.JAMS_APP_URL || 'https://jams.azurecontainerapps.io' }}
+          WATCHDOG_SECRET: ${{ secrets.WATCHDOG_SECRET }}
+        run: |
+          if [ -z "$WATCHDOG_SECRET" ]; then
+            echo "WATCHDOG_SECRET not configured, skipping scheduled trigger"
+            exit 0
+          fi
+          curl -fsSL -X POST "$APP_URL/api/admin/watchdog" \
+            -H "Authorization: Bearer $WATCHDOG_SECRET" \
+            -H "Content-Type: application/json"

@@ -22,10 +22,16 @@ class _Queue:
     def __init__(self) -> None:
         self.deleted: list[tuple[str, str]] = []
         self.sent: list[str] = []
+        self.updated: list[tuple[str, str, int]] = []
         self.created = False
 
     def delete_message(self, message_id: str, pop_receipt: str) -> None:
         self.deleted.append((message_id, pop_receipt))
+
+    def update_message(
+        self, message_id: str, pop_receipt: str, visibility_timeout: int = 0
+    ) -> None:
+        self.updated.append((message_id, pop_receipt, visibility_timeout))
 
     def create_queue(self) -> None:
         self.created = True
@@ -125,6 +131,129 @@ def test_handle_message_poisons_third_failure(monkeypatch: pytest.MonkeyPatch) -
     assert poison.sent == [json.dumps({"run_id": "run_1"})]
     assert queue.deleted == [("msg", "receipt")]
     assert conn.executed[0][0].startswith("update analysis_runs set status = 'failed'")
+
+
+def test_receipt_before_commit_is_not_destructive_and_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queue = _Queue()
+    poison = _Queue()
+    conn = _Conn()
+
+    # Simulate run not yet visible in DB because web transaction has not committed
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+
+    result = handle_message(
+        message=_Message(json.dumps({"run_id": "run_not_yet_committed"}), dequeue_count=1),
+        queue=queue,  # type: ignore[arg-type]
+        poison_queue=poison,  # type: ignore[arg-type]
+        conn=conn,  # type: ignore[arg-type]
+        blob_service_client=object(),  # type: ignore[arg-type]
+        providers=[],
+    )
+
+    # Message must NOT be deleted (destructive ack avoided)
+    assert queue.deleted == []
+    assert poison.sent == []
+    assert conn.rollbacks == 1
+    assert result.status == "redelivery"
+    assert result.poisoned is False
+    assert queue.updated == [("msg", "receipt", 2)]
+
+
+def test_missing_run_poisons_after_max_dequeue_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queue = _Queue()
+    poison = _Queue()
+    conn = _Conn()
+
+    # Run remains missing after 3 attempts
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+
+    result = handle_message(
+        message=_Message(json.dumps({"run_id": "run_never_exists"}), dequeue_count=3),
+        queue=queue,  # type: ignore[arg-type]
+        poison_queue=poison,  # type: ignore[arg-type]
+        conn=conn,  # type: ignore[arg-type]
+        blob_service_client=object(),  # type: ignore[arg-type]
+        providers=[],
+    )
+
+    assert poison.created is True
+    assert poison.sent == [json.dumps({"run_id": "run_never_exists"})]
+    assert queue.deleted == [("msg", "receipt")]
+    assert result.status == "poisoned"
+    assert result.poisoned is True
+
+
+@pytest.mark.parametrize("status", ["succeeded", "partial", "failed"])
+def test_duplicate_send_for_completed_run_skipped_and_deleted(
+    monkeypatch: pytest.MonkeyPatch, status: str
+) -> None:
+    queue = _Queue()
+    poison = _Queue()
+    conn = _Conn()
+
+    pipeline_invoked = False
+
+    def fake_run_pipeline(*_args: object, **_kwargs: object) -> object:
+        nonlocal pipeline_invoked
+        pipeline_invoked = True
+        return object()
+
+    monkeypatch.setattr(
+        "jams_worker.main.RunRepository.claim",
+        lambda _self, _run_id: {"id": "run_done", "status": status, "org_id": "org_1"},
+    )
+    monkeypatch.setattr("jams_worker.main.run_pipeline", fake_run_pipeline)
+
+    result = handle_message(
+        message=_Message(json.dumps({"run_id": "run_done"}), dequeue_count=1),
+        queue=queue,  # type: ignore[arg-type]
+        poison_queue=poison,  # type: ignore[arg-type]
+        conn=conn,  # type: ignore[arg-type]
+        blob_service_client=object(),  # type: ignore[arg-type]
+        providers=[],
+    )
+
+    assert pipeline_invoked is False
+    assert queue.deleted == [("msg", "receipt")]
+    assert poison.sent == []
+    assert result.status == "skipped"
+
+
+def test_update_message_failure_is_logged_and_message_left_for_redelivery(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    queue = _Queue()
+    poison = _Queue()
+    conn = _Conn()
+
+    def failing_update(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("network failure during visibility update")
+
+    queue.update_message = failing_update  # type: ignore[method-assign]
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+
+    result = handle_message(
+        message=_Message(json.dumps({"run_id": "run_visibility_fail"}), dequeue_count=1),
+        queue=queue,  # type: ignore[arg-type]
+        poison_queue=poison,  # type: ignore[arg-type]
+        conn=conn,  # type: ignore[arg-type]
+        blob_service_client=object(),  # type: ignore[arg-type]
+        providers=[],
+    )
+
+    assert queue.deleted == []
+    assert poison.sent == []
+    assert result.status == "redelivery"
+
+    logs = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+    failure_logs = [log for log in logs if log.get("event") == "update_message_failed"]
+    assert len(failure_logs) == 1
+    assert "network failure" in failure_logs[0]["error"]
+    assert failure_logs[0]["run_id"] == "run_visibility_fail"
 
 
 def test_run_loop_drain_exits_when_queue_empty(monkeypatch: pytest.MonkeyPatch, capsys) -> None:

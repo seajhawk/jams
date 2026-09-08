@@ -31,6 +31,11 @@ export const analysisStatusEnum = pgEnum("analysis_status", [
   "partial",
   "failed",
 ])
+export const dispatchStatusEnum = pgEnum("dispatch_status", [
+  "pending",
+  "dispatched",
+  "failed",
+])
 export const analysisErrorCodeEnum = pgEnum("analysis_error_code", [
   "no_audio",
   "too_long",
@@ -214,6 +219,35 @@ export const analysisArtifacts = pgTable(
   ]
 )
 
+export const analysisDispatchOutbox = pgTable(
+  "analysis_dispatch_outbox",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: "cascade" }),
+    orgId: text("org_id").notNull(),
+    status: dispatchStatusEnum("status").notNull().default("pending"),
+    attempt: integer("attempt").notNull().default(0),
+    lastError: text("last_error"),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("analysis_dispatch_outbox_status_created_at_idx").on(
+      table.status,
+      table.createdAt
+    ),
+    index("analysis_dispatch_outbox_status_lease_idx").on(
+      table.status,
+      table.leaseExpiresAt
+    ),
+    index("analysis_dispatch_outbox_org_id_idx").on(table.orgId),
+    index("analysis_dispatch_outbox_run_id_idx").on(table.runId),
+  ]
+)
+
 export const measures = pgTable(
   "measures",
   {
@@ -346,10 +380,20 @@ export const analysisRunRelations = relations(analysisRuns, ({ one, many }) => (
   }),
   shareLinks: many(shareLinks),
   artifacts: many(analysisArtifacts),
+  dispatchOutbox: many(analysisDispatchOutbox),
   measures: many(measures),
   segments: many(segments),
   effortScores: many(effortScores),
 }))
+export const analysisDispatchOutboxRelations = relations(
+  analysisDispatchOutbox,
+  ({ one }) => ({
+    run: one(analysisRuns, {
+      fields: [analysisDispatchOutbox.runId],
+      references: [analysisRuns.id],
+    }),
+  })
+)
 export const shareLinkRelations = relations(shareLinks, ({ one }) => ({
   run: one(analysisRuns, {
     fields: [shareLinks.runId],
