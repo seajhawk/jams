@@ -2,7 +2,7 @@
 
 import pytest
 
-from jams_worker.jem_eval import EvaluationError, Flash, _offsets, map_active_ms
+from jams_worker.jem_eval import EvaluationError, Flash, _offsets, _point_match, map_active_ms
 
 
 def manifest(end=10500):
@@ -44,3 +44,13 @@ def test_rejects_unvalidated_paused_segment_drift():
     data["sync"]["flashes"].append({"flash_log_ms": 5000})
     with pytest.raises(EvaluationError, match="per-segment"):
         _offsets(data, [Flash(300, 9), Flash(4800, 9), Flash(10300, 9)])
+
+
+def test_point_matching_does_not_steal_later_events_only_candidate():
+    metric = _point_match([400, 0], [100, -400])
+    assert (metric["tp"], metric["fp"], metric["fn"]) == (2, 0, 0)
+
+
+def test_point_matching_never_reuses_a_detection():
+    metric = _point_match([0, 100, 200], [100])
+    assert (metric["tp"], metric["fp"], metric["fn"]) == (1, 0, 2)

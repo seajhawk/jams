@@ -175,21 +175,24 @@ def map_active_ms(active_ms: int, offsets: list[tuple[int, int]]) -> int:
 
 
 def _point_match(expected: list[int], detected: list[int]) -> dict[str, Any]:
-    remaining = set(range(len(detected)))
-    tp = 0
+    # Ordered interval matching maximizes one-to-one matches. Nearest-first can
+    # consume the only detection available for a later truth event.
+    expected = sorted(expected)
+    detected = sorted(detected)
+    truth_index = detection_index = 0
     errors: list[int] = []
-    for expected_ms in expected:
-        candidates = [
-            (abs(detected[index] - expected_ms), index)
-            for index in remaining
-            if abs(detected[index] - expected_ms) <= MATCH_TOLERANCE_MS
-        ]
-        if candidates:
-            error, index = min(candidates)
-            remaining.remove(index)
-            tp += 1
-            errors.append(error)
-    fp = len(remaining)
+    while truth_index < len(expected) and detection_index < len(detected):
+        delta = detected[detection_index] - expected[truth_index]
+        if delta < -MATCH_TOLERANCE_MS:
+            detection_index += 1
+        elif delta > MATCH_TOLERANCE_MS:
+            truth_index += 1
+        else:
+            errors.append(abs(delta))
+            truth_index += 1
+            detection_index += 1
+    tp = len(errors)
+    fp = len(detected) - tp
     fn = len(expected) - tp
     precision = tp / (tp + fp) if tp + fp else 0.0
     recall = tp / (tp + fn) if tp + fn else 0.0
@@ -317,6 +320,7 @@ def markdown_report(result: dict[str, Any]) -> str:
             "",
         ]
     )
+    lines.extend(["## Interpretation", "", *[f"- {item}" for item in result["limitations"]], ""])
     return "\n".join(lines)
 
 
