@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>JEM controlled journeys</title>
+<style>
+body{margin:0;background:#142d44;color:#f5f7fb;font:22px system-ui;min-height:100vh}
+main{max-width:850px;margin:0 auto;padding:70px 30px}button,input{font:inherit;padding:14px;margin:12px 8px 12px 0}
+button{cursor:pointer;background:#e0f4ff;color:#142d44;border:2px solid #638ea3;border-radius:8px}
+input{display:block}aside{font-size:16px;color:#c2d5e2}article{padding:30px;background:#24536d;border-radius:16px}
+</style>
+<main><aside>LOCAL TEST FIXTURE · synthetic data only · no account, payment, or network submission</aside>
+<h1>Controlled customer journeys</h1><div id="view"></div></main>
+<script>
+const view=document.getElementById('view');
+function page(title,html,color='#142d44'){document.title=title+' | JEM fixture';document.body.style.background=color;view.innerHTML=html;}
+function home(){page('Journey selection','<button onclick="onboard()">Onboarding</button><button onclick="shop()">Checkout</button><button onclick="recover()">Error recovery</button>');}
+function onboard(){page('Create workspace','<h2>Create a test workspace</h2><form onsubmit="event.preventDefault();welcome()"><label>Workspace name<input required value="Pilot Workspace" maxlength="80"></label><button>Continue</button></form><button onclick="home()">Back</button>');}
+function welcome(){page('Workspace ready','<article><h2>Your workspace is ready</h2><p>Next: upload a test recording and inspect its timeline.</p><button onclick="home()">Finish onboarding</button></article>','#244831');}
+function shop(){page('Product selection','<h2>Test store</h2><article><h3>Usability workbook</h3><p>Illustrative price: $12. No actual purchase.</p><button onclick="cart()">Add to test cart</button></article>');}
+function cart(){page('Review cart','<h2>Review your test cart</h2><p>1 usability workbook · total $12 (simulated)</p><button onclick="receipt()">Simulate checkout</button><button onclick="home()">Cancel</button>','#4d304c');}
+function receipt(){page('Test receipt','<h2>Simulation complete</h2><p>No charge and no order were created.</p><button onclick="home()">Return home</button>','#244831');}
+function recover(){page('Upload failed','<h2>Upload failed</h2><p>Simulated network interruption. Your file is preserved.</p><button onclick="retry()">Retry upload</button>','#663c28');}
+function retry(){page('Upload recovered','<h2>Upload recovered</h2><p>The simulated retry succeeded.</p><button onclick="home()">Return home</button>','#244831');}
+home();
+</script></html>
