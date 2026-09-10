@@ -11,14 +11,21 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import subprocess
 import tempfile
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from jams_worker.errors import PipelineError
 from jams_worker.ffmpeg import ffmpeg_path
-from jams_worker.providers.context_switch import ContextSwitchParams, detect_context_switches
+from jams_worker.providers.context_switch import (
+    CONTEXT_SWITCH_PROVIDER_VERSION,
+    ContextSwitchParams,
+    detect_context_switches,
+    validated_context_switch_params,
+)
 from jams_worker.providers.probe import ProbeResult, probe_file
 
 CSV_HEADER = (
@@ -290,7 +297,8 @@ def evaluate_session(
             "context_switch": {
                 "provider": "context_switch",
                 "detector_impl": detector_impl,
-                "min_content_val": (params or ContextSwitchParams()).min_content_val,
+                "provider_version": CONTEXT_SWITCH_PROVIDER_VERSION,
+                "params": asdict(params or ContextSwitchParams()),
             }
         },
         "metrics": {"context_switch": _point_match(truth, detected)},
@@ -350,13 +358,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--markdown-out", type=Path)
     args = parser.parse_args(argv)
-    if args.min_content_val is not None and args.min_content_val < 0:
-        parser.error("--min-content-val must be non-negative")
-    params = (
-        ContextSwitchParams(min_content_val=args.min_content_val)
-        if args.min_content_val is not None
-        else None
-    )
+    params = None
+    if args.min_content_val is not None:
+        if not math.isfinite(args.min_content_val):
+            parser.error("--min-content-val must be finite")
+        try:
+            params = validated_context_switch_params({"min_content_val": args.min_content_val})
+        except PipelineError as exc:
+            parser.error(str(exc))
     try:
         result = evaluate_session(args.session, detector_impl=args.detector, params=params)
     except EvaluationError as exc:

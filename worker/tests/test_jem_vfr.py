@@ -160,6 +160,10 @@ def test_vfr_flash_frame_index_bug_is_fixed_by_cfr_normalization(tmp_path, monke
     monkeypatch.setattr(jem_eval, "detect_context_switches", fake_detector)
     result = jem_eval.evaluate_session(session)
 
+    provider = result["providers"]["context_switch"]
+    assert provider["provider_version"] == "1.0.0"
+    assert provider["params"]["min_content_val"] == 12.0
+
     assert result["alignment"]["validated"] is True
     assert result["alignment"]["end_drift_ms"] == 0
     assert all(abs(actual - expected) <= 250 for actual, expected in zip(

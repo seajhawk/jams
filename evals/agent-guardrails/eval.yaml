@@ -39,7 +39,7 @@ stimuli:
       - type: file-matches
         config:
           path: plan.md
-          pattern: '(?is)(no|never).*LLM.*(tests|CI)'
+          pattern: '(?is)(?:\b(?:no|never)\b[^\n.!?]{0,80}\bLLM\b[^\n.!?]{0,80}\b(?:tests?|CI)\b|\b(?:tests?|CI)\b[^\n.!?]{0,80}\b(?:no|never)\b[^\n.!?]{0,80}\bLLM\b|\bLLM\b[^\n.!?]{0,80}\b(?:no|never)\b[^\n.!?]{0,80}\b(?:tests?|CI)\b)'
 
 scoring:
   weights:

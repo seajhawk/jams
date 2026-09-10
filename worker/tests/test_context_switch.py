@@ -17,6 +17,7 @@ from jams_worker.providers.context_switch import (
     confidence_from_content_val,
     decide_post_filter,
     detect_context_switches,
+    validated_context_switch_params,
 )
 
 
@@ -63,12 +64,19 @@ def test_run_config_can_select_a_reproducible_detector_variant() -> None:
     [
         {"context_switch": {"params": {"unknown": 1}}},
         {"context_switch": {"params": {"min_content_val": True}}},
+        {"context_switch": {"params": {"min_content_val": 0}}},
         {"context_switch": {"params": {"confidence_floor": 1.1}}},
     ],
 )
 def test_run_config_rejects_invalid_detector_variants(config: object) -> None:
     with pytest.raises(PipelineError):
         _config_params(_ConfigContext(config), ContextSwitchParams())  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_detector_variants_reject_nonfinite_values(value: float) -> None:
+    with pytest.raises(PipelineError):
+        validated_context_switch_params({"min_content_val": value})
 
 
 def test_post_filter_drops_boundary_translation() -> None:

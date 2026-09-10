@@ -26,6 +26,8 @@ from jams_worker.providers.proxy_motion import (
 
 DetectorImpl = Literal["adaptive", "dhash"]
 
+CONTEXT_SWITCH_PROVIDER_VERSION = "1.0.0"
+
 THUMB_WIDTH = 640
 THUMB_OFFSET_SECONDS = 0.5
 
@@ -492,20 +494,11 @@ def _config_detector(context: PipelineContext, default: DetectorImpl) -> Detecto
     return detector
 
 
-def _config_params(
-    context: PipelineContext,
-    default: ContextSwitchParams,
+def validated_context_switch_params(
+    overrides: Mapping[str, object],
+    default: ContextSwitchParams = ContextSwitchParams(),
 ) -> ContextSwitchParams:
-    """Read a server-side, reproducible detector variant from the run config."""
-    config = context.run.get("config")
-    if not isinstance(config, dict):
-        return default
-    context_config = config.get("context_switch")
-    if not isinstance(context_config, dict):
-        return default
-    overrides = context_config.get("params")
-    if overrides is None:
-        return default
+    """Validate and resolve an explicit detector variant."""
     if not isinstance(overrides, Mapping):
         raise PipelineError("unknown", "context_switch.params must be an object")
 
@@ -539,11 +532,30 @@ def _config_params(
         raise PipelineError("unknown", "min_scene_len_frames must be at least 1")
     if normalized.get("window_width", default.window_width) < 1:
         raise PipelineError("unknown", "window_width must be at least 1")
+    if normalized.get("min_content_val", default.min_content_val) <= 0:
+        raise PipelineError("unknown", "min_content_val must be greater than zero")
     if normalized.get("confidence_floor", default.confidence_floor) > 1:
         raise PipelineError("unknown", "confidence_floor must not exceed 1")
     if normalized.get("borderline_multiplier", default.borderline_multiplier) > 1:
         raise PipelineError("unknown", "borderline_multiplier must not exceed 1")
     return replace(default, **normalized)
+
+
+def _config_params(
+    context: PipelineContext,
+    default: ContextSwitchParams,
+) -> ContextSwitchParams:
+    """Read a server-side, reproducible detector variant from the run config."""
+    config = context.run.get("config")
+    if not isinstance(config, dict):
+        return default
+    context_config = config.get("context_switch")
+    if not isinstance(context_config, dict):
+        return default
+    overrides = context_config.get("params")
+    if overrides is None:
+        return default
+    return validated_context_switch_params(overrides, default)
 
 
 def _upload_derived(context: PipelineContext, source: Path, blob_path: str) -> None:
@@ -596,7 +608,7 @@ class ContextSwitchProvider:
 
     @property
     def version(self) -> str:
-        return "1.0.0"
+        return CONTEXT_SWITCH_PROVIDER_VERSION
 
     @property
     def requires(self) -> list[str]:
