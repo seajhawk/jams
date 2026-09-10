@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 import cv2
 import numpy as np
@@ -492,6 +492,60 @@ def _config_detector(context: PipelineContext, default: DetectorImpl) -> Detecto
     return detector
 
 
+def _config_params(
+    context: PipelineContext,
+    default: ContextSwitchParams,
+) -> ContextSwitchParams:
+    """Read a server-side, reproducible detector variant from the run config."""
+    config = context.run.get("config")
+    if not isinstance(config, dict):
+        return default
+    context_config = config.get("context_switch")
+    if not isinstance(context_config, dict):
+        return default
+    overrides = context_config.get("params")
+    if overrides is None:
+        return default
+    if not isinstance(overrides, Mapping):
+        raise PipelineError("unknown", "context_switch.params must be an object")
+
+    allowed = {field.name for field in fields(ContextSwitchParams)}
+    unknown = sorted(set(overrides) - allowed)
+    if unknown:
+        raise PipelineError("unknown", f"Unsupported context_switch parameter: {unknown[0]}")
+
+    normalized: dict[str, float | int] = {}
+    integer_fields = {
+        "min_scene_len_frames", "window_width", "borderline_post_count",
+        "drop_post_count", "dhash_enter", "dhash_exit",
+    }
+    for name, value in overrides.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise PipelineError("unknown", f"context_switch parameter {name} must be numeric")
+        if not math.isfinite(value) or value < 0:
+            raise PipelineError(
+                "unknown", f"context_switch parameter {name} must be finite and non-negative"
+            )
+        if name in integer_fields:
+            if int(value) != value:
+                raise PipelineError(
+                    "unknown", f"context_switch parameter {name} must be an integer"
+                )
+            normalized[name] = int(value)
+        else:
+            normalized[name] = float(value)
+
+    if normalized.get("min_scene_len_frames", default.min_scene_len_frames) < 1:
+        raise PipelineError("unknown", "min_scene_len_frames must be at least 1")
+    if normalized.get("window_width", default.window_width) < 1:
+        raise PipelineError("unknown", "window_width must be at least 1")
+    if normalized.get("confidence_floor", default.confidence_floor) > 1:
+        raise PipelineError("unknown", "confidence_floor must not exceed 1")
+    if normalized.get("borderline_multiplier", default.borderline_multiplier) > 1:
+        raise PipelineError("unknown", "borderline_multiplier must not exceed 1")
+    return replace(default, **normalized)
+
+
 def _upload_derived(context: PipelineContext, source: Path, blob_path: str) -> None:
     container = context.blob_service_client.get_container_client(DERIVED_CONTAINER)
     try:
@@ -565,6 +619,7 @@ class ContextSwitchProvider:
 
     def run(self, context: PipelineContext) -> list[dict[str, Any]]:
         detector_impl = _config_detector(context, self._detector_impl)
+        params = _config_params(context, self._params)
         source = self._normalized_video(context)
         fallback_reason: str | None = None
 
@@ -574,7 +629,7 @@ class ContextSwitchProvider:
                 source,
                 context.workdir,
                 detector_impl=detector_impl,
-                params=self._params,
+                params=params,
             )
         except Exception:
             if detector_impl == "adaptive":
@@ -583,7 +638,7 @@ class ContextSwitchProvider:
                     source,
                     context.workdir,
                     detector_impl="dhash",
-                    params=self._params,
+                    params=params,
                 )
                 detector_impl = "dhash"
                 fallback_reason = "adaptive_detector_unavailable"

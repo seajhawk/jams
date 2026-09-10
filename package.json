@@ -8,7 +8,12 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "test": "pnpm --filter web test",
-    "lint": "pnpm --filter web lint"
+    "lint": "pnpm --filter web lint",
+    "eval:lint": "vally lint --eval-spec evals",
+    "eval:agent": "vally eval --suite agent-guardrails --runs 3 --output-dir .vally-results"
   },
-  "packageManager": "pnpm@10.11.0"
+  "packageManager": "pnpm@10.11.0",
+  "devDependencies": {
+    "@microsoft/vally-cli": "0.15.0"
+  }
 }

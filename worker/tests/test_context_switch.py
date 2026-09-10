@@ -9,9 +9,11 @@ import golden as g
 import make_fixtures as mf
 import pytest
 
+from jams_worker.errors import PipelineError
 from jams_worker.providers.context_switch import (
     ContextSwitchParams,
     PhaseCorrelation,
+    _config_params,
     confidence_from_content_val,
     decide_post_filter,
     detect_context_switches,
@@ -39,6 +41,34 @@ def test_confidence_formula() -> None:
         post_factor=1.0,
     ) == 0.75
     assert confidence_from_content_val(content_val=1000.0, trigger=12.0, post_factor=0.6) == 0.6
+
+
+class _ConfigContext:
+    def __init__(self, config: object) -> None:
+        self.run = {"config": config}
+
+
+def test_run_config_can_select_a_reproducible_detector_variant() -> None:
+    params = _config_params(
+        _ConfigContext({"context_switch": {"params": {"min_content_val": 4}}}),  # type: ignore[arg-type]
+        ContextSwitchParams(),
+    )
+
+    assert params.min_content_val == 4.0
+    assert params.min_gap_seconds == ContextSwitchParams().min_gap_seconds
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"context_switch": {"params": {"unknown": 1}}},
+        {"context_switch": {"params": {"min_content_val": True}}},
+        {"context_switch": {"params": {"confidence_floor": 1.1}}},
+    ],
+)
+def test_run_config_rejects_invalid_detector_variants(config: object) -> None:
+    with pytest.raises(PipelineError):
+        _config_params(_ConfigContext(config), ContextSwitchParams())  # type: ignore[arg-type]
 
 
 def test_post_filter_drops_boundary_translation() -> None:

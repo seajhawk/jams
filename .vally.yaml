@@ -1,0 +1,9 @@
+paths:
+  evals: evals/
+  results: .vally-results/
+
+suites:
+  agent-guardrails:
+    description: Agent behavior checks for JAMS repository work. Run manually only.
+    evals:
+      - evals/agent-guardrails/eval.yaml

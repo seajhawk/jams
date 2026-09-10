@@ -1,0 +1,48 @@
+name: jams-agent-guardrails
+description: |
+  Small, deterministic final-state checks for an agent asked to plan work in
+  the JAMS architecture. This is an opt-in manual agent eval, never CI.
+type: capability
+
+defaults:
+  timeout: 3m
+  executor: copilot-sdk
+
+stimuli:
+  - name: preserves-core-invariants
+    tags:
+      area: architecture
+      cost: low
+    prompt: |
+      Create plan.md. It must be a concise implementation plan for adding one
+      JAMS analysis signal. State that every tenant-owned row has org_id and
+      web database access uses withOrg(). State that analyzer output uses the
+      canonical measures table. State that timestamps come from the CFR
+      normalized video. State that tests and CI make no LLM calls. Do not
+      modify any existing files.
+    graders:
+      - type: file-exists
+        config:
+          path: plan.md
+      - type: file-matches
+        config:
+          path: plan.md
+          pattern: '(?is)org_id.*withOrg\(\)'
+      - type: file-matches
+        config:
+          path: plan.md
+          pattern: '(?is)canonical.*measures'
+      - type: file-matches
+        config:
+          path: plan.md
+          pattern: '(?is)CFR.*normalized'
+      - type: file-matches
+        config:
+          path: plan.md
+          pattern: '(?is)(no|never).*LLM.*(tests|CI)'
+
+scoring:
+  weights:
+    file-exists: 0.2
+    file-matches: 0.8
+  threshold: 1.0

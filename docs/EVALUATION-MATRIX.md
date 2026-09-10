@@ -19,7 +19,7 @@ JEM recordings and deterministic fixtures are the primary evaluation system for 
 
 | Signal | Current implementation | Variants that can be evaluated now |
 |---|---|---|
-| Context switch | AdaptiveDetector plus motion/scroll post-filter | adaptive parameters and dHash fallback |
+| Context switch | AdaptiveDetector plus motion/scroll post-filter | adaptive parameters and dHash fallback; a run can now record an explicit `context_switch.params` variant |
 | Transcription | faster-whisper `distil-small.en`, CTranslate2 INT8 | model selection must first become per-run configuration; compare `distil-small.en`, `small.en`, and `base.en` against WER and runtime |
 | Sentiment | Xenova DistilBERT SST-2 INT8 ONNX | deterministic VADER fallback already supported by per-run config |
 | Segmentation and score | deterministic rules and arithmetic | parameter/config variants, measured against fixed annotations and parity checks |
@@ -34,4 +34,20 @@ JEM recordings and deterministic fixtures are the primary evaluation system for 
 
 ## Vally scope
 
-Vally is not configured in this checkout. If we add it, pin `@microsoft/vally-cli` as a workspace development dependency and commit a `.vally.yaml` with an explicit executor. Initial suites should evaluate agent-driven repository tasks: preserve tenant isolation, add canonical measures only, run required tests, and avoid LLM calls in CI. Results stay separate from the deterministic JEM provider benchmark.
+Vally CLI 0.15.0 is pinned as a workspace development dependency. `.vally.yaml`
+defines the manual `agent-guardrails` suite, and `pnpm eval:lint` validates its
+spec without an agent or model call. `pnpm eval:agent -- --model <model>` runs
+three trials with Vally's `copilot-sdk` executor. It is intentionally absent
+from CI because executing an agent is not a deterministic test. The initial
+suite checks that an agent states the tenant, canonical-measure, CFR-timestamp,
+and no-LLM-in-CI requirements. Results stay separate from the deterministic JEM
+provider benchmark.
+
+For detector hillclimbs, record the exact configuration in the server-side
+analysis run, for example `context_switch.params.min_content_val: 4`. The
+provider rejects unknown, non-numeric, non-finite, and invalid-range overrides.
+This permits an evidence-backed variant comparison without silently changing the
+production default. The low-floor variant recovered the two weak controlled
+transitions during diagnostic replay, but it also produced a website-scroll
+candidate in the IANA holdout. It is therefore a candidate to label and compare,
+not the selected production default.
