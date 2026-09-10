@@ -13,6 +13,15 @@
     "eval:agent": "vally eval --suite agent-guardrails --runs 3 --output-dir .vally-results"
   },
   "packageManager": "pnpm@10.11.0",
+  "pnpm": {
+    "overrides": {
+      "@eslint/eslintrc": "3.3.7",
+      "@opentelemetry/core": "2.8.0",
+      "esbuild": "0.25.12",
+      "nanoid": "3.3.18",
+      "postcss": "8.5.28"
+    }
+  },
   "devDependencies": {
     "@microsoft/vally-cli": "0.15.0"
   }

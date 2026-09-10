@@ -137,6 +137,9 @@ function analysisRun(overrides: Partial<AnalysisRunRow> = {}): AnalysisRunRow {
     updatedAt: new Date("2026-07-17T12:00:00.000Z"),
     deletedAt: null,
     ...overrides,
+    ownerId: overrides.ownerId ?? null,
+    leaseToken: overrides.leaseToken ?? null,
+    leaseExpiresAt: overrides.leaseExpiresAt ?? null,
   }
 }
 

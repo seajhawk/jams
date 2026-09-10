@@ -53,13 +53,5 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"
-  },
-  "pnpm": {
-    "overrides": {
-      "@eslint/eslintrc": "3.3.7",
-      "esbuild": "0.25.12",
-      "nanoid": "3.3.18",
-      "postcss": "8.5.28"
-    }
   }
 }
