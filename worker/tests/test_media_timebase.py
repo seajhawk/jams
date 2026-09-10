@@ -29,6 +29,7 @@ from jams_worker.providers.probe import ProbeProvider, probe_file
 from jams_worker.providers.segmentation import UtteranceCue, build_segments
 from jams_worker.providers.transcription import (
     RawSegment,
+    Utterance,
     WordTiming,
     build_utterances,
     measures_from_utterances,
@@ -184,6 +185,49 @@ def _make_context(
 # ==============================================================================
 # Finding 1: Delayed Audio Regression Tests
 # ==============================================================================
+
+
+def test_transport_mux_origin_does_not_delay_video_relative_to_audio(tmp_path: Path) -> None:
+    source = tmp_path / "transport.ts"
+    subprocess.run(
+        [
+            ffmpeg_path(), "-v", "error", "-y", "-f", "lavfi", "-i",
+            "color=c=white:s=160x90:r=30:d=3", "-f", "lavfi", "-i",
+            "sine=frequency=1000:sample_rate=48000:duration=3",
+            "-c:v", "mpeg2video", "-c:a", "mp2", "-f", "mpegts", str(source),
+        ],
+        check=True, timeout=60,
+    )
+    metadata = probe_file(source)
+    assert metadata.time_origin_seconds > 1
+    assert abs(metadata.duration_ms - 3000) < 100
+    context = _make_context(tmp_path)
+    with (
+        patch("jams_worker.providers.probe._download_blob",
+              side_effect=lambda c, p: shutil.copyfile(source, p)),
+        patch("jams_worker.providers.probe._upload_blob"),
+    ):
+        ProbeProvider().run(context)
+    frames = subprocess.check_output(
+        [ffmpeg_path(), "-v", "error", "-i", str(tmp_path / "normalized.mp4"),
+         "-vf", "fps=30,scale=1:1,format=gray", "-f", "rawvideo", "-"],
+        timeout=60,
+    )
+    first_bright = next(index / 30 for index, value in enumerate(frames) if value > 200)
+    tone = _first_tone_onset_seconds(tmp_path / "audio.wav")
+    assert tone is not None
+    assert first_bright <= 0.25
+    assert abs(first_bright - tone) <= 0.25
+
+
+def test_word_payload_clamps_both_endpoints_to_duration() -> None:
+    utterance = Utterance(
+        t0_ms=5050, t1_ms=5150, text="late", words=(WordTiming("late", 5050, 5150),),
+        avg_logprob=-0.2, whisper_segment_ids=(0,), deduped=False,
+    )
+    measures = measures_from_utterances([utterance], video_duration_ms=5000)
+    row = next(measure for measure in measures if measure["kind"] == "utterance")
+    assert row["payload"]["words"][0] == {"w": "late", "t0": 5000, "t1": 5000}
 
 
 def test_delayed_audio_probe_and_wav_aligns_to_video_timebase(tmp_path: Path) -> None:

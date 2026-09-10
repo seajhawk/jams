@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +76,17 @@ def probe_file(path: Path) -> MediaMetadata:
 
     audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
     fmt = data.get("format") if isinstance(data.get("format"), dict) else {}
+    container = str(fmt.get("format_name") or "unknown")
+    # Transport streams carry a common mux clock offset; it is not leading
+    # playback silence. MP4 edit-list delays still belong to its zero timeline.
+    origin = 0.0
+    if "mpegts" in container.split(","):
+        try:
+            origin = float(fmt.get("start_time") or 0.0)
+        except (TypeError, ValueError) as exc:
+            raise PipelineError("corrupt_file", "Invalid transport-stream origin") from exc
+        if not math.isfinite(origin):
+            raise PipelineError("corrupt_file", "Invalid transport-stream origin")
 
     try:
         v_start = float(video_stream.get("start_time") or 0.0)
@@ -95,9 +107,9 @@ def probe_file(path: Path) -> MediaMetadata:
         fmt_dur = None
 
     if v_dur is not None and fmt_dur is not None:
-        duration_seconds = max(v_start + v_dur, fmt_dur)
+        duration_seconds = max(v_start - origin + v_dur, fmt_dur)
     elif v_dur is not None:
-        duration_seconds = v_start + v_dur
+        duration_seconds = v_start - origin + v_dur
     elif fmt_dur is not None:
         duration_seconds = fmt_dur
     else:
@@ -127,14 +139,19 @@ def probe_file(path: Path) -> MediaMetadata:
             a_dur = float(audio_stream.get("duration") or 0.0)
         except (TypeError, ValueError):
             a_dur = None
-        audio_offset_ms = round((a_start - 0.0) * 1000)
+        audio_offset_ms = round((a_start - origin) * 1000)
         if a_start is not None and a_dur is not None:
-            duration_seconds = max(duration_seconds, a_start + a_dur)
+            duration_seconds = max(duration_seconds, a_start - origin + a_dur)
+
+    if not math.isfinite(duration_seconds) or duration_seconds <= 0:
+        raise PipelineError("corrupt_file", "Video duration must be finite and positive")
+    if duration_seconds > MAX_DURATION_SECONDS:
+        raise PipelineError("too_long", "Video exceeds the 20 minute limit")
 
     duration_ms = round(duration_seconds * 1000)
 
     return MediaMetadata(
-        container=str(fmt.get("format_name") or "unknown"),
+        container=container,
         video_codec=str(video_stream.get("codec_name") or "unknown"),
         width=width,
         height=height,
@@ -142,7 +159,7 @@ def probe_file(path: Path) -> MediaMetadata:
         duration_ms=duration_ms,
         has_audio=has_audio,
         audio_codec=audio_codec,
-        time_origin_seconds=0.0,
+        time_origin_seconds=origin,
         video_start_seconds=v_start,
         video_duration_seconds=v_dur if v_dur is not None else duration_seconds,
         audio_start_seconds=a_start,
@@ -276,15 +293,16 @@ class ProbeProvider:
             "-map",
             "0:v:0",
         ]
-        if result.video_start_seconds > 0.001:
+        video_offset = result.video_start_seconds - result.time_origin_seconds
+        if video_offset > 0.001:
             normalize_args.extend(
                 [
                     "-vf",
-                    f"tpad=start_duration={result.video_start_seconds:.6f}:color=black",
+                    f"tpad=start_duration={video_offset:.6f}:color=black",
                 ]
             )
-        elif result.video_start_seconds < -0.001:
-            trim_start = abs(result.video_start_seconds)
+        elif video_offset < -0.001:
+            trim_start = abs(video_offset)
             normalize_args.extend(
                 [
                     "-vf",

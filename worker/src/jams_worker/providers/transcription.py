@@ -278,7 +278,10 @@ def measures_from_utterances(
                 "t0": max(0, min(video_duration_ms, word.t0_ms))
                 if video_duration_ms is not None and video_duration_ms > 0
                 else word.t0_ms,
-                "t1": max(word.t0_ms, min(video_duration_ms, word.t1_ms))
+                "t1": max(
+                    max(0, min(video_duration_ms, word.t0_ms)),
+                    min(video_duration_ms, word.t1_ms),
+                )
                 if video_duration_ms is not None and video_duration_ms > 0
                 else word.t1_ms,
             }

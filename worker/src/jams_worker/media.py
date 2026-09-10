@@ -30,7 +30,7 @@ class MediaMetadata:
     audio_codec: str | None = None
 
     # Authoritative timebase contracts
-    time_origin_seconds: float = 0.0  # Playback origin T=0 in container timeline
+    time_origin_seconds: float = 0.0  # Container timestamp corresponding to playback T=0
     video_start_seconds: float = 0.0  # Video stream start_time
     video_duration_seconds: float = 0.0  # Video stream duration
     audio_start_seconds: float | None = None  # Audio stream start_time
@@ -68,14 +68,14 @@ class MediaMetadata:
         """
         if self.video_normalized_aligned:
             return self.clamp_timestamp_ms(stream_ms)
-        offset_ms = round(self.video_start_seconds * 1000)
+        offset_ms = round((self.video_start_seconds - self.time_origin_seconds) * 1000)
         return self.clamp_timestamp_ms(stream_ms + offset_ms)
 
     def timeline_ms_to_video_stream_ms(self, timeline_ms: int) -> int:
         """Map playback timeline millisecond position to unpadded video stream position."""
         if self.video_normalized_aligned:
             return max(0, timeline_ms)
-        offset_ms = round(self.video_start_seconds * 1000)
+        offset_ms = round((self.video_start_seconds - self.time_origin_seconds) * 1000)
         return max(0, timeline_ms - offset_ms)
 
     def to_dict(self) -> dict[str, Any]:
