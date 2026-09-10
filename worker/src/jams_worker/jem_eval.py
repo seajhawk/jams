@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from jams_worker.ffmpeg import ffmpeg_path
-from jams_worker.providers.context_switch import detect_context_switches
+from jams_worker.providers.context_switch import ContextSwitchParams, detect_context_switches
 from jams_worker.providers.probe import ProbeResult, probe_file
 
 CSV_HEADER = (
@@ -211,7 +211,12 @@ def _point_match(expected: list[int], detected: list[int]) -> dict[str, Any]:
     }
 
 
-def evaluate_session(session: Path, *, detector_impl: str = "adaptive") -> dict[str, Any]:
+def evaluate_session(
+    session: Path,
+    *,
+    detector_impl: str = "adaptive",
+    params: ContextSwitchParams | None = None,
+) -> dict[str, Any]:
     video, csv_path, manifest_path = _session_paths(session)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     events = _load_events(csv_path)
@@ -235,7 +240,10 @@ def evaluate_session(session: Path, *, detector_impl: str = "adaptive") -> dict[
             raise EvaluationError("CFR normalization failed")
         detected_flashes = detect_flash_runs(normalized, NORMALIZED_FPS)
         offsets = _offsets(manifest, detected_flashes)
-        cuts = detect_context_switches(normalized, workdir, detector_impl=detector_impl)
+        detector_kwargs: dict[str, Any] = {"detector_impl": detector_impl}
+        if params is not None:
+            detector_kwargs["params"] = params
+        cuts = detect_context_switches(normalized, workdir, **detector_kwargs)
     workload = [
         row for row in events
         if row.get("kind") == "context_switch"
@@ -279,7 +287,11 @@ def evaluate_session(session: Path, *, detector_impl: str = "adaptive") -> dict[
             ],
         },
         "providers": {
-            "context_switch": {"provider": "context_switch", "detector_impl": detector_impl}
+            "context_switch": {
+                "provider": "context_switch",
+                "detector_impl": detector_impl,
+                "min_content_val": (params or ContextSwitchParams()).min_content_val,
+            }
         },
         "metrics": {"context_switch": _point_match(truth, detected)},
         "expected_context_ms": truth,
@@ -330,11 +342,23 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("session", type=Path, help="JEM session directory or .json manifest")
     parser.add_argument("--detector", choices=("adaptive", "dhash"), default="adaptive")
+    parser.add_argument(
+        "--min-content-val",
+        type=float,
+        help="Evaluate an explicit adaptive content floor; does not change production defaults",
+    )
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--markdown-out", type=Path)
     args = parser.parse_args(argv)
+    if args.min_content_val is not None and args.min_content_val < 0:
+        parser.error("--min-content-val must be non-negative")
+    params = (
+        ContextSwitchParams(min_content_val=args.min_content_val)
+        if args.min_content_val is not None
+        else None
+    )
     try:
-        result = evaluate_session(args.session, detector_impl=args.detector)
+        result = evaluate_session(args.session, detector_impl=args.detector, params=params)
     except EvaluationError as exc:
         parser.error(str(exc))
     payload = json.dumps(result, indent=2) + "\n"

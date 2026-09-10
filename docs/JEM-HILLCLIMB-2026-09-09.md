@@ -30,7 +30,14 @@ Default adaptive detector, no tuning: start offset −12 ms, end drift +5 ms, 8 
 
 The three fixture windows were selected from the observed workflow and CSV title transitions. Combined metrics also include the initial browser-foreground transition. Misses occur at the checkout receipt (expected 51925 ms) and recovered-upload page (expected 73131 ms). These are diagnostic samples, not market validation or a representative customer benchmark. JAMS upload, database processing, and report rendering have not been exercised by this local provider harness.
 
-An exploratory IANA threshold trial found the page transitions at min_content_val=4, but also mislabeled the scroll around 33.4 s. Defaults remain unchanged. This trial used the provider's 5-fps proxy directly and is diagnostic only; published baseline metrics above use the validated CFR harness.
+The `min_content_val=4` variant is now reproducible through the evaluator and a
+server-side run configuration; it does not change the production default. On
+the controlled CFR replay it reached 10 / 0 / 0 (F1 1.0000), recovering the
+receipt and recovery transitions. On IANA it reached 2 / 2 / 0 (F1 0.6667),
+detecting both foreground/title proxy events but adding candidates at the scroll
+around 33.4 s and at 43.2 s. On Outlook it remained 0 / 2 / 1 (F1 0.0000).
+This is a useful recall variant, not a selected default: the held-out website
+and local-app evidence show that lowering the floor alone is insufficient.
 
 Luna's subagent could not access native Windows control (`Trusted RPC service is not configured`), while native control in the main task worked. The main task therefore completed these recordings. Luna continued with a bounded regression-test assignment. This is an agent-session capability limitation, not evidence of a JEM failure.
 
@@ -38,4 +45,11 @@ The point matcher was also corrected: nearest-first pairing could consume the on
 
 ## Next hillclimb target
 
-Diagnose the receipt/recovery misses and scroll false positive, then evaluate any provider change on held-out recordings. Keep foreground/title transitions explicitly labeled as proxy ground truth: a foreground event can occur without a visual change. Do not loosen synchronization or matching tolerances to improve scores. Main checkout still has an unfinished media-timebase merge; this work is isolated on `codex/jem-validation` until integration is safe.
+Label visual page changes separately from scrolls in at least two additional
+website recordings, then add and test a scroll-continuity feature against that
+development split before scoring IANA and Outlook again. Keep foreground/title
+transitions explicitly labeled as proxy ground truth: a foreground event can
+occur without a visual change. Do not loosen synchronization or matching
+tolerances to improve scores. Main checkout still has an unfinished
+media-timebase merge; this work is isolated on `codex/jem-validation` until
+integration is safe.
