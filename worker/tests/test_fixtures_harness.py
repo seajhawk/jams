@@ -208,7 +208,7 @@ def test_audio_negatives_emit_zero_clicks_and_keypresses(
         assert detect_keypress_bursts(artifact) == []
 
 
-def test_in_speech_click_onsets_hit_pinned_recall_gate(
+def test_in_speech_click_onsets_hit_pinned_precision_and_recall_gates(
     fxt: tuple[dict[str, Any], Path],
     tmp_path: Path,
 ) -> None:
@@ -232,8 +232,13 @@ def test_in_speech_click_onsets_hit_pinned_recall_gate(
     tp, fp, fn = _match_times(candidates, expected, int(tolerances["click_tolerance_ms"]))
     precision, recall = _precision_recall(tp, fp, fn)
 
-    assert recall >= float(tolerances["in_speech_click_recall"])
-    assert precision >= float(tolerances["in_speech_click_precision"])
+    evidence = (
+        f"Audio proposals before visual verification: TP={tp}, FP={fp}, FN={fn}; "
+        f"precision={precision:.5f}, recall={recall:.5f}; "
+        f"tolerance={tolerances['click_tolerance_ms']}ms"
+    )
+    assert recall >= float(tolerances["in_speech_click_recall"]), evidence
+    assert precision >= float(tolerances["in_speech_click_precision"]), evidence
 
 
 def test_integration_av_desync_degrades_without_crashing(

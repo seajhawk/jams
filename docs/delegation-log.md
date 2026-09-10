@@ -4,6 +4,11 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-10 | Build inventory and evaluation matrix | Codex subagent | gpt-5.6-luna | ✅ | Inventoried implemented features and experimental physical providers; primary updated release evidence after integration. |
+| 2026-09-10 | JEM timing tails and false-positive exposure | Codex subagent | gpt-5.6-luna | ⚠️ | Implemented metrics and parameter validation; review corrected scored-window semantics; 16 targeted tests passed. |
+| 2026-09-10 | Workspace dependency and build repair | Codex subagent | gpt-5.6-luna | ⚠️ | Root overrides, frozen install, audit and build repaired; primary subsequently removed stale nested lockfile exposed by CI. |
+| 2026-09-10 | Integrated media-timebase review | Codex subagent | gpt-6-astra | ⚠️ | Found transport-origin and word-end defects; primary fixed both with regressions. Final rereview unavailable after usage limit. |
+| 2026-09-10 | Narrated-click precision diagnosis | Copilot CLI | auto | ❌ | Hit 30-credit session cap without verification. Proposed speech margin still failed precision gate (0.06897 vs 0.85); primary reverted it. No detector change retained. |
 | 2026-07-16 | F0 repo cleanup (git surgery) | Codex | gpt-5.5 (high) | ✅ | Exact scope, ~47k tokens, clean commit |
 | 2026-07-16 | F0 tooling commit (git chore) | Copilot | claude-sonnet-4.6 | ✅ | Exact, fast |
 | 2026-07-16 | F1 monorepo scaffold (large multi-tool) | Copilot | claude-sonnet-4.6 | ✅ | 5 logical commits, all 5 checks green first try |
