@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 import subprocess
+from dataclasses import fields
 from pathlib import Path
 
 from jams_worker import jem_eval
@@ -163,6 +164,9 @@ def test_vfr_flash_frame_index_bug_is_fixed_by_cfr_normalization(tmp_path, monke
     provider = result["providers"]["context_switch"]
     assert provider["provider_version"] == "1.0.0"
     assert provider["params"]["min_content_val"] == 12.0
+    assert set(provider["params"]) == {
+        field.name for field in fields(jem_eval.ContextSwitchParams)
+    }
 
     assert result["alignment"]["validated"] is True
     assert result["alignment"]["end_drift_ms"] == 0

@@ -16,7 +16,7 @@ import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from jams_worker.errors import PipelineError
 from jams_worker.ffmpeg import ffmpeg_path
@@ -181,7 +181,56 @@ def map_active_ms(active_ms: int, offsets: list[tuple[int, int]]) -> int:
     return active_ms + selected
 
 
-def _point_match(expected: list[int], detected: list[int]) -> dict[str, Any]:
+def _union_duration_ms(
+    windows: Iterable[tuple[int, int]], *, padding_ms: int = 0
+) -> int:
+    """Return the duration of the merged windows, with optional match padding."""
+    padded = sorted(
+        (start - padding_ms, end + padding_ms)
+        for start, end in windows
+        if end >= start
+    )
+    if not padded:
+        return 0
+
+    merged_start, merged_end = padded[0]
+    duration_ms = 0
+    for start, end in padded[1:]:
+        if start <= merged_end:
+            merged_end = max(merged_end, end)
+            continue
+        duration_ms += merged_end - merged_start
+        merged_start, merged_end = start, end
+    return duration_ms + merged_end - merged_start
+
+
+def _inclusive_percentile(values: list[int], percentile: float) -> float | None:
+    """Return an inclusive, linearly interpolated percentile.
+
+    The rank is ``(n - 1) * percentile`` (the same convention as NumPy's
+    ``method='linear'``/``statistics.quantiles(..., method='inclusive')``),
+    so p95 is reproducible for small offline evaluation samples.
+    """
+    if not values:
+        return None
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return float(ordered[0])
+    rank = (len(ordered) - 1) * percentile
+    lower = math.floor(rank)
+    upper = math.ceil(rank)
+    if lower == upper:
+        return float(ordered[lower])
+    fraction = rank - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+
+
+def _point_match(
+    expected: list[int],
+    detected: list[int],
+    *,
+    exposure_ms: int | None = None,
+) -> dict[str, Any]:
     # Ordered interval matching maximizes one-to-one matches. Nearest-first can
     # consume the only detection available for a later truth event.
     expected = sorted(expected)
@@ -205,15 +254,31 @@ def _point_match(expected: list[int], detected: list[int]) -> dict[str, Any]:
     recall = tp / (tp + fn) if tp + fn else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
     count_accuracy = 1 - abs(len(detected) - len(expected)) / len(expected) if expected else 0.0
+    p95_abs_error_ms = _inclusive_percentile(errors, 0.95)
+    false_positives_per_minute = (
+        fp / (exposure_ms / 60_000)
+        if exposure_ms is not None and exposure_ms > 0
+        else None
+    )
     return {
         "tp": tp,
         "fp": fp,
         "fn": fn,
+        "expected_count": len(expected),
+        "detected_count": len(detected),
         "precision": round(precision, 4),
         "recall": round(recall, 4),
         "f1": round(f1, 4),
         "count_accuracy": round(max(0.0, count_accuracy), 4),
         "mean_abs_error_ms": round(sum(errors) / len(errors), 2) if errors else None,
+        "p95_abs_error_ms": round(p95_abs_error_ms, 2) if p95_abs_error_ms is not None else None,
+        "max_abs_error_ms": max(errors) if errors else None,
+        "false_positives_per_minute": (
+            round(false_positives_per_minute, 4)
+            if false_positives_per_minute is not None
+            else None
+        ),
+        "scored_exposure_ms": exposure_ms,
         "match_tolerance_ms": MATCH_TOLERANCE_MS,
     }
 
@@ -224,6 +289,13 @@ def evaluate_session(
     detector_impl: str = "adaptive",
     params: ContextSwitchParams | None = None,
 ) -> dict[str, Any]:
+    try:
+        resolved_params = validated_context_switch_params(
+            asdict(params) if params is not None else {}
+        )
+    except (PipelineError, TypeError, ValueError) as exc:
+        raise EvaluationError(f"invalid context-switch parameters: {exc}") from exc
+
     video, csv_path, manifest_path = _session_paths(session)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     events = _load_events(csv_path)
@@ -249,7 +321,7 @@ def evaluate_session(
         offsets = _offsets(manifest, detected_flashes)
         detector_kwargs: dict[str, Any] = {"detector_impl": detector_impl}
         if params is not None:
-            detector_kwargs["params"] = params
+            detector_kwargs["params"] = resolved_params
         cuts = detect_context_switches(normalized, workdir, **detector_kwargs)
     workload = [
         row for row in events
@@ -268,10 +340,20 @@ def evaluate_session(
         (map_active_ms(int(row["t_start_ms"]), offsets),
          map_active_ms(int(row["t_end_ms"]), offsets)) for row in workload
     ]
+    if any(end < start for start, end in windows):
+        raise EvaluationError("customer-app context span ends before it starts")
+    scored_windows = [
+        (
+            max(0, start - MATCH_TOLERANCE_MS),
+            min(probe.duration_ms, end),
+        )
+        for start, end in windows
+    ]
     detected = [
         cut.t_start_ms for cut in cuts
-        if any(start - MATCH_TOLERANCE_MS <= cut.t_start_ms <= end for start, end in windows)
+        if any(start <= cut.t_start_ms <= end for start, end in scored_windows)
     ]
+    exposure_ms = _union_duration_ms(scored_windows)
     return {
         "status": "succeeded",
         "session": str(manifest_path),
@@ -298,10 +380,16 @@ def evaluate_session(
                 "provider": "context_switch",
                 "detector_impl": detector_impl,
                 "provider_version": CONTEXT_SWITCH_PROVIDER_VERSION,
-                "params": asdict(params or ContextSwitchParams()),
+                "params": asdict(resolved_params),
             }
         },
-        "metrics": {"context_switch": _point_match(truth, detected)},
+        "metrics": {
+            "context_switch": _point_match(
+                truth,
+                detected,
+                exposure_ms=exposure_ms,
+            )
+        },
         "expected_context_ms": truth,
         "detected_context_ms": detected,
         "limitations": [
