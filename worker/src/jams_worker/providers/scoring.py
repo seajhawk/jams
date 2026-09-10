@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 
 from jams_worker.effort_score import normalize, score
 from jams_worker.errors import StaleLeaseError
+from jams_worker.media import get_authoritative_duration_ms
 from jams_worker.pipeline import PipelineContext
 
 PROVIDER_ID = "scoring"
@@ -16,12 +17,8 @@ PROVIDER_VERSION = "1.0.0"
 
 
 def _read_video(context: PipelineContext) -> dict[str, Any]:
-    row = context.db_conn.execute(
-        "select duration_ms from videos where id = %s and org_id = %s",
-        (context.video_id, context.org_id),
-    ).fetchone()
-    duration_ms = row[0] if row is not None else context.run.get("duration_ms")
-    return {"duration_ms": int(duration_ms or 0)}
+    duration_ms = get_authoritative_duration_ms(context)
+    return {"duration_ms": duration_ms}
 
 
 def _read_measures(context: PipelineContext) -> list[dict[str, Any]]:

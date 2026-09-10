@@ -19,11 +19,10 @@ from azure.core.exceptions import ResourceExistsError
 from jams_worker.errors import PipelineError
 from jams_worker.ffmpeg import (
     MEDIA_TIMEOUT_SECONDS,
-    PROBE_TIMEOUT_SECONDS,
     ffmpeg_path,
-    ffprobe_path,
     run_media_command,
 )
+from jams_worker.media import get_authoritative_duration_ms
 from jams_worker.pipeline import PipelineContext
 from jams_worker.providers.probe import DERIVED_CONTAINER
 
@@ -260,20 +259,40 @@ def assert_timestamp_invariants(utterances: Sequence[Utterance], video_duration_
             raise PipelineError("unknown", "Transcription invariant I4 failed: video bounds")
 
 
-def measures_from_utterances(utterances: Sequence[Utterance]) -> list[dict[str, Any]]:
+def measures_from_utterances(
+    utterances: Sequence[Utterance],
+    video_duration_ms: int | None = None,
+) -> list[dict[str, Any]]:
     measures: list[dict[str, Any]] = []
     for index, utterance in enumerate(utterances):
+        t0 = utterance.t0_ms
+        t1 = utterance.t1_ms
+        if video_duration_ms is not None and video_duration_ms > 0:
+            t0 = max(0, min(video_duration_ms, t0))
+            t1 = max(t0, min(video_duration_ms, t1))
+
         confidence = round(clamp(math.exp(utterance.avg_logprob), 0.0, 1.0), 4)
         words_payload = [
-            {"w": word.text, "t0": word.t0_ms, "t1": word.t1_ms}
+            {
+                "w": word.text,
+                "t0": max(0, min(video_duration_ms, word.t0_ms))
+                if video_duration_ms is not None and video_duration_ms > 0
+                else word.t0_ms,
+                "t1": max(
+                    max(0, min(video_duration_ms, word.t0_ms)),
+                    min(video_duration_ms, word.t1_ms),
+                )
+                if video_duration_ms is not None and video_duration_ms > 0
+                else word.t1_ms,
+            }
             for word in utterance.words
         ]
         measures.append(
             {
                 "kind": "utterance",
                 "category": "speech",
-                "t_start_ms": utterance.t0_ms,
-                "t_end_ms": utterance.t1_ms,
+                "t_start_ms": t0,
+                "t_end_ms": t1,
                 "value_num": None,
                 "value_text": utterance.text,
                 "unit": None,
@@ -293,8 +312,8 @@ def measures_from_utterances(utterances: Sequence[Utterance]) -> list[dict[str, 
             {
                 "kind": "spoken_word",
                 "category": "physical",
-                "t_start_ms": utterance.t0_ms,
-                "t_end_ms": utterance.t1_ms,
+                "t_start_ms": t0,
+                "t_end_ms": t1,
                 "value_num": len(utterance.words),
                 "value_text": None,
                 "unit": "words",
@@ -492,25 +511,7 @@ def _artifact_blob_path(context: PipelineContext, kinds: tuple[str, ...]) -> str
 
 
 def _video_duration_ms(context: PipelineContext, normalized_video: Path) -> int:
-    value = context.run.get("duration_ms")
-    if value is not None:
-        return int(value)
-    result = run_media_command(
-        [
-            ffprobe_path(),
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "csv=p=0",
-            str(normalized_video),
-        ],
-        timeout_seconds=PROBE_TIMEOUT_SECONDS,
-    )
-    if result.returncode != 0:
-        raise PipelineError("corrupt_file", result.stderr.strip() or "ffprobe failed")
-    return ms_from_seconds(float(result.stdout.strip()))
+    return get_authoritative_duration_ms(context, normalized_video)
 
 
 def _write_transcript(
@@ -664,8 +665,36 @@ class TranscriptionProvider:
             if not utterances:
                 status = "partial"
                 reason = "no_speech_detected"
+
+            media = getattr(context, "media", None)
+            if (
+                media is not None
+                and not media.audio_normalized_aligned
+                and media.audio_offset_ms != 0
+            ):
+                offset_ms = media.audio_offset_ms
+                utterances = [
+                    Utterance(
+                        t0_ms=media.clamp_timestamp_ms(u.t0_ms + offset_ms),
+                        t1_ms=media.clamp_timestamp_ms(u.t1_ms + offset_ms),
+                        text=u.text,
+                        words=tuple(
+                            WordTiming(
+                                w.text,
+                                media.clamp_timestamp_ms(w.t0_ms + offset_ms),
+                                media.clamp_timestamp_ms(w.t1_ms + offset_ms),
+                            )
+                            for w in u.words
+                        ),
+                        avg_logprob=u.avg_logprob,
+                        whisper_segment_ids=u.whisper_segment_ids,
+                        deduped=u.deduped,
+                    )
+                    for u in utterances
+                ]
+
             assert_timestamp_invariants(utterances, video_duration)
-            measures = measures_from_utterances(utterances)
+            measures = measures_from_utterances(utterances, video_duration_ms=video_duration)
             _write_transcript(
                 path=transcript_path,
                 status=status,

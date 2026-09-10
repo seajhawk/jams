@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import create_autospec
 
 import pytest
 
+from jams_worker.db import RunRepository
 from jams_worker.errors import PipelineError
 from jams_worker.main import handle_message, run_loop
 
@@ -141,7 +143,8 @@ def test_receipt_before_commit_is_not_destructive_and_retries(
     conn = _Conn()
 
     # Simulate run not yet visible in DB because web transaction has not committed
-    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+    claim = create_autospec(RunRepository.claim, return_value=None)
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", claim)
 
     result = handle_message(
         message=_Message(json.dumps({"run_id": "run_not_yet_committed"}), dequeue_count=1),
@@ -158,6 +161,7 @@ def test_receipt_before_commit_is_not_destructive_and_retries(
     assert conn.rollbacks == 1
     assert result.status == "redelivery"
     assert result.poisoned is False
+    claim.assert_called_once()
     assert queue.updated == [("msg", "receipt", 2)]
 
 
@@ -169,7 +173,8 @@ def test_missing_run_poisons_after_max_dequeue_attempts(
     conn = _Conn()
 
     # Run remains missing after 3 attempts
-    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+    claim = create_autospec(RunRepository.claim, return_value=None)
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", claim)
 
     result = handle_message(
         message=_Message(json.dumps({"run_id": "run_never_exists"}), dequeue_count=3),
@@ -185,11 +190,16 @@ def test_missing_run_poisons_after_max_dequeue_attempts(
     assert queue.deleted == [("msg", "receipt")]
     assert result.status == "poisoned"
     assert result.poisoned is True
+    claim.assert_called_once()
 
 
-@pytest.mark.parametrize("status", ["succeeded", "partial", "failed"])
+@pytest.mark.parametrize(
+    ("status", "claim_status", "expected_status"),
+    [("succeeded", "completed", "skipped"), ("partial", "partial", "skipped"),
+     ("failed", "terminal", "terminal")],
+)
 def test_duplicate_send_for_completed_run_skipped_and_deleted(
-    monkeypatch: pytest.MonkeyPatch, status: str
+    monkeypatch: pytest.MonkeyPatch, status: str, claim_status: str, expected_status: str
 ) -> None:
     queue = _Queue()
     poison = _Queue()
@@ -202,10 +212,13 @@ def test_duplicate_send_for_completed_run_skipped_and_deleted(
         pipeline_invoked = True
         return object()
 
-    monkeypatch.setattr(
-        "jams_worker.main.RunRepository.claim",
-        lambda _self, _run_id: {"id": "run_done", "status": status, "org_id": "org_1"},
+    claim = create_autospec(
+        RunRepository.claim,
+        return_value={
+            "id": "run_done", "status": status, "org_id": "org_1", "claim_status": claim_status,
+        },
     )
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", claim)
     monkeypatch.setattr("jams_worker.main.run_pipeline", fake_run_pipeline)
 
     result = handle_message(
@@ -220,7 +233,8 @@ def test_duplicate_send_for_completed_run_skipped_and_deleted(
     assert pipeline_invoked is False
     assert queue.deleted == [("msg", "receipt")]
     assert poison.sent == []
-    assert result.status == "skipped"
+    assert result.status == expected_status
+    claim.assert_called_once()
 
 
 def test_update_message_failure_is_logged_and_message_left_for_redelivery(
@@ -234,7 +248,8 @@ def test_update_message_failure_is_logged_and_message_left_for_redelivery(
         raise RuntimeError("network failure during visibility update")
 
     queue.update_message = failing_update  # type: ignore[method-assign]
-    monkeypatch.setattr("jams_worker.main.RunRepository.claim", lambda _self, _run_id: None)
+    claim = create_autospec(RunRepository.claim, return_value=None)
+    monkeypatch.setattr("jams_worker.main.RunRepository.claim", claim)
 
     result = handle_message(
         message=_Message(json.dumps({"run_id": "run_visibility_fail"}), dequeue_count=1),
@@ -254,6 +269,7 @@ def test_update_message_failure_is_logged_and_message_left_for_redelivery(
     assert len(failure_logs) == 1
     assert "network failure" in failure_logs[0]["error"]
     assert failure_logs[0]["run_id"] == "run_visibility_fail"
+    claim.assert_called_once()
 
 
 def test_run_loop_drain_exits_when_queue_empty(monkeypatch: pytest.MonkeyPatch, capsys) -> None:

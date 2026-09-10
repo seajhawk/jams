@@ -15,6 +15,7 @@ from psycopg import Connection
 from psycopg.types.json import Jsonb
 
 from jams_worker.errors import PipelineError, StaleLeaseError
+from jams_worker.media import MediaMetadata
 
 MeasureRow = dict[str, Any]
 
@@ -68,6 +69,7 @@ class PipelineContext:
     owner_id: str | None = None
     lease_token: str | None = None
     provider_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
+    media: MediaMetadata | None = None
 
     @property
     def run_id(self) -> str:
