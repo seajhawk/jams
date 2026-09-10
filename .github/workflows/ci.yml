@@ -52,6 +52,7 @@ jobs:
 
       - name: Audit dependencies
         run: pnpm audit
+        working-directory: .
 
       - name: Migrate fresh integration database
         run: pnpm db:migrate
