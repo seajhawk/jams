@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, inArray, lt, or, sql } from "drizzle-orm"
 
 import { adminDb } from "@/db/admin-client.server"
 import { orgs, userProvisioningLocks, users, webhookEvents, weightProfiles } from "@/db/schema"
@@ -53,7 +53,13 @@ export function createDrizzleMirrorStore(
             updatedAt: now,
             lastError: null,
           },
-          setWhere: sql`${webhookEvents.status} IN ('pending', 'failed') OR (${webhookEvents.status} = 'processing' AND ${webhookEvents.lastAttemptAt} < ${leaseCutoff})`,
+          setWhere: or(
+            inArray(webhookEvents.status, ["pending", "failed"]),
+            and(
+              eq(webhookEvents.status, "processing"),
+              lt(webhookEvents.lastAttemptAt, leaseCutoff)
+            )
+          ),
         })
         .returning({
           externalId: webhookEvents.externalId,
@@ -181,7 +187,7 @@ export function createDrizzleMirrorStore(
             expiresAt,
             updatedAt: now,
           },
-          setWhere: sql`${userProvisioningLocks.expiresAt} < ${now}`,
+          setWhere: lt(userProvisioningLocks.expiresAt, now),
         })
         .returning({ userId: userProvisioningLocks.userId })
 
