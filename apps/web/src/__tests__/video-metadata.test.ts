@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { extractVideoMetadata } from "@/components/upload/useVideoMetadata"
 
@@ -6,7 +6,9 @@ import { extractVideoMetadata } from "@/components/upload/useVideoMetadata"
 // controlled video / canvas objects whose event listeners we fire manually.
 
 describe("extractVideoMetadata", () => {
+  beforeEach(() => vi.useFakeTimers())
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
@@ -41,7 +43,9 @@ describe("extractVideoMetadata", () => {
           listeners[event].push(handler)
         }
       ),
-      removeEventListener: vi.fn(),
+      removeEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners[event] = (listeners[event] ?? []).filter((entry) => entry !== handler)
+      }),
     }
 
     // When `src` is set → fire loadedmetadata; when `currentTime` is set → fire seeked
@@ -82,7 +86,9 @@ describe("extractVideoMetadata", () => {
       type: "video/mp4",
     })
 
-    const meta = await extractVideoMetadata(fakeFile)
+    const result = extractVideoMetadata(fakeFile)
+    await vi.runAllTimersAsync()
+    const meta = await result
 
     expect(meta.durationMs).toBe(65500) // 65.5 * 1000, rounded
     expect(meta.width).toBe(1280)
@@ -96,6 +102,10 @@ describe("extractVideoMetadata", () => {
       "image/jpeg",
       0.8
     )
+    expect(mockCanvas.toBlob).toHaveBeenCalledTimes(1)
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
+    expect(Object.values(listeners).flat()).toEqual([])
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it("rejects when the video element fires an error event", async () => {
@@ -118,7 +128,9 @@ describe("extractVideoMetadata", () => {
           listeners[event].push(handler)
         }
       ),
-      removeEventListener: vi.fn(),
+      removeEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        listeners[event] = (listeners[event] ?? []).filter((entry) => entry !== handler)
+      }),
     }
 
     let _src = ""
@@ -145,8 +157,13 @@ describe("extractVideoMetadata", () => {
 
     const fakeFile = new File(["bad"], "corrupt.mp4", { type: "video/mp4" })
 
-    await expect(extractVideoMetadata(fakeFile)).rejects.toThrow(
+    const rejection = expect(extractVideoMetadata(fakeFile)).rejects.toThrow(
       "Failed to load video"
     )
+    await vi.runAllTimersAsync()
+    await rejection
+    expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
+    expect(Object.values(listeners).flat()).toEqual([])
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

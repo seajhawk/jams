@@ -21,6 +21,8 @@ export function extractVideoMetadata(file: File): Promise<VideoMetadata> {
     video.crossOrigin = "anonymous"
 
     const objectUrl = URL.createObjectURL(file)
+    let settled = false
+    let capturing = false
 
     let captured: {
       durationMs: number
@@ -30,18 +32,25 @@ export function extractVideoMetadata(file: File): Promise<VideoMetadata> {
     } | null = null
 
     function cleanup() {
+      if (settled) return
+      settled = true
+      video.removeEventListener("error", onError)
+      video.removeEventListener("loadedmetadata", onLoadedMetadata)
+      video.removeEventListener("seeked", onSeeked)
       URL.revokeObjectURL(objectUrl)
       video.pause()
       video.src = ""
       video.remove()
     }
 
-    video.addEventListener("error", () => {
+    function onError() {
+      if (settled) return
       cleanup()
       reject(new Error("Failed to load video for metadata extraction"))
-    })
+    }
 
-    video.addEventListener("loadedmetadata", () => {
+    function onLoadedMetadata() {
+      if (settled || capturing) return
       const durationMs = Math.round(video.duration * 1000)
       const width = video.videoWidth
       const height = video.videoHeight
@@ -57,10 +66,11 @@ export function extractVideoMetadata(file: File): Promise<VideoMetadata> {
 
       // Seek toward first meaningful frame
       video.currentTime = Math.min(1, video.duration * 0.1)
-    })
+    }
 
-    video.addEventListener("seeked", () => {
-      if (!captured) return
+    function onSeeked() {
+      if (settled || capturing || !captured) return
+      capturing = true
 
       const { durationMs, width, height, hasAudio } = captured
 
@@ -84,6 +94,7 @@ export function extractVideoMetadata(file: File): Promise<VideoMetadata> {
 
       canvas.toBlob(
         (blob) => {
+          if (settled) return
           cleanup()
           if (!blob) {
             reject(new Error("Failed to capture poster frame"))
@@ -94,8 +105,11 @@ export function extractVideoMetadata(file: File): Promise<VideoMetadata> {
         "image/jpeg",
         0.8
       )
-    })
+    }
 
+    video.addEventListener("error", onError)
+    video.addEventListener("loadedmetadata", onLoadedMetadata)
+    video.addEventListener("seeked", onSeeked)
     video.src = objectUrl
   })
 }
