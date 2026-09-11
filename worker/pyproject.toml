@@ -19,10 +19,9 @@ dependencies = [
     "scenedetect[opencv-headless]==0.6.4",
     "opencv-python-headless==4.10.0.84",
     "faster-whisper==1.1.1",
-    "ctranslate2==4.5.0",
+    "ctranslate2==4.8.2",
     "tokenizers>=0.15",
     "vaderSentiment>=3.3.2",
-    "setuptools<81",
 ]
 
 [project.scripts]

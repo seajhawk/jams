@@ -4,6 +4,9 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-10 | Remaining setuptools vulnerability diagnosis | Codex subagent | gpt-5.6-luna | ✅ | Located CTranslate2's obsolete pkg_resources dependency and identified compatible 4.8.2; primary upgraded, audited clean, and passed all three cached-model transcription gates offline. |
+| 2026-09-10 | Personal-org recovery race | Codex subagent | gpt-5.6-luna | ⚠️ | Added lock-timeout rejection and stable per-user slug before quota interruption; primary strengthened overlapping-request tests and verified 24 focused tests/build. |
+| 2026-09-10 | Webhook integration review | Codex subagent | gpt-6-astra | ✅ | After usage reset, reviewed claims, transactional rollback, lease-owner release, migration backfill and tests; no release-blocking findings. Read-only review; validation run by primary. |
 | 2026-09-10 | Build inventory and evaluation matrix | Codex subagent | gpt-5.6-luna | ✅ | Inventoried implemented features and experimental physical providers; primary updated release evidence after integration. |
 | 2026-09-10 | JEM timing tails and false-positive exposure | Codex subagent | gpt-5.6-luna | ⚠️ | Implemented metrics and parameter validation; review corrected scored-window semantics; 16 targeted tests passed. |
 | 2026-09-10 | Workspace dependency and build repair | Codex subagent | gpt-5.6-luna | ⚠️ | Root overrides, frozen install, audit and build repaired; primary subsequently removed stale nested lockfile exposed by CI. |

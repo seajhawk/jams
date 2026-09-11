@@ -1,9 +1,42 @@
 # JAMS build status — 2026-09-10
 
-This is an inventory of `codex/jem-validation`, updated September 10.
+This is an inventory of JAMS, updated September 10.
 The previously unfinished timestamp merge is resolved, preserving worker
 lease fencing and attempt-specific artifacts. It is integrated with the JEM
 evaluation branch in `57d18d1`. This is engineering progress, not a release claim.
+
+## Follow-up: webhook recovery integration
+
+The pending webhook recovery branch is integrated in `d5b0d0d`, with the
+database serialization correction in `ce8a7c0`. Migration `0011_webhook_recovery`
+extends the existing dispatch/worker-lease history and preserves completed
+legacy webhook deliveries. Unfinished deliveries can retry; completed events
+are acknowledged without repeating work. Mirror writes and ledger completion
+share a transaction, and claim tokens reject stale owners.
+
+Personal-workspace provisioning now rejects lock-wait timeouts instead of
+creating without ownership. A stable per-user Clerk slug also prevents duplicate
+creation when an external request outlives its lease; reconciliation only adopts
+a personal organization from that user's memberships. Existing personal
+workspaces are retained. Clerk documents the optional creation slug and its
+instance-wide uniqueness: [createOrganization](https://clerk.com/docs/reference/backend/organization/create-organization),
+[Organization object](https://clerk.com/docs/react/reference/objects/organization).
+
+GitHub CI run `34545623863` passed: 133 web tests, including five real Postgres
+recovery tests, and 147 worker tests (15 skipped). The database tests exposed a
+raw-Date serialization defect missed by memory tests; typed Drizzle comparisons
+fixed it. Astra reviewed the integration and that correction with no remaining
+actionable findings. This verifies database recovery, not live Clerk delivery or
+the full customer upload-to-report flow.
+
+The remaining worker dependency alerts were traced to CTranslate2 4.5.0's
+dependency on setuptools, not VADER. CTranslate2 is now pinned to 4.8.2 and the
+direct setuptools pin is removed; faster-whisper remains 1.1.1. The locked
+runtime export passes `pip-audit` with no known vulnerabilities. Import checks
+confirm setuptools is absent, eight sentiment/transcription tests pass, and
+all three cached-model transcription tests pass with `HF_HUB_OFFLINE=1`,
+including the WER and timestamp gates. These synthetic checks do not replace
+the held-out narration evaluation or target-SKU benchmark.
 
 ## Implemented capability
 
@@ -79,8 +112,9 @@ evaluation branch in `57d18d1`. This is engineering progress, not a release clai
 
 ## Next five tasks
 
-1. Finish reliability integration: the timestamp work is integrated; webhook
-   recovery remains on its separate branch. Run the full recovery matrix.
+1. Exercise the combined recovery matrix end to end: timestamp and webhook
+   recovery changes are integrated; live delivery and application flows still
+   require validation.
 2. Extend CI evidence beyond the repaired web workflow: verify worker schema
    compatibility against the migrated database and exercise optional media
    fixtures. Report skipped tests explicitly; no model calls belong in CI.
