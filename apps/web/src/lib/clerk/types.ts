@@ -10,17 +10,52 @@ export type ClerkUser = {
   displayName: string | null
 }
 
+export type WebhookReservation =
+  | { status: "claimed"; claimToken: string }
+  | { status: "completed" }
+  | { status: "in_progress" }
+
+export class StaleClaimError extends Error {
+  constructor(
+    public readonly externalId: string,
+    public readonly claimToken: string,
+    message = `Stale claim finalized for webhook event ${externalId} (claimToken: ${claimToken})`
+  ) {
+    super(message)
+    this.name = "StaleClaimError"
+  }
+}
+
+export class PersonalOrgProvisioningInProgressError extends Error {
+  constructor(
+    public readonly userId: string,
+    message = `Personal organization provisioning is already in progress for user ${userId}`
+  ) {
+    super(message)
+    this.name = "PersonalOrgProvisioningInProgressError"
+  }
+}
+
 export type MirrorStore = {
   reserveWebhookEvent(input: {
-    source: "clerk"
+    source: "clerk" | "stripe"
     externalId: string
     payload: unknown
-  }): Promise<"inserted" | "duplicate">
-  markWebhookEventProcessed(externalId: string): Promise<void>
+  }): Promise<WebhookReservation>
+  markWebhookEventCompleted(externalId: string, claimToken: string): Promise<void>
+  markWebhookEventFailed(externalId: string, claimToken: string, error: unknown): Promise<void>
+  commitEvent<T>(
+    externalId: string,
+    claimToken: string,
+    mutate?: (store: MirrorStore) => Promise<T>
+  ): Promise<void>
+  markWebhookEventProcessed(externalId: string, claimToken?: string): Promise<void>
   upsertOrg(org: ClerkOrg): Promise<void>
   markOrgDeleted(id: string): Promise<void>
   upsertUser(user: ClerkUser): Promise<void>
   markUserDeleted(id: string): Promise<void>
+  acquirePersonalOrgLock?(userId: string, ownerToken: string, leaseMs?: number): Promise<boolean>
+  releasePersonalOrgLock?(userId: string, ownerToken: string): Promise<void>
 }
 
 export type OrganizationMembership = {
@@ -31,6 +66,7 @@ export type ClerkBackendClient = {
   organizations: {
     createOrganization(input: {
       name: string
+      slug: string
       createdBy: string
       maxAllowedMemberships: number
       privateMetadata: { personal: true }

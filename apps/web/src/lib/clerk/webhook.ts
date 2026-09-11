@@ -6,10 +6,25 @@ import type {
 } from "@clerk/nextjs/server"
 import { Webhook } from "svix"
 
-import { ensurePersonalOrganization } from "./personal-org"
+import { reconcilePersonalOrganization } from "./personal-org"
 import type { ClerkBackendClient, ClerkUser, MirrorStore } from "./types"
 
 export class WebhookVerificationError extends Error {}
+
+export class WebhookEventInProgressError extends Error {
+  constructor(
+    public readonly externalId: string,
+    message = `Webhook event ${externalId} is currently being processed`
+  ) {
+    super(message)
+    this.name = "WebhookEventInProgressError"
+  }
+}
+
+export type WebhookTestHooks = {
+  afterReservation?: () => Promise<void> | void
+  afterOrgCreation?: () => Promise<void> | void
+}
 
 function primaryEmail(user: UserJSON): string | null {
   const email = user.email_addresses.find(
@@ -81,53 +96,129 @@ export async function applyClerkWebhookEvent(
   event: WebhookEvent,
   externalId: string,
   store: MirrorStore,
-  clerk?: ClerkBackendClient
+  clerk?: ClerkBackendClient,
+  hooks?: WebhookTestHooks
 ): Promise<"processed" | "duplicate" | "ignored"> {
-  const reserved = await store.reserveWebhookEvent({
+  const reservation = await store.reserveWebhookEvent({
     source: "clerk",
     externalId,
     payload: event,
   })
 
-  if (reserved === "duplicate") {
+  // Do not suppress unfinished work: only completed events are considered duplicates
+  if (reservation.status === "completed") {
     return "duplicate"
   }
 
-  switch (event.type) {
-    case "user.created": {
-      const user = mapUser(event.data)
-      await store.upsertUser(user)
-      await ensurePersonalOrganization({
-        userId: user.id,
-        fallbackName: user.displayName,
-        clerk,
-        store,
-      })
-      break
-    }
-    case "user.updated":
-      await store.upsertUser(mapUser(event.data))
-      break
-    case "user.deleted":
-      await store.markUserDeleted(deletedId(event.data))
-      break
-    case "organization.created":
-    case "organization.updated":
-      await store.upsertOrg(mapOrg(event.data))
-      break
-    case "organization.deleted":
-      await store.markOrgDeleted(deletedId(event.data))
-      break
-    case "organizationMembership.created":
-      await store.upsertOrg(mapOrg(event.data.organization))
-      break
-    case "organizationMembership.deleted":
-      break
-    default:
-      await store.markWebhookEventProcessed(externalId)
-      return "ignored"
+  // Active lease: another attempt is currently processing this event
+  if (reservation.status === "in_progress") {
+    throw new WebhookEventInProgressError(externalId)
   }
 
-  await store.markWebhookEventProcessed(externalId)
+  const claimToken = reservation.claimToken
+
+  try {
+    if (hooks?.afterReservation) {
+      await hooks.afterReservation()
+    }
+
+    switch (event.type) {
+      case "user.created": {
+        const user = mapUser(event.data)
+        // 1. External reconciliation first: discover or create personal org in Clerk
+        const personalOrg = await reconcilePersonalOrganization({
+          userId: user.id,
+          fallbackName: user.displayName,
+          clerk,
+          store,
+          onCreated: hooks?.afterOrgCreation,
+        })
+        // 2. Atomically commit both DB mirror mutations (users + orgs) and ledger completion in one transaction
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken, async (txStore) => {
+            await txStore.upsertUser(user)
+            await txStore.upsertOrg(personalOrg)
+          })
+        } else {
+          await store.upsertUser(user)
+          await store.upsertOrg(personalOrg)
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      case "user.updated": {
+        const user = mapUser(event.data)
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken, (s) => s.upsertUser(user))
+        } else {
+          await store.upsertUser(user)
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      case "user.deleted": {
+        const id = deletedId(event.data)
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken, (s) => s.markUserDeleted(id))
+        } else {
+          await store.markUserDeleted(id)
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      case "organization.created":
+      case "organization.updated": {
+        const org = mapOrg(event.data)
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken, (s) => s.upsertOrg(org))
+        } else {
+          await store.upsertOrg(org)
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      case "organization.deleted": {
+        const id = deletedId(event.data)
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken, (s) => s.markOrgDeleted(id))
+        } else {
+          await store.markOrgDeleted(id)
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      case "organizationMembership.created": {
+        const org = mapOrg(event.data.organization)
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken, (s) => s.upsertOrg(org))
+        } else {
+          await store.upsertOrg(org)
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      case "organizationMembership.deleted": {
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken)
+        } else {
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        break
+      }
+      default: {
+        if (store.commitEvent) {
+          await store.commitEvent(externalId, claimToken)
+        } else {
+          await store.markWebhookEventCompleted(externalId, claimToken)
+        }
+        return "ignored"
+      }
+    }
+  } catch (error) {
+    // Record explicit failed state so retries can claim the event and unfinished work is not suppressed
+    await store.markWebhookEventFailed(externalId, claimToken, error)
+    throw error
+  }
+
   return "processed"
 }
