@@ -43,3 +43,15 @@ Next milestone: continue the detector quality
 loop, including the previously recorded narrated-click precision failure
 (6 TP / 126 FP / 0 FN before visual verification). No thresholds were weakened.
 Azure deployment and customer invitations remain deferred.
+
+## Audio detector diagnosis checkpoint
+
+Added `worker/scripts/diagnose_audio_onsets.py` and five metric/input regression
+tests. The reproducible report includes proposal features, duplicate-aware matches,
+clean clicks and speech/music/tone/silence controls; missing controls or positive
+ground truth fail explicitly. See `AUDIO-ONSET-DIAGNOSTICS.md` for invocation and
+baseline. Clean clicks are 6 TP / 0 FP; pure speech generates 130 raw proposals.
+The narrated golden test still fails at 6 TP / 126 FP / 0 FN. No production
+detector or quality gate was changed. Targeted diagnostic tests and Ruff pass.
+Luna independently confirmed the speech-proposal cause; Astra identified missing
+input validation, which was fixed with regression tests.

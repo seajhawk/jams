@@ -4,6 +4,8 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-12 | Audio proposal failure diagnosis | Codex subagent | gpt-5.6-luna | ✅ | Independently reproduced 6 TP / 126 FP, explained ambiguous speech candidates and distinction from visual fusion; read-only. |
+| 2026-09-12 | Audio diagnostic review | Codex subagent | gpt-6-astra | ✅ | Found silently omitted controls/ground truth; primary added fail-fast validation and regression tests. |
 | 2026-09-12 | Failure/retry contract inspection | Codex subagent | gpt-5.6-luna | ✅ | Confirmed corrupt-file mapping, UI selectors, poison behavior and superseded-run assertions; primary implemented and ran the real recovery scenario. |
 | 2026-09-12 | Failure/retry E2E review | Codex subagent | gpt-6-astra | ✅ | No actionable findings in exact-blob isolation, finally restoration, failed-run history or successful retry assertions. |
 | 2026-09-12 | Narrated E2E fixture inspection and spec | Codex subagent | gpt-5.6-luna | ⚠️ | Identified existing AV-sync reference and drafted narrated assertions before quota interruption; primary completed seek guard and verified real offline pipeline. |
