@@ -43,3 +43,33 @@ and signal levels, alongside the clean-click and negative controls. Keep the
 broad speech-region stress test and its current gates. Report final visual-fusion
 precision separately; the runtime currently suppresses in-speech proposals without
 visual corroboration. Do not relabel raw candidates to manufacture a gate pass.
+
+## Expanded synthetic experiment
+
+Generate and then evaluate sequentially (do not regenerate media during evaluation):
+
+```powershell
+uv run --project worker python worker/scripts/make_audio_holdouts.py --output-dir D:/Temp/jams-audio-holdouts
+uv run --project worker python worker/scripts/evaluate_audio_holdouts.py --fixture-dir D:/Temp/jams-audio-holdouts --output D:/Temp/jams-audio-holdouts/evaluation.json
+```
+
+There are 27 cases: three new repeated phrases, three voice/speed combinations,
+and three transient-to-speech levels (-12, -6, 0 dB). Each 24-second pair contains
+pure narration and that same narration plus six seeded clicks. Shared peak scaling
+preserves the pair's speech amplitude. The manifest records local speech RMS over
+400 ms centered on each click; this does not prove speech at the exact click sample.
+Mix levels use whole-track speech RMS and active-transient RMS, matching the original
+fixture convention. These synthetic voices are robustness probes, not customer audio.
+
+Final shared-normalization results (162 expected clicks), September 12:
+
+| Fixed experiment | TP | FP | FN | Precision | Recall | Pure-speech proposals |
+|---|---:|---:|---:|---:|---:|---:|
+| Unchanged baseline | 162 | 3740 | 0 | 4.15% | 100% | 3823 |
+| In-speech threshold multiplier 3.2 | 132 | 257 | 30 | 33.93% | 81.48% | 268 |
+| Flatness ≥0.6 and crest ≥4 | 111 | 623 | 51 | 15.12% | 68.52% | 648 |
+
+Both alternatives are rejected for production. They were chosen before this
+evaluation, and neither reaches the existing precision gate. The original
+narrated acceptance failure remains unchanged. Once inspected, this corpus is
+development evidence; future tuning needs fresh held-out data.

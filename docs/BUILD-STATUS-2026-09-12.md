@@ -55,3 +55,19 @@ The narrated golden test still fails at 6 TP / 126 FP / 0 FN. No production
 detector or quality gate was changed. Targeted diagnostic tests and Ruff pass.
 Luna independently confirmed the speech-proposal cause; Astra identified missing
 input validation, which was fixed with regression tests.
+
+## Expanded audio robustness experiment
+
+CI passed for `d951a25`. Luna built `make_audio_holdouts.py`: 27 crossed synthetic
+phrase/voice/volume cases, paired speech-only controls and shared normalization.
+The primary added `evaluate_audio_holdouts.py` for three predeclared variants.
+Final results were repeated after generation completed: baseline 162 TP / 3740 FP;
+threshold 3.2 gives 132 TP / 257 FP / 30 FN; spectral filter gives 111 TP / 623 FP /
+51 FN. Neither candidate is accepted. The initial evaluation overlapped fixture
+revision and is superseded by these final, stable counts.
+
+Luna verified deterministic generation; Astra reviewed both scripts and found a
+mislabeled RMS window, corrected to 400 ms. Diagnostic regression tests (5) and
+worker Ruff pass. Details and commands are in `AUDIO-ONSET-DIAGNOSTICS.md`.
+No production thresholds changed. Next: investigate temporal transient shape
+with fresh evaluation data; simple threshold and spectral filters are insufficient.
