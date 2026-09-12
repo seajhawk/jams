@@ -32,3 +32,19 @@ evidence excludes playback URLs.
 
 This is a deterministic pipeline smoke test. It does not establish detector
 precision on customer recordings or replace the narrated-video evaluation suite.
+
+## Narrated mode
+
+Add `-Narrated` to the runner command to synthesize the known phrase
+"synchronised speech for cross stage alignment check" with local espeak-ng,
+starting at 4000 ms in the same 12-second video. This requires espeak-ng on PATH
+and the worker's pinned Whisper and ONNX sentiment models already cached locally.
+The runner sets `HF_HUB_OFFLINE=1`; it does not download models or call an LLM.
+
+The narrated test requires full success with no warnings, real transcript/word
+and ONNX sentiment measures, first-word timing within 250 ms of the known onset,
+and both visual transitions. It verifies completed seeking from both a context
+measure and the transcript, moving away from the transcript target first.
+Both modes retain `playwright-report.json` in the isolated state directory;
+the embedded `pipeline-report-evidence.json` attachment excludes playback SAS URLs.
+The full Playwright report and failure traces remain local diagnostic material.

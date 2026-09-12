@@ -4,6 +4,7 @@
 param(
     [Parameter(Mandatory)][string]$PgBinDirectory,
     [Parameter(Mandatory)][string]$AzuriteEntryPoint,
+    [switch]$Narrated,
     [string]$StateDirectory = (Join-Path ([IO.Path]::GetTempPath()) ('jams-pipeline-e2e-' + [guid]::NewGuid())),
     [int]$DatabasePort = 55432,
     [int]$BlobPort = 11000,
@@ -73,6 +74,8 @@ try {
     Set-TestEnvironment 'HF_HUB_OFFLINE' '1'
     Set-TestEnvironment 'OPENROUTER_API_KEY' ''
     Set-TestEnvironment 'E2E_PIPELINE_FIXTURE' (Join-Path $StateDirectory 'e2e-pipeline.mp4')
+    Set-TestEnvironment 'E2E_PIPELINE_NARRATED' $(if ($Narrated) { '1' } else { '0' })
+    Set-TestEnvironment 'PLAYWRIGHT_JSON_OUTPUT_FILE' (Join-Path $StateDirectory 'playwright-report.json')
     & (Join-Path $PgBinDirectory 'initdb.exe') -D $pgData -U jams --auth=trust --encoding=UTF8 --locale=C
     Assert-Success 'Initialize isolated database'
     & (Join-Path $PgBinDirectory 'pg_ctl.exe') -D $pgData -l (Join-Path $StateDirectory 'postgres.log') -o "-p $DatabasePort -h 127.0.0.1" -w start
@@ -84,7 +87,9 @@ try {
     Assert-Success 'Migrate database'
     uv sync --project worker --locked
     Assert-Success 'Install worker dependencies'
-    uv run --project worker python worker/scripts/make_pipeline_e2e_fixture.py --output $env:E2E_PIPELINE_FIXTURE
+    $fixtureArgs = @('--output', $env:E2E_PIPELINE_FIXTURE)
+    if ($Narrated) { $fixtureArgs += '--narrated' }
+    uv run --project worker python worker/scripts/make_pipeline_e2e_fixture.py @fixtureArgs
     Assert-Success 'Generate fixture'
     $azArgs = @('"' + $AzuriteEntryPoint + '"', '--blobHost', '127.0.0.1', '--blobPort', $BlobPort,
         '--queueHost', '127.0.0.1', '--queuePort', $QueuePort, '--tableHost', '127.0.0.1', '--tablePort', $TablePort,
@@ -96,7 +101,7 @@ try {
     Set-TestEnvironment 'DATABASE_URL' "postgresql://jams_worker:jams_worker@127.0.0.1:$DatabasePort/jams"
     $ownedProcesses += Start-Process -FilePath (Join-Path $repo 'worker/.venv/Scripts/python.exe') -ArgumentList '-m', 'jams_worker.main' -WorkingDirectory (Join-Path $repo 'worker') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $StateDirectory 'worker.log') -RedirectStandardError (Join-Path $StateDirectory 'worker-error.log')
     Set-TestEnvironment 'DATABASE_URL' $adminUrl
-    pnpm --dir apps/web exec playwright test pipeline-report.spec.ts --project chromium
+    pnpm --dir apps/web exec playwright test pipeline-report.spec.ts --project chromium '--reporter=list,json'
     Assert-Success 'Pipeline browser test'
 } finally {
     foreach ($process in $ownedProcesses) {

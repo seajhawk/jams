@@ -9,6 +9,7 @@ const fixturePath = path.resolve(
   process.env.E2E_PIPELINE_FIXTURE ?? "../../fixtures/e2e-pipeline.mp4",
 )
 const fixtureTitle = path.basename(fixturePath, path.extname(fixturePath))
+const narrated = process.env.E2E_PIPELINE_NARRATED === "1"
 
 type AnalysisResponse = {
   analysis: { id: string; video_id: string; status: string }
@@ -20,7 +21,7 @@ test.describe("real upload to worker report", () => {
     "Set JAMS_RUN_PIPELINE_E2E=1 to run with the local worker",
   )
 
-  test("uploads the silent fixture, processes it, and deep-links to a cut", async ({
+  test(`uploads the ${narrated ? "narrated" : "silent"} fixture, processes it, and deep-links to a cut`, async ({
     page,
   }) => {
     test.setTimeout(240_000)
@@ -56,11 +57,13 @@ test.describe("real upload to worker report", () => {
     const runId = analysisBody.analysis.id
     expect(analysisBody.analysis.video_id).toBe(videoId)
 
-    // Wait for completion first so an incorrect success status fails promptly.
+    // Wait for completion first so an incorrect terminal status fails promptly.
     await expect(page.getByRole("link", { name: /View report/ }).last()).toBeVisible({
       timeout: 180_000,
     })
-    await expect(page.getByText("Partial results available.")).toBeVisible()
+    if (!narrated) {
+      await expect(page.getByText("Partial results available.")).toBeVisible()
+    }
 
     const reportHref = await page
       .getByRole("link", { name: /View report/ })
@@ -79,13 +82,17 @@ test.describe("real upload to worker report", () => {
 
     expect(report.run.id).toBe(runId)
     expect(report.run.video_id).toBe(videoId)
-    expect(report.run.status).toBe("partial")
+    expect(report.run.status).toBe(narrated ? "succeeded" : "partial")
     expect(report.video.id).toBe(videoId)
     expect(report.video.title).toBe(fixtureTitle)
     expect(report.video.duration_ms).toBeGreaterThanOrEqual(11_750)
     expect(report.video.duration_ms).toBeLessThanOrEqual(12_250)
-    expect(report.video.has_audio).toBe(false)
-    expect(report.run.warnings.some((warning) => warning.code === "no_audio")).toBe(true)
+    expect(report.video.has_audio).toBe(narrated)
+    if (narrated) {
+      expect(report.run.warnings).toHaveLength(0)
+    } else {
+      expect(report.run.warnings.some((warning) => warning.code === "no_audio")).toBe(true)
+    }
 
     const switches = report.measures
       .filter((measure) => measure.kind === "context_switch")
@@ -98,14 +105,44 @@ test.describe("real upload to worker report", () => {
       report.measures.filter((measure) => measure.kind === "time_segment").length,
     ).toBeGreaterThan(0)
     expect(Number.isFinite(report.score.total)).toBe(true)
-    expect(report.measures.some((measure) => measure.kind === "utterance")).toBe(false)
-    expect(report.measures.some((measure) => measure.kind === "sentiment")).toBe(false)
+    if (narrated) {
+      const utterances = report.measures.filter((measure) => measure.kind === "utterance")
+      const words = report.measures.filter((measure) => measure.kind === "spoken_word")
+      const sentiments = report.measures.filter((measure) => measure.kind === "sentiment")
+      expect(utterances.length).toBeGreaterThan(0)
+      expect(words.length).toBeGreaterThan(0)
+      expect(sentiments.length).toBeGreaterThan(0)
+      const firstWord = utterances
+        .flatMap((measure) => measure.payload.words)
+        .sort((a, b) => a.t0 - b.t0)[0]
+      expect(Math.abs(firstWord.t0 - 4_000)).toBeLessThanOrEqual(250)
+      for (const utterance of utterances) {
+        expect(utterance.t_start_ms).toBeGreaterThanOrEqual(0)
+        expect(utterance.t_end_ms).toBeLessThanOrEqual(report.video.duration_ms)
+        for (const word of utterance.payload.words) {
+          expect(word.t0).toBeGreaterThanOrEqual(0)
+          expect(word.t1).toBeLessThanOrEqual(report.video.duration_ms)
+          expect(word.t1).toBeGreaterThanOrEqual(word.t0)
+        }
+      }
+      const transcript = utterances.map((measure) => measure.value_text).join(" ").toLowerCase()
+      expect(transcript).toContain("speech")
+      expect(transcript).toContain("alignment")
+      expect(sentiments.every((measure) => measure.provider_id === "sentiment" && measure.payload.method === "onnx")).toBe(true)
+    } else {
+      expect(report.measures.some((measure) => measure.kind === "utterance")).toBe(false)
+      expect(report.measures.some((measure) => measure.kind === "sentiment")).toBe(false)
+    }
 
     await page.goto(reportHref!)
-    await expect(page.getByText("Partial results", { exact: true })).toBeVisible()
-    await expect(
-      page.getByText("No narration audio was available for some segments."),
-    ).toBeVisible()
+    if (narrated) {
+      await expect(page.getByText("Partial results", { exact: true })).not.toBeVisible()
+    } else {
+      await expect(page.getByText("Partial results", { exact: true })).toBeVisible()
+      await expect(
+        page.getByText("No narration audio was available for some segments."),
+      ).toBeVisible()
+    }
     await expect(page.getByTestId("score-dial")).toBeVisible()
     await expect(page.getByTestId("report-timeline")).toBeVisible()
 
@@ -144,6 +181,44 @@ test.describe("real upload to worker report", () => {
       .locator("video")
       .first()
       .evaluate((video: HTMLVideoElement) => video.currentTime * 1000)
+    let transcriptPlaybackMs: number | undefined
+    if (narrated) {
+      const utterance = report.measures.find((measure) => measure.kind === "utterance")
+      expect(utterance).toBeDefined()
+      await page.getByRole("tab", { name: "Transcript" }).click()
+      const transcriptRow = page.getByTestId("transcript-row").first()
+      await expect(transcriptRow).toBeVisible()
+      // Start away from the target; otherwise a no-op click could pass when the
+      // first utterance and the previously selected cut share a timestamp.
+      await page.locator("video").first().evaluate((video: HTMLVideoElement) => {
+        video.currentTime = 0
+      })
+      await expect.poll(async () => page.locator("video").first().evaluate(
+        (video: HTMLVideoElement) => !video.seeking && video.currentTime < 0.25,
+      )).toBe(true)
+      await transcriptRow.click()
+      const expectedTranscriptMs = utterance!.t_start_ms
+      await expect
+        .poll(
+          async () => {
+            const state = await page.locator("video").first().evaluate((video: HTMLVideoElement) => ({
+              currentTimeMs: video.currentTime * 1000,
+              readyState: video.readyState,
+              seeking: video.seeking,
+            }))
+            return state.seeking || state.readyState < 2
+              ? Number.POSITIVE_INFINITY
+              : Math.abs(state.currentTimeMs - expectedTranscriptMs)
+          },
+          { timeout: 5_000 },
+        )
+        .toBeLessThanOrEqual(250)
+      transcriptPlaybackMs = await page
+        .locator("video")
+        .first()
+        .evaluate((video: HTMLVideoElement) => video.currentTime * 1000)
+    }
+
     // Keep the attachment useful in CI while excluding the playback SAS token.
     await test.info().attach("pipeline-report-evidence.json", {
       body: Buffer.from(
@@ -169,6 +244,10 @@ test.describe("real upload to worker report", () => {
           score_total: report.score.total,
           expected_cut_ms: expectedCutMs,
           playback_ms: playbackMs,
+          ...(transcriptPlaybackMs === undefined ? {} : {
+            first_utterance_ms: report.measures.find((measure) => measure.kind === "utterance")?.t_start_ms,
+            transcript_playback_ms: transcriptPlaybackMs,
+          }),
         }, null, 2),
       ),
       contentType: "application/json",

@@ -1,5 +1,7 @@
 # Upload-to-report verification — September 11, 2026
 
+Next milestone verified: [narrated pipeline](BUILD-STATUS-2026-09-12.md).
+
 The real local customer flow now passes in Chromium: Clerk sign-in, browser upload
 to Blob storage, analysis queue dispatch, Python processing, report rendering, and
 clicking a measure to seek the video. No analyses or measures were seeded, and no
