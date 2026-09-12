@@ -10,6 +10,7 @@ import {
 } from "@/lib/analyses"
 import { dispatchAnalysisRun, recordDispatchIntent } from "@/lib/analysis-dispatch"
 import { PIPELINE_VERSION } from "@/lib/pipeline-version"
+import { getOrCreateDefaultProfile } from "@/lib/report-assembly"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
@@ -40,6 +41,10 @@ export async function POST(request: Request) {
       if (configResult?.success === false) {
         throw new HttpError(400, configResult.error)
       }
+
+      // A first upload can arrive before the organization webhook provisions
+      // its profile. Commit the scoring prerequisite before dispatching work.
+      await getOrCreateDefaultProfile(orgId, scopedDb)
 
       const runId = crypto.randomUUID()
       const [run] = await scopedDb.db

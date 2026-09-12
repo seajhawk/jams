@@ -147,10 +147,13 @@ export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
         {contextSwitches.map(m => {
           const cx = msToX(m.t_start_ms)
           const pts = diamond(cx, 167)
-          const switchPayload = m.payload as { from: string; to: string }
+          const switchPayload = m.payload as { from: string | null; to: string | null }
+          const label = switchPayload.from && switchPayload.to
+            ? `${switchPayload.from} → ${switchPayload.to}`
+            : 'Context switch'
           return (
             <polygon key={m.id} points={pts} fill="rgb(245,158,11)" opacity={0.85}>
-              <title>{`${switchPayload.from} → ${switchPayload.to} @ ${formatMs(m.t_start_ms)}`}</title>
+              <title>{`${label} @ ${formatMs(m.t_start_ms)}`}</title>
             </polygon>
           )
         })}

@@ -250,6 +250,32 @@ describe("assembleReportPayload", () => {
     expect(parsed.data.score.profile.id).toBe(PROFILE_ID)
   })
 
+  it.each([null, "", undefined])("preserves an unlabeled visual transition (%s)", async (label) => {
+    selectQueue.push([makeRun()])
+    selectQueue.push([makeVideoRow()])
+    selectQueue.push([])
+    selectQueue.push([{
+      ...makeUtterance(),
+      kind: "context_switch",
+      category: "cognitive",
+      tStartMs: 4000,
+      tEndMs: null,
+      valueNum: 1,
+      valueText: null,
+      unit: "switch",
+      payload: { from: label, to: label },
+    }])
+    selectQueue.push([makeProfile()])
+    selectQueue.push([])
+
+    const payload = reportPayloadSchema.parse(await assembleReportPayload(RUN_ID, ORG_ID))
+    expect(payload.measures).toHaveLength(1)
+    expect(payload.measures[0]).toMatchObject({
+      kind: "context_switch", t_start_ms: 4000, payload: { from: null, to: null },
+    })
+    expect(payload.score.breakdown.find((row) => row.kind === "context_switch")?.raw).toBe(1)
+  })
+
   it("adds a warning and uses partial status for partial runs", async () => {
     selectQueue.push([makeRun({ status: "partial", errorCode: "no_audio" })])
     selectQueue.push([makeVideoRow()])

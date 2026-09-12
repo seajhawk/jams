@@ -212,7 +212,7 @@ def process_run(
             partial_reasons = [
                 f"{provider_id}:{summary.get('reason')}"
                 for provider_id, summary in result.provider_summaries.items()
-                if summary.get("status") == "partial"
+                if summary.get("status") in ("partial", "skipped_no_audio")
             ]
             detail = (
                 "Analysis completed"
@@ -225,6 +225,7 @@ def process_run(
                 run_id,
                 result.status,
                 detail,
+                error_code=result.error_code,
             )
             return result.status
     finally:

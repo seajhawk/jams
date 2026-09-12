@@ -122,6 +122,7 @@ class PipelineResult:
     provider_versions: dict[str, str]
     failures: list[tuple[str, str]] = field(default_factory=list)
     provider_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
+    error_code: str | None = None
 
 
 def write_provider_measures(
@@ -389,10 +390,15 @@ def run_pipeline(
                 **summary,
             )
 
+    no_audio_summaries = [
+        summary
+        for summary in context.provider_summaries.values()
+        if summary.get("status") == "skipped_no_audio"
+    ]
     partial_summaries = [
         summary
         for summary in context.provider_summaries.values()
-        if summary.get("status") == "partial"
+        if summary.get("status") in ("partial", "skipped_no_audio")
     ]
 
     return PipelineResult(
@@ -400,4 +406,11 @@ def run_pipeline(
         provider_versions=provider_versions,
         failures=failures,
         provider_summaries=dict(context.provider_summaries),
+        error_code=(
+            "no_audio"
+            if no_audio_summaries
+            and not failures
+            and all(summary.get("status") == "skipped_no_audio" for summary in partial_summaries)
+            else None
+        ),
     )

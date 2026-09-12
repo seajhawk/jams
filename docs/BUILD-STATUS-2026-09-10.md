@@ -1,5 +1,7 @@
 # JAMS build status — 2026-09-10
 
+Latest follow-up: [real upload-to-report verification and fixes](BUILD-STATUS-2026-09-11.md).
+
 This is an inventory of JAMS, updated September 10.
 The previously unfinished timestamp merge is resolved, preserving worker
 lease fencing and attempt-specific artifacts. It is integrated with the JEM

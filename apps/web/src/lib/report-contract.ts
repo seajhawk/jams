@@ -91,8 +91,8 @@ const contextSwitchMeasureSchema = measureBaseSchema.extend({
   value_text: z.null(),
   unit: z.null(),
   payload: z.object({
-    from: z.string().min(1),
-    to: z.string().min(1),
+    from: z.string().min(1).nullable(),
+    to: z.string().min(1).nullable(),
   }),
 });
 

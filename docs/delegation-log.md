@@ -4,6 +4,9 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-11 | Real pipeline browser spec and web regressions | Codex subagent | gpt-5.6-luna | ⚠️ | Implemented bounded tests; primary corrected API wrapper/selectors and integrated the live run. Final E2E passed and 138 web tests passed. |
+| 2026-09-11 | Silent-video partial status | Codex subagent | gpt-5.6-luna | ⚠️ | Drafted pipeline/finalization changes before quota interruption; primary completed error precedence, regression tests, and real report verification. |
+| 2026-09-11 | Pipeline E2E and discovered product fixes review | Codex subagent | gpt-6-astra | ✅ | Identified incomplete-seek assertion and subprocess cleanup issues; rereview accepted corrections, navigation/profile fixes, no-audio semantics, and unlabeled transition contract. Read-only; primary ran validation. |
 | 2026-09-10 | Remaining setuptools vulnerability diagnosis | Codex subagent | gpt-5.6-luna | ✅ | Located CTranslate2's obsolete pkg_resources dependency and identified compatible 4.8.2; primary upgraded, audited clean, and passed all three cached-model transcription gates offline. |
 | 2026-09-10 | Personal-org recovery race | Codex subagent | gpt-5.6-luna | ⚠️ | Added lock-timeout rejection and stable per-user slug before quota interruption; primary strengthened overlapping-request tests and verified 24 focused tests/build. |
 | 2026-09-10 | Webhook integration review | Codex subagent | gpt-6-astra | ✅ | After usage reset, reviewed claims, transactional rollback, lease-owner release, migration backfill and tests; no release-blocking findings. Read-only review; validation run by primary. |

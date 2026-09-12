@@ -190,7 +190,8 @@ async function ensureClerkOrganization(user: E2eUserFile, userId: string) {
 
 async function configureLocalBlobCors() {
   const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING
-  if (!connectionString?.includes("localhost:10000")) return
+  const endpoint = connectionString?.match(/(?:^|;)BlobEndpoint=([^;]+)/)?.[1]
+  if (!endpoint || !["localhost", "127.0.0.1"].includes(new URL(endpoint).hostname)) return
 
   const service = BlobServiceClient.fromConnectionString(connectionString)
   await service.setProperties({
@@ -198,7 +199,7 @@ async function configureLocalBlobCors() {
       {
         allowedHeaders: "*",
         allowedMethods: "GET,HEAD,OPTIONS,PUT",
-        allowedOrigins: "http://localhost:3000",
+        allowedOrigins: new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000").origin,
         exposedHeaders: "*",
         maxAgeInSeconds: 3600,
       },
@@ -209,6 +210,10 @@ async function configureLocalBlobCors() {
 export default async function globalSetup() {
   await readEnvFile(path.join(process.cwd(), ".env.local"))
   await readEnvFile(path.join(process.cwd(), "..", "..", ".env"))
+  if (!process.env.CLERK_SECRET_KEY?.startsWith("sk_test_") ||
+      !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_test_")) {
+    throw new Error("Clerk E2E setup requires development-instance keys")
+  }
   process.env.AZURE_STORAGE_CONNECTION_STRING ??= localStorageConnectionString
 
   const user = await readOrCreateUserFile()

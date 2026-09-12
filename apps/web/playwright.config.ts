@@ -31,9 +31,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm dev",
+    command: `pnpm dev --port ${new URL(baseURL).port || "3000"}`,
     env: localEnv,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && process.env.JAMS_RUN_PIPELINE_E2E !== "1",
     timeout: 120_000,
     url: baseURL,
   },

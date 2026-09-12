@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
     context: null as unknown,
     dispatchAnalysisRun: vi.fn(),
     enqueueAnalysisRun: vi.fn(),
+    getOrCreateDefaultProfile: vi.fn(),
     MockUnauthorizedError,
   }
 })
@@ -33,6 +34,10 @@ vi.mock("@/lib/analysis-dispatch", async (importOriginal) => {
     dispatchAnalysisRun: mocks.dispatchAnalysisRun,
   }
 })
+
+vi.mock("@/lib/report-assembly", () => ({
+  getOrCreateDefaultProfile: mocks.getOrCreateDefaultProfile,
+}))
 
 vi.mock("@/lib/with-org", () => ({
   UnauthorizedError: mocks.MockUnauthorizedError,
@@ -168,6 +173,10 @@ describe("analyses API route handlers", () => {
     vi.clearAllMocks()
     mocks.dispatchAnalysisRun.mockResolvedValue({ dispatched: true })
     mocks.enqueueAnalysisRun.mockResolvedValue(undefined)
+    mocks.getOrCreateDefaultProfile.mockResolvedValue({
+      id: "profile_test",
+      orgId: "org_test",
+    })
   })
 
   it("creates a queued run for an uploaded org video and enqueues it", async () => {
@@ -197,6 +206,13 @@ describe("analyses API route handlers", () => {
 
     expect(response.status).toBe(201)
     expect(body.analysis.status).toBe("queued")
+    expect(mocks.getOrCreateDefaultProfile).toHaveBeenCalledWith(
+      "org_test",
+      expect.objectContaining({ orgId: "org_test", db }),
+    )
+    expect(mocks.getOrCreateDefaultProfile.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.dispatchAnalysisRun.mock.invocationCallOrder[0],
+    )
     expect(db.inserts[0]).toMatchObject({
       orgId: "org_test",
       videoId: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
@@ -249,6 +265,10 @@ describe("analyses API route handlers", () => {
     }
 
     expect(response.status).toBe(201)
+    expect(mocks.getOrCreateDefaultProfile).toHaveBeenCalledWith(
+      "org_test",
+      expect.objectContaining({ orgId: "org_test", db }),
+    )
     expect(db.inserts[0]).toMatchObject({
       config: expect.objectContaining({
         probe: { enabled: true },
@@ -266,6 +286,27 @@ describe("analyses API route handlers", () => {
     expect(body.analysis.config.sentiment.fallback).toBe("vader")
     expect(body.analysis.config_source).toBe(configSource)
     expect(mocks.dispatchAnalysisRun).toHaveBeenCalled()
+  })
+
+  it("does not create or dispatch a run when profile bootstrap fails", async () => {
+    const db = new MockDb()
+    db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
+    installContext(db)
+    mocks.getOrCreateDefaultProfile.mockRejectedValueOnce(
+      new Error("profile bootstrap failed"),
+    )
+
+    await expect(
+      createAnalysis(
+        jsonRequest("/api/analyses", {
+          video_id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
+        }),
+      ),
+    ).rejects.toThrow("profile bootstrap failed")
+
+    expect(db.inserts).toHaveLength(0)
+    expect(mocks.dispatchAnalysisRun).not.toHaveBeenCalled()
+    expect(mocks.enqueueAnalysisRun).not.toHaveBeenCalled()
   })
 
   it("rejects invalid analysis config with a path-aware error", async () => {

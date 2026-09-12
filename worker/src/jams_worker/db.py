@@ -356,7 +356,9 @@ class RunRepository:
             )
         self.conn.commit()
 
-    def finalize(self, run_id: str, status: str, detail: str) -> None:
+    def finalize(
+        self, run_id: str, status: str, detail: str, error_code: str | None = None
+    ) -> None:
         if self.owner_id is not None and self.lease_token is not None:
             cur = self.conn.execute(
                 """
@@ -365,7 +367,7 @@ class RunRepository:
                     stage = 'finalize',
                     progress_pct = 100,
                     stage_detail = %s,
-                    error_code = null,
+                    error_code = %s,
                     owner_id = null,
                     lease_token = null,
                     lease_expires_at = null,
@@ -376,7 +378,7 @@ class RunRepository:
                   and lease_token = %s
                   and lease_expires_at > now()
                 """,
-                (status, detail, run_id, self.owner_id, self.lease_token),
+                (status, detail, error_code, run_id, self.owner_id, self.lease_token),
             )
             rowcount = getattr(cur, "rowcount", None)
             if rowcount is not None and rowcount == 0:
@@ -391,12 +393,12 @@ class RunRepository:
                     stage = 'finalize',
                     progress_pct = 100,
                     stage_detail = %s,
-                    error_code = null,
+                    error_code = %s,
                     completed_at = now(),
                     updated_at = now()
                 where id = %s
                 """,
-                (status, detail, run_id),
+                (status, detail, error_code, run_id),
             )
         self.conn.commit()
 

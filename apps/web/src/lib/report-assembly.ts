@@ -199,9 +199,10 @@ function mapMeasure(m: DbMeasure): Record<string, unknown> | null {
       }
     }
     case "context_switch": {
-      const from = (payload.from as string) ?? ""
-      const to = (payload.to as string) ?? ""
-      if (!from || !to) return null
+      // Visual detection establishes a transition without identifying either
+      // application. Missing semantic labels must not erase timestamped events.
+      const from = typeof payload.from === "string" && payload.from.trim() ? payload.from : null
+      const to = typeof payload.to === "string" && payload.to.trim() ? payload.to : null
       return {
         ...base,
         kind: "context_switch",

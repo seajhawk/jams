@@ -325,17 +325,17 @@ export function LibraryContent() {
     void loadTasks()
   }, [loadTasks])
 
-  // Remove the ?new= param after 3 s so the highlight fades naturally
+  const [expiredHighlightId, setExpiredHighlightId] = useState<string | null>(null)
+
+  // A visual timeout must not navigate: it could cancel opening a video while
+  // the destination is still loading.
   useEffect(() => {
     if (!newVideoId) return
     const t = setTimeout(() => {
-      const p = new URLSearchParams(searchParams.toString())
-      p.delete("new")
-      const qs = p.toString()
-      router.replace(qs ? `/library?${qs}` : "/library")
+      setExpiredHighlightId(newVideoId)
     }, 3000)
     return () => clearTimeout(t)
-  }, [newVideoId, searchParams, router])
+  }, [newVideoId])
 
   function handleUploadSuccess(id: string) {
     loadTasks()
@@ -496,7 +496,7 @@ export function LibraryContent() {
             <VideoCard
               key={v.id}
               video={v}
-              highlighted={v.id === newVideoId}
+              highlighted={v.id === newVideoId && v.id !== expiredHighlightId}
             />
           ))}
         </div>
