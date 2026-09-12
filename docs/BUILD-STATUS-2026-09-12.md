@@ -71,3 +71,12 @@ mislabeled RMS window, corrected to 400 ms. Diagnostic regression tests (5) and
 worker Ruff pass. Details and commands are in `AUDIO-ONSET-DIAGNOSTICS.md`.
 No production thresholds changed. Next: investigate temporal transient shape
 with fresh evaluation data; simple threshold and spectral filters are insufficient.
+
+The temporal contrast evaluator is now included in the worktree. Across the same
+27 crossed cases, fixed 4--8 kHz contrast thresholds 2/4/8 reached 8.79%/17.65%/
+25.70% precision with 8/19/34 missed clicks. All remain below the 85% gate. The
+production onset path also received a semantics-preserving optimization: frame
+energy for decay is computed once per recording. Full artifacts were byte-equivalent
+to the prior implementation across 54 WAVs, reducing a benchmark from 13.4s to
+3.0s. The full worker suite is 170 passed, 8 skipped, and the pre-existing narrated
+click precision gate fails (6 TP / 126 FP / 0 FN).

@@ -78,7 +78,7 @@ def _make_case(
     case_id = f"phrase_{phrase_index + 1:02d}_{voice}_{speed}_{mix_label}db"
     pure_path = output_dir / f"{case_id}.pure.wav"
     mixed_path = output_dir / f"{case_id}.clicks.wav"
-    # Repeat each short phrase so every declared click offset is inside speech.
+    # Fill the narration bed; individual clicks can still coincide with speech pauses.
     synthesis_text = " ".join([PHRASES[phrase_index]] * 6)
     _synthesize_speech(ffmpeg, synthesis_text, voice, speed, pure_path)
 

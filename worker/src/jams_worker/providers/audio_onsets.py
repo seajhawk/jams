@@ -191,11 +191,10 @@ def _band_energy(spectrum: np.ndarray, freqs: np.ndarray, low: float, high: floa
 
 
 def _decay_ms(
-    spectra: np.ndarray,
+    energy: np.ndarray,
     frame_index: int,
     params: AudioOnsetParams,
 ) -> float:
-    energy = np.sum(np.square(spectra), axis=1)
     peak = float(energy[frame_index])
     if peak <= 0:
         return 0.0
@@ -212,7 +211,7 @@ def _feature_vector(
     samples: np.ndarray,
     spectra: np.ndarray,
     freqs: np.ndarray,
-    flux: np.ndarray,
+    frame_energy: np.ndarray,
     frame_index: int,
     params: AudioOnsetParams,
 ) -> tuple[float, ...]:
@@ -246,7 +245,7 @@ def _feature_vector(
         centroid,
         flatness,
         hf_ratio,
-        _decay_ms(spectra, frame_index, params),
+        _decay_ms(frame_energy, frame_index, params),
         crest,
     )
     return tuple(round(float(value), 6) for value in feats)
@@ -326,6 +325,8 @@ def _build(
 ) -> dict[str, Any]:
     samples = _read_wav_mono(path, params)
     spectra, freqs = _stft(samples, params)
+    # Decay uses the same envelope for every onset; compute it once per recording.
+    frame_energy = np.sum(np.square(spectra), axis=1)
     logmag = np.log1p(spectra)
     hf_bins = (freqs >= 2000) & (freqs <= 8000)
     flux = np.zeros(len(spectra), dtype=np.float32)
@@ -349,7 +350,7 @@ def _build(
     raw: list[dict[str, Any]] = []
     previous_t_ms: int | None = None
     for frame_index in _peak_indices(flux, threshold, in_speech, params):
-        feats = _feature_vector(samples, spectra, freqs, flux, frame_index, params)
+        feats = _feature_vector(samples, spectra, freqs, frame_energy, frame_index, params)
         if feats[9] < params.hf_ratio_min:
             continue
         t_ms = int(frame_ms[frame_index])

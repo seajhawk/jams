@@ -73,3 +73,18 @@ Both alternatives are rejected for production. They were chosen before this
 evaluation, and neither reaches the existing precision gate. The original
 narrated acceptance failure remains unchanged. Once inspected, this corpus is
 development evidence; future tuning needs fresh held-out data.
+
+## Temporal contrast experiment
+
+The exploratory evaluator also compares a fixed 4--8 kHz local-peak-to-shoulder
+contrast over the same 27 cases. Aggregate narrated results are:
+
+| Variant | TP | FP | FN | Precision | Pure-speech FP |
+|---|---:|---:|---:|---:|---:|
+| Baseline | 162 | 3740 | 0 | 4.15% | 3823 |
+| Contrast ≥2 | 154 | 1598 | 8 | 8.79% | 1631 |
+| Contrast ≥4 | 143 | 667 | 19 | 17.65% | 672 |
+| Contrast ≥8 | 128 | 370 | 34 | 25.70% | 373 |
+
+The evaluator records the manifest hash, matched timing error and fixed window
+parameters. These filters also fail the 85% precision gate and remain exploratory.
