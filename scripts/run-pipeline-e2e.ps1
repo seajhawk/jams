@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$PgBinDirectory,
     [Parameter(Mandatory)][string]$AzuriteEntryPoint,
     [switch]$Narrated,
+    [switch]$Recovery,
     [string]$StateDirectory = (Join-Path ([IO.Path]::GetTempPath()) ('jams-pipeline-e2e-' + [guid]::NewGuid())),
     [int]$DatabasePort = 55432,
     [int]$BlobPort = 11000,
@@ -75,6 +76,7 @@ try {
     Set-TestEnvironment 'OPENROUTER_API_KEY' ''
     Set-TestEnvironment 'E2E_PIPELINE_FIXTURE' (Join-Path $StateDirectory 'e2e-pipeline.mp4')
     Set-TestEnvironment 'E2E_PIPELINE_NARRATED' $(if ($Narrated) { '1' } else { '0' })
+    Set-TestEnvironment 'E2E_PIPELINE_RECOVERY' $(if ($Recovery) { '1' } else { '0' })
     Set-TestEnvironment 'PLAYWRIGHT_JSON_OUTPUT_FILE' (Join-Path $StateDirectory 'playwright-report.json')
     & (Join-Path $PgBinDirectory 'initdb.exe') -D $pgData -U jams --auth=trust --encoding=UTF8 --locale=C
     Assert-Success 'Initialize isolated database'

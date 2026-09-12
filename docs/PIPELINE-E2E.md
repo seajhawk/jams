@@ -48,3 +48,17 @@ measure and the transcript, moving away from the transcript target first.
 Both modes retain `playwright-report.json` in the isolated state directory;
 the embedded `pipeline-report-evidence.json` attachment excludes playback SAS URLs.
 The full Playwright report and failure traces remain local diagnostic material.
+
+## Processing failure and retry
+
+Add `-Recovery` (optionally with `-Narrated`) to inject a corrupt original file
+after the real UI upload. The test restricts the returned write SAS to the exact
+new video's path on loopback Azurite, writes invalid media bytes, and lets the
+real worker fail. It requires the honest file-error UI, `failed/corrupt_file`,
+and HTTP 404 from the failed run's report API.
+
+The test restores the original fixture in `finally`, then clicks Retry. The new
+run must have a different ID, produce a valid report, and supersede the retained
+failed run. Existing narration, timestamp and completed-seek assertions still
+apply. This tests recovery after an underlying storage fault is repaired; it
+does not claim that clicking Retry repairs a permanently corrupt customer file.

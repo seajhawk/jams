@@ -4,6 +4,8 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-12 | Failure/retry contract inspection | Codex subagent | gpt-5.6-luna | ✅ | Confirmed corrupt-file mapping, UI selectors, poison behavior and superseded-run assertions; primary implemented and ran the real recovery scenario. |
+| 2026-09-12 | Failure/retry E2E review | Codex subagent | gpt-6-astra | ✅ | No actionable findings in exact-blob isolation, finally restoration, failed-run history or successful retry assertions. |
 | 2026-09-12 | Narrated E2E fixture inspection and spec | Codex subagent | gpt-5.6-luna | ⚠️ | Identified existing AV-sync reference and drafted narrated assertions before quota interruption; primary completed seek guard and verified real offline pipeline. |
 | 2026-09-12 | Narrated E2E review | Codex subagent | gpt-6-astra | ✅ | No actionable findings in fixture, real-model assertions, completed seeking or runner isolation; primary executed E2E. |
 | 2026-09-11 | Real pipeline browser spec and web regressions | Codex subagent | gpt-5.6-luna | ⚠️ | Implemented bounded tests; primary corrected API wrapper/selectors and integrated the live run. Final E2E passed and 138 web tests passed. |

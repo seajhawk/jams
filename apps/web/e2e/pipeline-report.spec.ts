@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { BlockBlobClient } from "@azure/storage-blob"
 import path from "node:path"
 
 import { reportPayloadSchema } from "../src/lib/report-contract"
@@ -10,6 +11,7 @@ const fixturePath = path.resolve(
 )
 const fixtureTitle = path.basename(fixturePath, path.extname(fixturePath))
 const narrated = process.env.E2E_PIPELINE_NARRATED === "1"
+const recovery = process.env.E2E_PIPELINE_RECOVERY === "1"
 
 type AnalysisResponse = {
   analysis: { id: string; video_id: string; status: string }
@@ -21,7 +23,7 @@ test.describe("real upload to worker report", () => {
     "Set JAMS_RUN_PIPELINE_E2E=1 to run with the local worker",
   )
 
-  test(`uploads the ${narrated ? "narrated" : "silent"} fixture, processes it, and deep-links to a cut`, async ({
+  test(`uploads the ${narrated ? "narrated" : "silent"} fixture${recovery ? " with failure recovery" : ""}, processes it, and deep-links to a cut`, async ({
     page,
   }) => {
     test.setTimeout(240_000)
@@ -33,7 +35,15 @@ test.describe("real upload to worker report", () => {
     await page.getByRole("button", { name: "Upload journey" }).first().click()
     await page.getByTestId("upload-file-input").setInputFiles(fixturePath)
     await expect(page.getByLabel("Title")).toHaveValue(fixtureTitle)
+    const createdVideoPromise = page.waitForResponse((response) =>
+      response.url().endsWith("/api/videos") && response.request().method() === "POST",
+    )
     await page.getByRole("button", { name: "Upload" }).click()
+    const createdVideoResponse = await createdVideoPromise
+    expect(createdVideoResponse.status()).toBe(201)
+    const createdVideo = await createdVideoResponse.json() as {
+      video_id: string; upload: { url: string }
+    }
     await expect(page.getByText("Video uploaded")).toBeVisible({ timeout: 30_000 })
 
     const card = page
@@ -43,19 +53,61 @@ test.describe("real upload to worker report", () => {
     await card.getByRole("button", { name: `Open ${fixtureTitle}` }).click()
     await page.waitForURL(/\/library\/[0-9a-f-]{36}$/)
     const videoId = page.url().split("/").pop()!
+    expect(videoId).toBe(createdVideo.video_id)
 
     await expect(page.getByRole("heading", { name: fixtureTitle })).toBeVisible()
+    let failedRunId: string | undefined
+    if (recovery) {
+      // Fault injection is restricted to the original blob just created by this
+      // UI upload, on the local emulator. No status rows or APIs are mocked.
+      const uploadUrl = new URL(createdVideo.upload.url)
+      expect(["localhost", "127.0.0.1"]).toContain(uploadUrl.hostname)
+      expect(uploadUrl.protocol).toBe("http:")
+      expect(decodeURIComponent(uploadUrl.pathname)).toMatch(
+        new RegExp(`^/devstoreaccount1/videos/[^/]+/${videoId}/original\\.mp4$`),
+      )
+      const blob = new BlockBlobClient(createdVideo.upload.url)
+      try {
+        await blob.uploadData(Buffer.from("intentionally corrupt local E2E media"), {
+          blobHTTPHeaders: { blobContentType: "video/mp4" },
+        })
+        const failureResponsePromise = page.waitForResponse((response) =>
+          response.url().endsWith("/api/analyses") && response.request().method() === "POST",
+        )
+        await page.getByRole("button", { name: "Analyze", exact: true }).click()
+        const failureResponse = await failureResponsePromise
+        expect(failureResponse.status()).toBe(201)
+        const failureBody = await failureResponse.json() as AnalysisResponse
+        failedRunId = failureBody.analysis.id
+        expect(failureBody.analysis.video_id).toBe(videoId)
+        await expect(page.getByText("The worker could not read this video file.")).toBeVisible({
+          timeout: 60_000,
+        })
+        const failed = await page.evaluate(async (id) => {
+          const status = await fetch(`/api/analyses/${id}`)
+          const report = await fetch(`/api/analyses/${id}/report`)
+          return { status: status.status, body: await status.json(), reportStatus: report.status }
+        }, failedRunId)
+        expect(failed.status).toBe(200)
+        expect(failed.body.analysis).toMatchObject({ status: "failed", error_code: "corrupt_file" })
+        expect(failed.reportStatus).toBe(404)
+      } finally {
+        // Restore even if a failure assertion fails; the runner owns this store.
+        await blob.uploadFile(fixturePath, { blobHTTPHeaders: { blobContentType: "video/mp4" } })
+      }
+    }
     const analyzeResponsePromise = page.waitForResponse(
       (response) =>
         response.url().endsWith("/api/analyses") &&
         response.request().method() === "POST",
     )
-    await page.getByRole("button", { name: "Analyze", exact: true }).click()
+    await page.getByRole("button", { name: recovery ? "Retry" : "Analyze", exact: true }).click()
     const analyzeResponse = await analyzeResponsePromise
     expect(analyzeResponse.status()).toBe(201)
     const analysisBody = (await analyzeResponse.json()) as AnalysisResponse
     const runId = analysisBody.analysis.id
     expect(analysisBody.analysis.video_id).toBe(videoId)
+    if (failedRunId) expect(runId).not.toBe(failedRunId)
 
     // Wait for completion first so an incorrect terminal status fails promptly.
     await expect(page.getByRole("link", { name: /View report/ }).last()).toBeVisible({
@@ -81,6 +133,16 @@ test.describe("real upload to worker report", () => {
     )
 
     expect(report.run.id).toBe(runId)
+    if (failedRunId) {
+      const previous = await page.evaluate(async (id) => {
+        const response = await fetch(`/api/analyses/${id}`)
+        if (!response.ok) throw new Error(`Previous run request failed: ${response.status}`)
+        return response.json()
+      }, failedRunId)
+      expect(previous.analysis).toMatchObject({
+        id: failedRunId, status: "failed", error_code: "corrupt_file", superseded_by: runId,
+      })
+    }
     expect(report.run.video_id).toBe(videoId)
     expect(report.run.status).toBe(narrated ? "succeeded" : "partial")
     expect(report.video.id).toBe(videoId)
@@ -242,6 +304,7 @@ test.describe("real upload to worker report", () => {
             (measure) => measure.kind === "time_segment",
           ).length,
           score_total: report.score.total,
+          ...(failedRunId ? { failed_run_id: failedRunId, recovery_error: "corrupt_file" } : {}),
           expected_cut_ms: expectedCutMs,
           playback_ms: playbackMs,
           ...(transcriptPlaybackMs === undefined ? {} : {

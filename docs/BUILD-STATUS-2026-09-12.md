@@ -23,7 +23,23 @@ completed the seek checks, Windows reporter quoting and runtime verification.
 The unchanged silent scenario also passed (14.8 seconds), and TypeScript,
 targeted ESLint, fixture Ruff and the production build passed.
 
-Next milestone: real failure/retry coverage. Then continue the detector quality
+## Follow-up: failure and retry verified
+
+The `-Recovery -Narrated` scenario passed in 28.1 seconds (32.7 seconds including
+Playwright setup). The test corrupts only its own uploaded original on local
+Azurite, verifies the real worker's `corrupt_file` failure and absence of a report,
+restores the valid fixture, and clicks Retry. A distinct new run succeeds, while
+the failed run retains its error and points to the replacement via `superseded_by`.
+The successful report passes the existing real-model and video-seek assertions.
+Worker logs show the corrupt message handled as poisoned in 105 ms and the
+replacement analysis completed in 5007 ms. No production behavior was changed.
+
+TypeScript, targeted ESLint and production build passed. Luna checked the worker
+and UI recovery contracts; Astra reviewed fault isolation, restoration and
+assertions with no actionable findings. This is repaired-input recovery; automatic
+redelivery during transient infrastructure outages remains a separate scenario.
+
+Next milestone: continue the detector quality
 loop, including the previously recorded narrated-click precision failure
 (6 TP / 126 FP / 0 FN before visual verification). No thresholds were weakened.
 Azure deployment and customer invitations remain deferred.
