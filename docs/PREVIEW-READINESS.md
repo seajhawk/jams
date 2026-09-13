@@ -12,10 +12,10 @@ ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for eviden
 2. **Bound usage before accepting work.** Preview admission now serializes org
    reservations and limits declared original bytes, recorded analyses and active
    runs. Storage-side byte enforcement remains open; see the limitations below.
-3. **Finalize uploads once and delete recordings completely.** Completion currently
-   permits repeated metadata updates; upload SAS credentials can overwrite the
-   original until expiry. Add immutable finalized media and a deletion lifecycle
-   that revokes all related shares and removes original/derived blobs safely.
+3. **Finalize uploads once and delete recordings completely.** New completions now
+   seal original/poster data into server-owned paths and reject metadata changes.
+   See `FINALIZED-MEDIA.md`. Next: a deletion lifecycle that revokes related shares
+   and removes upload sources, accepted copies and derived blobs safely.
 4. **Build and rehearse staging operations.** `infra/` currently has only a README.
    Prepare the two deployable units, secrets, migrations, health checks, recovery,
    deletion and restore runbooks locally. Provisioning still requires approval.

@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test"
-import { BlockBlobClient } from "@azure/storage-blob"
+import { BlobServiceClient, BlockBlobClient } from "@azure/storage-blob"
 import path from "node:path"
+import { readFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
 
 import { reportPayloadSchema } from "../src/lib/report-contract"
 import { expectAppReady, signInE2eUser } from "./helpers"
@@ -56,17 +58,47 @@ test.describe("real upload to worker report", () => {
     expect(videoId).toBe(createdVideo.video_id)
 
     await expect(page.getByRole("heading", { name: fixtureTitle })).toBeVisible()
+    const acceptedResponse = await page.request.get(`/api/videos/${videoId}`)
+    expect(acceptedResponse.status()).toBe(200)
+    const accepted = await acceptedResponse.json() as { video: { blob_path: string } }
+    expect(accepted.video.blob_path).toMatch(new RegExp(
+      `^[^/]+/${videoId}/finalized/[0-9a-f-]{36}/original\\.mp4$`,
+    ))
+    const uploadUrl = new URL(createdVideo.upload.url)
+    expect(["localhost", "127.0.0.1"]).toContain(uploadUrl.hostname)
+    expect(uploadUrl.protocol).toBe("http:")
+    // Reuse the original client credential after acceptance. The subsequent
+    // real worker/report assertions must still succeed using the sealed copy.
+    await new BlockBlobClient(createdVideo.upload.url).uploadData(Buffer.from("stale upload write"))
+    const playbackResponse = await page.request.get(`/api/videos/${videoId}/playback-sas`)
+    expect(playbackResponse.status()).toBe(200)
+    const playback = await playbackResponse.json() as { video: { url: string } }
+    const acceptedUrl = new URL(playback.video.url)
+    expect(acceptedUrl.origin).toBe(uploadUrl.origin)
+    expect(acceptedUrl.searchParams.get("sp")).toBe("r")
+    const acceptedBytes = await new BlockBlobClient(playback.video.url).downloadToBuffer()
+    const digest = (data: Buffer) => createHash("sha256").update(data).digest("hex")
+    expect(digest(acceptedBytes)).toBe(digest(await readFile(fixturePath)))
+    const forgedWriteUrl = new URL(createdVideo.upload.url)
+    forgedWriteUrl.pathname = acceptedUrl.pathname
+    await expect(new BlockBlobClient(forgedWriteUrl.toString()).uploadData(Buffer.from("forged write")))
+      .rejects.toMatchObject({ statusCode: 403 })
     let failedRunId: string | undefined
     if (recovery) {
       // Fault injection is restricted to the original blob just created by this
       // UI upload, on the local emulator. No status rows or APIs are mocked.
-      const uploadUrl = new URL(createdVideo.upload.url)
       expect(["localhost", "127.0.0.1"]).toContain(uploadUrl.hostname)
       expect(uploadUrl.protocol).toBe("http:")
       expect(decodeURIComponent(uploadUrl.pathname)).toMatch(
         new RegExp(`^/devstoreaccount1/videos/[^/]+/${videoId}/original\\.mp4$`),
       )
-      const blob = new BlockBlobClient(createdVideo.upload.url)
+      // Recovery fault injection now requires the local harness's trusted storage
+      // credential: an old client upload credential cannot modify accepted media.
+      const service = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING!)
+      const serviceUrl = new URL(service.url)
+      expect(["localhost", "127.0.0.1"]).toContain(serviceUrl.hostname)
+      expect(serviceUrl.protocol).toBe("http:")
+      const blob = service.getContainerClient("videos").getBlockBlobClient(accepted.video.blob_path)
       try {
         await blob.uploadData(Buffer.from("intentionally corrupt local E2E media"), {
           blobHTTPHeaders: { blobContentType: "video/mp4" },

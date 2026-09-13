@@ -132,3 +132,7 @@ findings. `PREVIEW-READINESS.md` records configuration and the remaining physica
 storage limitations: declared reservation bytes do not cap direct SAS uploads,
 posters or derived artifacts. Next: immutable finalized uploads and complete
 recording deletion, including share revocation and storage cleanup.
+# Latest continuation
+
+See [September 13 build status](BUILD-STATUS-2026-09-13.md) for finalized-media
+integrity and the next preview milestone.

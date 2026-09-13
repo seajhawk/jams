@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { videos } from "@/db/schema"
 import { handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
-import { blobStats } from "@/lib/blob"
+import { BlobFinalizationError, finalizeBlob } from "@/lib/blob"
 import { serializeVideo } from "@/lib/video-response"
 import { completeVideoSchema } from "@/lib/videos"
 import { withOrg } from "@/lib/with-org"
@@ -30,6 +30,7 @@ export async function POST(
         .select()
         .from(videos)
         .where(scopedDb.orgFilter(videos, eq(videos.id, id)))
+        .for("update")
         .limit(1)
 
       if (!video) {
@@ -37,6 +38,8 @@ export async function POST(
       }
 
       if ("failed" in body && body.failed) {
+        if (video.status === "uploaded") return jsonError("Finalized video cannot be changed", 409)
+        if (video.status === "failed") return NextResponse.json({ video: serializeVideo(video) })
         const [updated] = await scopedDb.db
           .update(videos)
           .set({ status: "failed" })
@@ -46,23 +49,33 @@ export async function POST(
         return NextResponse.json({ video: serializeVideo(updated) })
       }
 
-      const stats = await blobStats(video.blobPath)
-      if (!stats.exists) {
-        return jsonError("Uploaded blob was not found", 409)
+      if (video.status === "uploaded") {
+        if (video.durationMs !== body.duration_ms || video.width !== body.width ||
+            video.height !== body.height || video.hasAudio !== body.has_audio ||
+            Boolean(video.posterBlobPath) !== body.poster_uploaded) {
+          return jsonError("Finalized video cannot be changed", 409)
+        }
+        return NextResponse.json({ video: serializeVideo(video) })
+      }
+      if (video.status !== "uploading" || video.sizeBytes === null) {
+        return jsonError("Video is not awaiting upload completion", 409)
       }
 
-      if (stats.sizeBytes !== video.sizeBytes) {
-        return jsonError("Uploaded blob size does not match requested size", 400)
-      }
+      // Client SAS credentials remain scoped to the upload paths. Readers and
+      // analysis workers switch to server-owned copies only after both complete.
+      const original = await finalizeBlob(video.blobPath, video.sizeBytes)
+      const poster = body.poster_uploaded && video.posterBlobPath
+        ? await finalizeBlob(video.posterBlobPath, null) : null
 
       const [updated] = await scopedDb.db
         .update(videos)
         .set({
+          blobPath: original.blobPath,
           durationMs: body.duration_ms,
           width: body.width,
           height: body.height,
           hasAudio: body.has_audio,
-          posterBlobPath: body.poster_uploaded ? video.posterBlobPath : null,
+          posterBlobPath: poster?.blobPath ?? null,
           status: "uploaded",
         })
         .where(scopedDb.orgFilter(videos, eq(videos.id, id)))
@@ -71,6 +84,7 @@ export async function POST(
       return NextResponse.json({ video: serializeVideo(updated) })
     })
   } catch (error) {
+    if (error instanceof BlobFinalizationError) return jsonError(error.message, error.status)
     return handleRouteError(error)
   }
 }

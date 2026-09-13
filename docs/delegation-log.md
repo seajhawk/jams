@@ -4,6 +4,8 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-13 | Conditional server-owned media copy | Codex subagent | gpt-5.6-luna | ⚠️ | Implemented helper; primary requested correction of JS SDK ifNoneMatch sentinel and explicit successful-copy check. Local Azurite copy and recovery verified. |
+| 2026-09-13 | Finalized media integrity review | Codex subagent | gpt-6-astra | ✅ | Reviewed row lock, ETag guard, private destination and idempotent completion. No release-blocking findings; orphan cleanup remains deferred. |
 | 2026-09-12 | Preview usage admission | Codex subagent | gpt-5.6-luna | ✅ | Added transactionally serialized org limits and route wiring; primary verified parallel Postgres admission and real narrated E2E. |
 | 2026-09-12 | Preview limit review | Codex subagent | gpt-6-astra | ✅ | Quota interrupted first attempt; resumed after verified reset, no actionable participant-admission findings. Physical storage limitations remain explicit. |
 | 2026-09-12 | Preview admission and release gap audit | Codex subagent | gpt-5.6-luna | ✅ | Implemented tenant policy/403 mapping/tests; identified quota, immutable media/deletion and staging gaps. Primary added request/share guards and live E2E. |

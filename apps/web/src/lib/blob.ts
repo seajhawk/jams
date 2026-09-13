@@ -23,6 +23,16 @@ type SasResult = {
   expiresAt: string
 }
 
+export class BlobFinalizationError extends Error {
+  constructor(
+    message: string,
+    readonly status: 400 | 409
+  ) {
+    super(message)
+    this.name = "BlobFinalizationError"
+  }
+}
+
 function parseConnectionString(connectionString: string): StorageConfig {
   if (connectionString.includes("UseDevelopmentStorage=true")) {
     return {
@@ -164,4 +174,70 @@ export async function blobStats(blobPath: string) {
 
     throw error
   }
+}
+
+/**
+ * Copies an uploaded blob to a fresh server-owned path while pinning the
+ * source ETag. The original remains untouched, but the destination is never
+ * returned with a client write SAS.
+ */
+export async function finalizeBlob(
+  sourcePath: string,
+  expectedSize: number | null
+): Promise<{ blobPath: string }> {
+  assertSafeBlobPath(sourcePath)
+
+  const container = await videosContainerClient()
+  const source = container.getBlockBlobClient(sourcePath)
+  let properties: Awaited<ReturnType<typeof source.getProperties>>
+  try {
+    properties = await source.getProperties()
+  } catch (error) {
+    if (hasStatusCode(error) && error.statusCode === 404) {
+      throw new BlobFinalizationError("Uploaded blob was not found", 409)
+    }
+    throw error
+  }
+
+  if (expectedSize !== null && properties.contentLength !== expectedSize) {
+    throw new BlobFinalizationError(
+      "Uploaded blob size does not match requested size",
+      400
+    )
+  }
+  if (!properties.etag) {
+    throw new BlobFinalizationError("Uploaded blob has no ETag", 409)
+  }
+
+  const sourceParts = sourcePath.split("/")
+  const sourceName = sourceParts.pop()
+  if (!sourceName) {
+    throw new BlobFinalizationError("Invalid uploaded blob path", 400)
+  }
+  const destinationPath = [
+    ...sourceParts,
+    "finalized",
+    crypto.randomUUID(),
+    sourceName,
+  ].join("/")
+  const destination = container.getBlockBlobClient(destinationPath)
+  const { url: sourceUrl } = await mintReadSas(sourcePath)
+
+  try {
+    const copy = await destination.beginCopyFromURL(sourceUrl, {
+      sourceConditions: { ifMatch: properties.etag },
+      conditions: { ifNoneMatch: "*" },
+    })
+    const result = await copy.pollUntilDone()
+    if (result.copyStatus !== "success") {
+      throw new BlobFinalizationError("Uploaded blob copy did not complete", 409)
+    }
+  } catch (error) {
+    if (hasStatusCode(error) && (error.statusCode === 409 || error.statusCode === 412)) {
+      throw new BlobFinalizationError("Uploaded blob changed during finalization", 409)
+    }
+    throw error
+  }
+
+  return { blobPath: destinationPath }
 }

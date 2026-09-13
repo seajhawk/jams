@@ -5,6 +5,7 @@ import { POST as completeVideo } from "@/app/api/videos/[id]/complete/route"
 import { POST as createVideo } from "@/app/api/videos/route"
 import { videos } from "@/db/schema"
 import * as previewLimits from "@/lib/preview-limits"
+import { BlobFinalizationError } from "@/lib/blob"
 
 type VideoRow = typeof videos.$inferSelect
 type InsertValues = Record<string, unknown>
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     blobStats: vi.fn(),
+    finalizeBlob: vi.fn(),
     context: null as unknown,
     mintReadSas: vi.fn(),
     mintUploadSas: vi.fn(),
@@ -25,6 +27,10 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock("@/lib/blob", () => ({
+  BlobFinalizationError: class extends Error {
+    constructor(message: string, readonly status: number) { super(message) }
+  },
+  finalizeBlob: mocks.finalizeBlob,
   blobStats: mocks.blobStats,
   mintReadSas: mocks.mintReadSas,
   mintUploadSas: mocks.mintUploadSas,
@@ -44,6 +50,8 @@ class SelectBuilder {
   from() {
     return this
   }
+
+  for() { return this }
 
   leftJoin() {
     return this
@@ -170,6 +178,7 @@ function jsonRequest(path: string, body: unknown) {
 describe("videos API route handlers", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.finalizeBlob.mockImplementation(async (path: string) => ({ blobPath: `${path}.finalized` }))
     mocks.blobStats.mockResolvedValue({
       exists: true,
       sizeBytes: 10,
@@ -240,11 +249,7 @@ describe("videos API route handlers", () => {
     const db = new MockDb()
     db.selectRows.push([videoRow({ sizeBytes: 10 })])
     installContext(db)
-    mocks.blobStats.mockResolvedValue({
-      exists: true,
-      sizeBytes: 9,
-      contentType: "video/mp4",
-    })
+    mocks.finalizeBlob.mockRejectedValueOnce(new BlobFinalizationError("Size mismatch", 400))
 
     const response = await completeVideo(
       jsonRequest(
@@ -291,5 +296,31 @@ describe("videos API route handlers", () => {
     expect(db.updates).toEqual([{ status: "failed" }])
     expect(body.video.status).toBe("failed")
     expect(mocks.blobStats).not.toHaveBeenCalled()
+  })
+
+  it("does not allow a late failure to demote a finalized video", async () => {
+    const db = new MockDb()
+    db.selectRows.push([videoRow({ status: "uploaded" })])
+    installContext(db)
+    const response = await completeVideo(jsonRequest("/api/videos/id/complete", { failed: true }), {
+      params: Promise.resolve({ id: "8c980f72-91f2-4778-bf2c-57c6f72f9b40" }),
+    })
+    expect(response.status).toBe(409)
+    expect(db.updates).toHaveLength(0)
+    expect(mocks.finalizeBlob).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])("handles repeated completion with changed metadata=%s", async (changed) => {
+    const db = new MockDb()
+    db.selectRows.push([videoRow({ status: "uploaded", durationMs: 1000, width: 640,
+      height: 480, hasAudio: true, posterBlobPath: null })])
+    installContext(db)
+    const response = await completeVideo(jsonRequest("/api/videos/id/complete", {
+      duration_ms: changed ? 2000 : 1000, width: 640, height: 480, has_audio: true,
+      poster_uploaded: false,
+    }), { params: Promise.resolve({ id: "8c980f72-91f2-4778-bf2c-57c6f72f9b40" }) })
+    expect(response.status).toBe(changed ? 409 : 200)
+    expect(db.updates).toHaveLength(0)
+    expect(mocks.finalizeBlob).not.toHaveBeenCalled()
   })
 })
