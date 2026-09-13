@@ -13,5 +13,7 @@
 !apps/web/src/**
 !apps/web/public/
 !apps/web/public/*.svg
+!fixtures/
+!fixtures/demo-report.v1.json
 apps/web/src/**/__tests__/**
 **/.env*

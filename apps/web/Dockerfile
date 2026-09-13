@@ -6,6 +6,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm install --global pnpm@10.11.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
+COPY fixtures/demo-report.v1.json fixtures/demo-report.v1.json
 RUN pnpm install --frozen-lockfile
 COPY apps/web apps/web
 # Public Clerk configuration is compiled into browser code. Never pass secret keys.
