@@ -4,6 +4,8 @@ Track every delegated run so we route work to whoever does it best. Update after
 
 | Date | Task | Delegate | Model | Grade | Notes |
 |---|---|---|---|---|---|
+| 2026-09-12 | Preview admission and release gap audit | Codex subagent | gpt-5.6-luna | ✅ | Implemented tenant policy/403 mapping/tests; identified quota, immutable media/deletion and staging gaps. Primary added request/share guards and live E2E. |
+| 2026-09-12 | Preview access security review | Codex subagent | gpt-6-astra | ✅ | Found scheduler routes blocked by browser admission; exact-route exemption retained handler authentication. Rereview accepted fix. |
 | 2026-09-12 | Crossed audio robustness fixtures | Codex subagent | gpt-5.6-luna | ⚠️ | Primary requested full crossing, longer speech and shared scaling; Luna implemented and verified deterministic generation. |
 | 2026-09-12 | Audio experiment integrity review | Codex subagent | gpt-6-astra | ✅ | Caught 400 ms RMS window labeled as 200 ms; primary corrected. No production changes. |
 | 2026-09-12 | Temporal contrast evaluation | Codex subagent | gpt-5.6-luna | ✅ | Evaluated fixed 4–8 kHz peak/shoulder ratios across 27 crossed cases; max precision 25.70%, rejected for production. |

@@ -80,3 +80,28 @@ energy for decay is computed once per recording. Full artifacts were byte-equiva
 to the prior implementation across 54 WAVs, reducing a benchmark from 13.4s to
 3.0s. The full worker suite is 170 passed, 8 skipped, and the pre-existing narrated
 click precision gate fails (6 TP / 126 FP / 0 FN).
+
+## Private preview admission
+
+Reprioritized toward the customer preview: `PREVIEW-READINESS.md` lists admission,
+usage limits, immutable media/deletion, staging operations and supervised validation.
+The experimental audio accuracy failure remains disclosed and outside customer claims.
+
+Added server-side `JAMS_PREVIEW_USER_IDS` admission in the proxy, tenant context
+resolution and shared-report page. Present-but-empty denies all participants; unset
+preserves existing behavior. Clerk user IDs are matched exactly. Denial precedes
+org creation/data access. Sign-in/webhooks remain reachable. Astra found scheduler
+recovery would be blocked; exact watchdog/reconciliation routes now defer to their
+existing machine-secret/admin checks, with neighboring admin routes still protected.
+
+Validation: 34 focused policy/proxy/share/admin tests passed, TypeScript and targeted
+ESLint and the production build passed. With the actual E2E account admitted, narrated upload → worker →
+report → completed video seeks passed in 24.5s (49.9s including setup). Anonymous
+library, share and videos API requests returned 403; invalid-secret recovery POSTs
+returned 404 from their authorization checks. Isolated local services stopped cleanly.
+Evidence directory: `jams-pipeline-e2e-9abbedac-bd07-434c-bea4-310e708a55ce` under
+the local temp directory. Astra rereview found no remaining actionable issues.
+
+Next bounded implementation: org storage/analysis/active-run admission limits checked
+transactionally before upload SAS issuance or run creation. Deployment and customer
+invitations remain deferred.

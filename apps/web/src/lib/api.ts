@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { isUnauthorized } from "@/lib/with-org"
+import { PreviewAccessError } from "@/lib/preview-access"
 
 export class HttpError extends Error {
   constructor(
@@ -46,6 +47,10 @@ export function isUniqueViolation(error: unknown) {
 }
 
 export function handleRouteError(error: unknown) {
+  if (error instanceof PreviewAccessError) {
+    return jsonError(error.message, error.status)
+  }
+
   if (isUnauthorized(error)) {
     return jsonError("Authentication required", 401)
   }

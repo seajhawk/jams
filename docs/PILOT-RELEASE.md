@@ -1,6 +1,10 @@
 # First customer pilot: five next steps
 
 This is an execution companion to PLAN.md, not a claim of release readiness.
+For the current ordered implementation queue and observed evidence, see
+[Preview readiness](PREVIEW-READINESS.md). Historical statements below about
+Docker-blocked local verification are superseded by the isolated Postgres/Azurite
+E2E runs in `BUILD-STATUS-2026-09-12.md`.
 Start with a supervised, invite-only pilot. Azure provisioning remains deferred
 under the existing plan until explicitly authorized. Do not invite users to upload
 customer recordings until the safety and reliability gates below pass.

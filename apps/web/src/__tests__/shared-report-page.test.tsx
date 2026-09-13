@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const VALID_TOKEN = "a".repeat(43)
 const RUN_ID = "8c980f72-91f2-4778-bf2c-57c6f72f9b40"
@@ -23,13 +23,14 @@ const mocks = vi.hoisted(() => {
 
   const mockDb = {
     execute: () => Promise.resolve([]),
-    select: () => makeChain(),
+    select: vi.fn(() => makeChain()),
     transaction: (handler: (tx: unknown) => unknown) => handler(mockDb),
   }
 
   return {
     selectQueue,
     mockDb,
+    auth: vi.fn(),
     assembleReportPayloadInScope: vi.fn(),
     notFound: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND")
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock("@/db/client", () => ({ db: mocks.mockDb }))
+vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }))
 
 vi.mock("@/lib/report-assembly", () => ({
   assembleReportPayloadInScope: mocks.assembleReportPayloadInScope,
@@ -63,9 +65,28 @@ async function renderShare(token: string) {
 
 describe("/share/[token]", () => {
   beforeEach(() => {
+    vi.stubEnv("JAMS_PREVIEW_USER_IDS", undefined)
+    mocks.mockDb.select.mockClear()
     mocks.selectQueue.length = 0
     mocks.assembleReportPayloadInScope.mockReset()
     mocks.notFound.mockClear()
+  })
+  afterEach(() => { vi.unstubAllEnvs() })
+
+  it.each([null, "user_uninvited"])("blocks preview sharing before data access for %s", async (userId) => {
+    vi.stubEnv("JAMS_PREVIEW_USER_IDS", "user_invited")
+    mocks.auth.mockResolvedValue({ userId })
+    await expect(renderShare(VALID_TOKEN)).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(mocks.mockDb.select).not.toHaveBeenCalled()
+    expect(mocks.assembleReportPayloadInScope).not.toHaveBeenCalled()
+  })
+
+  it("allows an invited preview participant to open a valid share", async () => {
+    vi.stubEnv("JAMS_PREVIEW_USER_IDS", "user_invited")
+    mocks.auth.mockResolvedValue({ userId: "user_invited" })
+    mocks.selectQueue.push([{ runId: RUN_ID, orgId: ORG_ID }])
+    mocks.assembleReportPayloadInScope.mockResolvedValue({ run: { id: RUN_ID } })
+    expect((await renderShare(VALID_TOKEN)).props.readOnly).toBe(true)
   })
 
   it("renders a valid token without auth and passes readOnly to ReportShell", async () => {

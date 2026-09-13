@@ -5,6 +5,7 @@ import type { PgColumn } from "drizzle-orm/pg-core"
 import { db } from "@/db/client"
 import { ensurePersonalOrganization } from "./clerk/personal-org"
 import type { ClerkBackendClient, MirrorStore } from "./clerk/types"
+import { assertPreviewUserAllowed } from "./preview-access"
 
 type AuthSession = Awaited<ReturnType<typeof auth>>
 type TransactionDb = Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -109,6 +110,9 @@ export async function resolveOrgContext({
   if (!session.userId) {
     throw new UnauthorizedError("Authentication required")
   }
+
+  // Apply preview policy before any organization lookup, creation, or DB work.
+  assertPreviewUserAllowed(session.userId)
 
   const orgId = await ensurePersonalOrganization({
     userId: session.userId,

@@ -1,4 +1,5 @@
 import { and, eq, gt, isNull } from "drizzle-orm"
+import { auth } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 
 import { shareLinks } from "@/db/schema"
@@ -9,6 +10,7 @@ import {
 } from "@/lib/report-assembly"
 import { bindOrgToTransaction, withDbTransaction } from "@/lib/with-org"
 import { ReportShell } from "@/components/report/ReportShell"
+import { isPreviewUserAllowed } from "@/lib/preview-access"
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/
 
@@ -26,6 +28,10 @@ export default async function SharedReportPage({
 }: {
   params: Promise<{ token: string }>
 }) {
+  if (process.env.JAMS_PREVIEW_USER_IDS !== undefined) {
+    const { userId } = await auth()
+    if (!isPreviewUserAllowed(userId)) notFound()
+  }
   const { token } = await params
   if (!TOKEN_RE.test(token)) notFound()
 
