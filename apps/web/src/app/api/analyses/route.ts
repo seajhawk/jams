@@ -25,6 +25,7 @@ export async function POST(request: Request) {
         .select({ id: videos.id, status: videos.status })
         .from(videos)
         .where(scopedDb.orgFilter(videos, eq(videos.id, body.video_id)))
+        .for("update")
         .limit(1)
 
       if (!video) {

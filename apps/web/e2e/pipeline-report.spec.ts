@@ -3,6 +3,7 @@ import { BlobServiceClient, BlockBlobClient } from "@azure/storage-blob"
 import path from "node:path"
 import { readFile } from "node:fs/promises"
 import { createHash } from "node:crypto"
+import postgres from "postgres"
 
 import { reportPayloadSchema } from "../src/lib/report-contract"
 import { expectAppReady, signInE2eUser } from "./helpers"
@@ -347,5 +348,83 @@ test.describe("real upload to worker report", () => {
       ),
       contentType: "application/json",
     })
+
+    // Exercise the customer deletion control after the complete report journey.
+    const shareResponse = await page.request.post(`/api/analyses/${runId}/share`, { data: {} })
+    expect(shareResponse.status()).toBe(201)
+    const share = await shareResponse.json() as { url: string }
+    expect((await page.request.get(share.url)).status()).toBe(200)
+    const cleanupService = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING!)
+    expect(["localhost", "127.0.0.1"]).toContain(new URL(cleanupService.url).hostname)
+    // A retained snapshot must not prevent cleanup or remain readable afterward.
+    const acceptedBlob = cleanupService.getContainerClient("videos").getBlobClient(accepted.video.blob_path)
+    const snapshot = await acceptedBlob.createSnapshot()
+    await page.goto(`/library/${videoId}`)
+    await page.getByRole("button", { name: "Delete recording", exact: true }).click()
+    const dialog = page.getByRole("dialog")
+    await expect(dialog).toContainText(fixtureTitle)
+    await test.info().attach("delete-confirmation-desktop", {
+      body: await page.screenshot(), contentType: "image/png",
+    })
+    const originalViewport = page.viewportSize()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(dialog.getByRole("button", { name: "Delete recording", exact: true })).toBeInViewport()
+    await test.info().attach("delete-confirmation-mobile", {
+      body: await page.screenshot(), contentType: "image/png",
+    })
+    if (originalViewport) await page.setViewportSize(originalViewport)
+    const deletedResponse = page.waitForResponse((response) =>
+      response.url().endsWith(`/api/videos/${videoId}`) && response.request().method() === "DELETE",
+    )
+    await dialog.getByRole("button", { name: "Delete recording", exact: true }).click()
+    expect((await deletedResponse).status()).toBe(202)
+    await expect(page).toHaveURL(/\/library$/)
+    expect((await page.request.get(`/api/videos/${videoId}`)).status()).toBe(404)
+    expect((await page.request.get(`/api/videos/${videoId}/playback-sas`)).status()).toBe(404)
+    expect((await page.request.get(`/api/analyses/${runId}/report`)).status()).toBe(404)
+    expect((await page.request.get(share.url)).status()).toBe(404)
+    expect((await page.request.post("/api/analyses", { data: { video_id: videoId } })).status()).toBe(404)
+    await expect(new BlockBlobClient(playback.video.url).downloadToBuffer())
+      .rejects.toMatchObject({ statusCode: 404 })
+    await expect(acceptedBlob.withSnapshot(snapshot.snapshot!).downloadToBuffer())
+      .rejects.toMatchObject({ statusCode: 404 })
+    const recordingPrefix = accepted.video.blob_path.split("/").slice(0, 2).join("/") + "/"
+    const cleanupScopes = [
+      ["videos", recordingPrefix], ["derived", recordingPrefix],
+      ["derived", `runs/${runId}/`],
+      ...(failedRunId ? [["derived", `runs/${failedRunId}/`]] : []),
+    ]
+    for (const [container, prefix] of cleanupScopes) {
+      const remaining = []
+      for await (const blob of cleanupService.getContainerClient(container).listBlobsFlat({ prefix })) {
+        remaining.push(blob.name)
+      }
+      expect(remaining).toEqual([])
+    }
+    expect((await page.request.delete(`/api/videos/${videoId}`)).status()).toBe(202)
+    // Old write credentials can still recreate the abandoned source. Advance
+    // only this local job's scheduler clock and prove the durable sweep removes it.
+    await new BlockBlobClient(createdVideo.upload.url).uploadData(Buffer.from("late upload"))
+    const databaseUrl = process.env.DATABASE_URL!
+    expect(["localhost", "127.0.0.1"]).toContain(new URL(databaseUrl).hostname)
+    const cleanupDb = postgres(databaseUrl, { max: 1 })
+    try {
+      await cleanupDb`update recording_deletions set requested_at=now()-interval '16 minutes',
+        next_sweep_at=now()-interval '1 minute' where video_id=${videoId}`
+      const sweep = await page.request.post("/api/admin/watchdog", {
+        headers: { Authorization: `Bearer ${process.env.WATCHDOG_SECRET}` },
+      })
+      expect(sweep.status()).toBe(200)
+      expect((await sweep.json()).cleanup_swept_count).toBe(1)
+      const [job] = await cleanupDb`select last_verified_at, analysis_count from recording_deletions
+        where video_id=${videoId}`
+      expect(job.last_verified_at).toBeInstanceOf(Date)
+      expect(job.analysis_count).toBe(recovery ? 2 : 1)
+      const sources = []
+      for await (const blob of cleanupService.getContainerClient("videos").listBlobsFlat({ prefix: recordingPrefix })) {
+        sources.push(blob.name)
+      }
+      expect(sources).toEqual([])
+    } finally { await cleanupDb.end() }
   })
 })

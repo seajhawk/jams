@@ -6,6 +6,11 @@ import {
 } from "@azure/storage-blob"
 
 export const videosContainerName = "videos"
+export const derivedContainerName = "derived"
+
+const BLOB_REQUEST_TIMEOUT_MS = 20_000
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const ORG_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/
 
 const AZURITE_ACCOUNT_NAME = "devstoreaccount1"
 const AZURITE_ACCOUNT_KEY =
@@ -114,6 +119,99 @@ function hasStatusCode(error: unknown): error is { statusCode: number } {
     "statusCode" in error &&
     typeof error.statusCode === "number"
   )
+}
+
+function isNotFound(error: unknown): boolean {
+  return hasStatusCode(error) && error.statusCode === 404
+}
+
+function assertCleanupScope(orgId: string, videoId: string, runIds: readonly string[]): void {
+  if (!ORG_ID_PATTERN.test(orgId) || !UUID_PATTERN.test(videoId)) {
+    throw new Error("Invalid recording cleanup scope")
+  }
+  if (!Array.isArray(runIds) || runIds.some((runId) => !UUID_PATTERN.test(runId))) {
+    throw new Error("Invalid recording cleanup scope")
+  }
+}
+
+/**
+ * Repeatedly sweeps all server-owned blobs for a recording and its analysis runs.
+ * The database deletion must coordinate with this sweep; Blob Storage itself is not
+ * atomic across the two containers or across multiple prefixes.
+ */
+export async function cleanupRecordingBlobs(input: {
+  orgId: string
+  videoId: string
+  runIds: readonly string[]
+}): Promise<void> {
+  const { orgId, videoId, runIds } = input
+  assertCleanupScope(orgId, videoId, runIds)
+
+  const videoPrefix = `${orgId}/${videoId}/`
+  const derivedPrefixes = [
+    ...new Set([
+      ...runIds.map((runId) => `runs/${runId}/`),
+      videoPrefix,
+    ]),
+  ]
+
+  const service = blobServiceClient()
+  const abortSignal = AbortSignal.timeout(BLOB_REQUEST_TIMEOUT_MS)
+  const containers = [
+    { name: videosContainerName, prefixes: [videoPrefix] },
+    { name: derivedContainerName, prefixes: derivedPrefixes },
+  ]
+
+  for (const { name, prefixes } of containers) {
+    const container = service.getContainerClient(name)
+    for (const prefix of prefixes) {
+      let blobs: AsyncIterable<{ name: string; snapshot?: string; versionId?: string; isCurrentVersion?: boolean }>
+      try {
+        blobs = container.listBlobsFlat({
+          prefix,
+          includeSnapshots: true,
+          includeVersions: true,
+          abortSignal,
+        })
+      } catch (error) {
+        if (isNotFound(error)) continue
+        throw error
+      }
+
+      try {
+        for await (const item of blobs) {
+          if (!item.name.startsWith(prefix)) {
+            throw new Error("Storage enumeration escaped cleanup prefix")
+          }
+          let blob = container.getBlobClient(item.name)
+          let deleteOptions: Parameters<typeof blob.deleteIfExists>[0] = {
+            abortSignal,
+          }
+          if (item.versionId) {
+            if (item.isCurrentVersion) {
+              // A current version must first become a retained historical
+              // version through base deletion before its version ID is deleted.
+              await blob.deleteIfExists({ deleteSnapshots: "include", abortSignal })
+            }
+            blob = blob.withVersion(item.versionId)
+            deleteOptions = { abortSignal }
+          } else if (item.snapshot) {
+            blob = blob.withSnapshot(item.snapshot)
+            deleteOptions = { abortSignal }
+          } else {
+            deleteOptions = { deleteSnapshots: "include", abortSignal }
+          }
+          try {
+            await blob.deleteIfExists(deleteOptions)
+          } catch (error) {
+            if (!isNotFound(error)) throw error
+          }
+        }
+      } catch (error) {
+        if (!isNotFound(error)) throw error
+      }
+    }
+  }
 }
 
 async function mintBlobSas(

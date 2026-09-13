@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { AnalysisStatusPanel } from "@/components/upload/AnalysisStatusPanel"
+import { DeleteRecordingButton } from "@/components/upload/DeleteRecordingButton"
 import { RunHistoryPanel } from "@/components/upload/RunHistoryPanel"
 import { VideoDetailPlayer } from "@/components/upload/VideoDetailPlayer"
 
@@ -225,6 +226,7 @@ export default async function VideoDetailPage({
               superseded_by: run.supersededBy,
             }))}
           />
+          <DeleteRecordingButton videoId={video.id} title={video.title} />
         </aside>
       </div>
       </section>

@@ -1,6 +1,6 @@
 # Private preview: next five milestones
 
-Updated September 12, 2026. The initial preview should cover narrated recordings,
+Updated September 13, 2026. The initial preview should cover narrated recordings,
 context switches, transcript, narration sentiment, segmentation and report seeking.
 Experimental physical click detection still fails its precision gate and is not
 ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for evidence.
@@ -14,8 +14,9 @@ ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for eviden
    runs. Storage-side byte enforcement remains open; see the limitations below.
 3. **Finalize uploads once and delete recordings completely.** New completions now
    seal original/poster data into server-owned paths and reject metadata changes.
-   See `FINALIZED-MEDIA.md`. Next: a deletion lifecycle that revokes related shares
-   and removes upload sources, accepted copies and derived blobs safely.
+   Deletion now revokes reports/shares and queues retryable cleanup of sources,
+   accepted copies, snapshots and derived blobs. See `DELETION-LIFECYCLE.md` for
+   tested guarantees and remaining Azure verification.
 4. **Build and rehearse staging operations.** `infra/` currently has only a README.
    Prepare the two deployable units, secrets, migrations, health checks, recovery,
    deletion and restore runbooks locally. Provisioning still requires approval.
@@ -50,7 +51,7 @@ Enabling this gate does not disable Clerk account registration; it prevents
 uninvited accounts from entering the product or obtaining new report/media access.
 Already-issued blob SAS URLs retain their existing expiry. Removing a user from
 the list therefore blocks new requests, not previously issued storage credentials.
-Admission limits below complement this control; deletion remains a separate blocker.
+Admission limits and recording deletion complement this control.
 
 ## Preview usage admission
 
@@ -70,13 +71,14 @@ lock, so concurrent requests cannot each claim the same remaining capacity.
 All video rows reserve their declared original size, including incomplete/failed
 uploads; unknown legacy sizes reserve the 2 GiB file maximum. All run statuses
 count toward the recorded-run allowance, and superseded queued/running work still
-counts as active. Rolled-back requests consume no reservation. Future deletion
-must preserve any intended lifetime allowance using durable usage accounting.
+counts as active. Rolled-back requests consume no reservation. Deleted run usage
+is retained permanently; deleted byte reservations remain until a post-expiry
+cleanup sweep succeeds.
 
 This does **not** cap physical Azure storage: posters/derived artifacts are not
 counted, and upload SAS permissions cannot enforce the declared file size. Completion
 checks original blob size, but oversized or overwritten blobs can exist before that
-check. Immutable uploads, storage cleanup and infrastructure cost controls remain
+check. Infrastructure cost controls and staging storage verification remain
 required. The active-run check applies to participant admission; trusted operational
 recovery remains separately controlled. Removing preview configuration disables
 these admission limits along with preview access restrictions.

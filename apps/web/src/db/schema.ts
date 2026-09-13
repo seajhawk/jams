@@ -167,6 +167,26 @@ export const videos = pgTable(
   ]
 )
 
+// Retained after video/run cascades: cleanup intent and consumed usage must survive.
+export const recordingDeletions = pgTable("recording_deletions", {
+  videoId: uuid("video_id").primaryKey(),
+  orgId: text("org_id").notNull(),
+  runIds: jsonb("run_ids").$type<string[]>().notNull(),
+  analysisCount: integer("analysis_count").notNull(),
+  reservedBytes: bigint("reserved_bytes", { mode: "number" }).notNull(),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  nextSweepAt: timestamp("next_sweep_at", { withTimezone: true }).notNull().defaultNow(),
+  lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  lastError: text("last_error"),
+  leaseToken: uuid("lease_token"),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+}, (table) => [
+  index("recording_deletions_org_idx").on(table.orgId),
+  index("recording_deletions_sweep_idx").on(table.nextSweepAt),
+  check("recording_deletions_usage_check", sql`${table.analysisCount} >= 0 and ${table.reservedBytes} >= 0`),
+])
+
 export const analysisRuns = pgTable(
   "analysis_runs",
   {

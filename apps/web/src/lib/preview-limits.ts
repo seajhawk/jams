@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm"
 
-import { analysisRuns, videos } from "@/db/schema"
+import { analysisRuns, recordingDeletions, videos } from "@/db/schema"
 import { HttpError } from "@/lib/api"
 import { MAX_VIDEO_SIZE_BYTES } from "@/lib/videos"
 import type { OrgContext } from "@/lib/with-org"
@@ -49,7 +49,7 @@ function configuredLimits() {
   }
 }
 
-async function lockUsage(scopedDb: OrgContext["scopedDb"]) {
+export async function lockPreviewUsage(scopedDb: OrgContext["scopedDb"]) {
   await scopedDb.db.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${"jams-preview-usage:" + scopedDb.orgId}, 0))`
   )
@@ -62,7 +62,7 @@ export async function assertUploadAdmission(
   if (process.env.JAMS_PREVIEW_USER_IDS === undefined) return
 
   const { maxStorageBytes } = configuredLimits()
-  await lockUsage(scopedDb)
+  await lockPreviewUsage(scopedDb)
 
   const [usage] = await scopedDb.db
     .select({
@@ -71,7 +71,10 @@ export async function assertUploadAdmission(
     .from(videos)
     .where(scopedDb.orgFilter(videos))
 
-  const usedBytes = Number(usage?.bytes ?? 0)
+  const [pending] = await scopedDb.db.select({
+    bytes: sql<string>`coalesce(sum(${recordingDeletions.reservedBytes}) filter (where ${recordingDeletions.lastVerifiedAt} is null), 0)`,
+  }).from(recordingDeletions).where(scopedDb.orgFilter(recordingDeletions))
+  const usedBytes = Number(usage?.bytes ?? 0) + Number(pending?.bytes ?? 0)
   if (!Number.isSafeInteger(usedBytes) || usedBytes + sizeBytes > maxStorageBytes) {
     throw new PreviewLimitError("Preview storage limit reached")
   }
@@ -83,7 +86,7 @@ export async function assertAnalysisAdmission(
   if (process.env.JAMS_PREVIEW_USER_IDS === undefined) return
 
   const { maxAnalyses, maxActiveRuns } = configuredLimits()
-  await lockUsage(scopedDb)
+  await lockPreviewUsage(scopedDb)
 
   const [usage] = await scopedDb.db
     .select({
@@ -93,7 +96,10 @@ export async function assertAnalysisAdmission(
     .from(analysisRuns)
     .where(scopedDb.orgFilter(analysisRuns))
 
-  const total = Number(usage?.total ?? 0)
+  const [deleted] = await scopedDb.db.select({
+    total: sql<string>`coalesce(sum(${recordingDeletions.analysisCount}), 0)`,
+  }).from(recordingDeletions).where(scopedDb.orgFilter(recordingDeletions))
+  const total = Number(usage?.total ?? 0) + Number(deleted?.total ?? 0)
   const active = Number(usage?.active ?? 0)
   if (total >= maxAnalyses) {
     throw new PreviewLimitError("Preview analysis limit reached")

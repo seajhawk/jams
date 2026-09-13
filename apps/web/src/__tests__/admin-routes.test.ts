@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   requirePlatformAdminApi: vi.fn(),
   requireMachineOrPlatformAdminApi: vi.fn(),
   requeueAdminRun: vi.fn(),
+  reconcileRecordingCleanup: vi.fn().mockResolvedValue({ sweptCount: 0, failedCount: 0 }),
   reconcilePendingDispatches: vi.fn().mockResolvedValue({
     reconciledCount: 0,
     failedCount: 0,
@@ -25,6 +26,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/admin-auth", () => ({
   requirePlatformAdminApi: mocks.requirePlatformAdminApi,
   requireMachineOrPlatformAdminApi: mocks.requireMachineOrPlatformAdminApi,
+}))
+
+vi.mock("@/lib/recording-cleanup", () => ({
+  reconcileRecordingCleanup: mocks.reconcileRecordingCleanup,
 }))
 
 vi.mock("@/lib/admin-runs", () => ({
@@ -96,6 +101,7 @@ describe("admin run route handlers", () => {
     expect(body.run_ids).toEqual([RUN_ID])
     expect(mocks.requireMachineOrPlatformAdminApi).toHaveBeenCalledWith(request)
     expect(mocks.reconcilePendingDispatches).toHaveBeenCalled()
+    expect(mocks.reconcileRecordingCleanup).toHaveBeenCalled()
   })
 
   it("runs reconcile behind the admin gate", async () => {

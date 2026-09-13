@@ -72,8 +72,15 @@ Postgres, DDL owned by **Drizzle migrations in the Next.js repo** (single source
 - `weight_profiles` — org_id, name, weights jsonb ({kind: weight}), normalization jsonb (per_minute|raw|z_score), is_default · patent's adjustable weights as named org assets, default seeded on org creation
 - `effort_scores` — PK(run_id, profile_id): physical/cognitive/time/sentiment/total + **breakdown jsonb** (raw → normalized → weighted contribution, so the UI answers "why is this 62?") · worker writes default snapshot; client recomputes on slider drag
 - `share_links` (F6) — run_id, token, expires_at
+- `recording_deletions` — retained tenant-scoped cleanup/usage ledger after video
+  cascades, with captured run IDs, consumed analysis count, original-byte reservation,
+  sweep schedule and lease token. Existing watchdog handles cleanup retries; no new
+  service. See `DELETION-LIFECYCLE.md` for ordering and retention guarantees.
 
 ### API surface (Next.js route handlers, all through `withOrg`)
+
+Recording deletion: `DELETE /api/videos/:id` atomically removes tenant access and
+records cleanup intent, returning 202 with storage cleanup queued.
 
 `POST /api/videos` (create row + write SAS) · `POST /api/videos/:id/complete` · `GET /api/videos[/:id]` · `GET /api/videos/:id/playback-sas` · `POST /api/analyses` (create/re-run) · `GET /api/analyses/:id` (status poll) · `GET /api/analyses/:id/report` (one fat payload: segments+measures+score) · `GET /api/analyses/:id/measures?kind=` (future public-API shape) · `GET/PUT/PATCH /api/weight-profiles` · `POST /api/webhooks/{clerk,stripe}` · `POST /api/admin/watchdog` (GitHub Actions schedule sweeps runs stuck >60 min)
 

@@ -46,17 +46,29 @@ Worker deletion prerequisite completed after the media-integrity change:
   revised locking, transaction boundaries and poster isolation. Astra reviewed
   the revision with no remaining prerequisite blocker. All owned services stopped.
 
-See `DELETION-LIFECYCLE.md` for the bounded guarantee and remaining API/cleanup
-work, including ambiguous remote writes and upload-SAS expiry.
+## Customer deletion and durable cleanup implemented
 
-See `PREVIEW-READINESS.md` and `FINALIZED-MEDIA.md`. Complete deletion must revoke
-shares and remove upload sources, accepted copies, derived artifacts and orphaned
-copies. Sources currently remain until cleanup, and failed transactions can leave
-unused copies. The reservation quota does not measure physical storage. Preserve
-durable usage accounting when adding deletion. This is client-write isolation,
-not WORM retention against trusted storage operators.
+Recording confirmation now invokes tenant-scoped deletion, revokes reports/shares,
+and retains cleanup intent plus consumed usage. Sources, accepted copies, derived
+attempts, legacy posters and snapshots/versions are swept. Both manual reconciliation
+and the scheduled watchdog retry failures and keep checking for delayed writes.
+See `DELETION-LIFECYCLE.md` for the exact limits and operating requirements.
 
-Next bounded task: deletion lifecycle and retryable blob cleanup, with no new
-service and no client-provided org identity. Staging deployment, operating-cost
-validation and customer invitations remain gated. The known experimental audio
-proposal precision failure remains disclosed and unchanged.
+- Full web suite: 204 tests passed, then two added regression tests passed in the
+  23-test final focused run. TypeScript and production build passed. ESLint has
+  zero errors and one existing ReportHeader navigation warning.
+- Real narrated deletion E2E: 29.7s (34.8s total).
+- Stronger narrated recovery/deletion E2E: 29.7s (34.3s total), including snapshot
+  deletion, all attempt prefixes, revocation, and a late source upload removed
+  through the authenticated watchdog. Both consumed run counts survive deletion.
+  Evidence: `jams-pipeline-e2e-8e420823-6359-4764-b732-11e5950b4c88` in OS temp.
+- Desktop and mobile confirmation screenshots inspected; controls fit both.
+- Luna implemented the storage helper and confirmation UI. Astra identified a
+  current-version deletion edge case; primary fixed it and added regression coverage.
+  Astra's focused rereview found no remaining blocker. Actual Azure versioning still
+  requires staging verification.
+
+Next bounded task: prepare the two deployment units and local staging rehearsal,
+including migration, scheduler, backup/restore and cleanup monitoring runbooks.
+Azure provisioning, operating-cost validation and customer invitations remain
+gated. The experimental audio proposal precision failure remains unchanged.

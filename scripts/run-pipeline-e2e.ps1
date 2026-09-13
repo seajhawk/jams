@@ -69,6 +69,7 @@ try {
     }
     Set-TestEnvironment 'DATABASE_URL' "postgresql://jams:jams@127.0.0.1:$DatabasePort/jams"
     Set-TestEnvironment 'DATABASE_URL_WEB' "postgresql://jams_web:jams_web@127.0.0.1:$DatabasePort/jams"
+    Set-TestEnvironment 'WATCHDOG_SECRET' ([guid]::NewGuid().ToString('N'))
     Set-TestEnvironment 'AZURE_STORAGE_CONNECTION_STRING' "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:$BlobPort/devstoreaccount1;QueueEndpoint=http://127.0.0.1:$QueuePort/devstoreaccount1;TableEndpoint=http://127.0.0.1:$TablePort/devstoreaccount1;"
     Set-TestEnvironment 'PLAYWRIGHT_BASE_URL' "http://localhost:$WebPort"
     Set-TestEnvironment 'JAMS_RUN_PIPELINE_E2E' '1'

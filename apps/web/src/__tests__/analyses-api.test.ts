@@ -51,6 +51,8 @@ vi.mock("@/lib/with-org", () => ({
 class SelectBuilder {
   constructor(private readonly db: MockDb) {}
 
+  for() { return this }
+
   from() {
     return this
   }
