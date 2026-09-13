@@ -25,5 +25,6 @@ process runs as user `jams` and needs writable temporary storage for per-run med
 such an image is not suitable for narrated production work. CI's release smoke build
 uses the default prewarm and then verifies Whisper and ONNX sentiment with no network.
 
-The local Docker engine was unavailable during this preparation, so the Linux image
-build and actual ACA startup remain CI/staging verification gates.
+The local Docker engine was unavailable during this preparation. GitHub Actions
+verified the Linux image build after the demo fixture was added to the web context;
+actual ACA startup remains a staging verification gate.

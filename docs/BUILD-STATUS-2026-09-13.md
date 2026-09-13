@@ -83,7 +83,9 @@ See `DELETION-LIFECYCLE.md` for the exact limits and operating requirements.
   probes web liveness, verifies no env files entered the image, and loads both
   models with `--network none`. Local Docker image builds remain unrun because
   this host's Docker Desktop engine is unavailable; GitHub CI is the first real
-  image build.
+  image build. The first run exposed a missing demo fixture in the web image;
+  commit `cc97dbc` includes it, and the replacement Linux container workflow
+  passed for both images.
 - Web focused proxy/liveness tests: 16 passed. Worker runtime preparation and
   sentiment tests: 5 passed. Existing production web build passed after the
   standalone/liveness changes. Astra reviewed the container files and caught the
