@@ -1,18 +1,19 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { NextRequest } from "next/server"
+import { NextRequest, type NextFetchEvent } from "next/server"
+
+const { session } = vi.hoisted(() => ({ session: Object.assign(vi.fn(), { protect: vi.fn() }) }))
 
 vi.mock("@clerk/nextjs/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@clerk/nextjs/server")>()
-  return { ...actual, clerkMiddleware: (handler: unknown) => handler }
+  return { ...actual, clerkMiddleware: (handler: (auth: typeof session, request: NextRequest) => unknown) =>
+    (request: NextRequest) => handler(session, request) }
 })
 
 import proxy from "@/proxy"
 
-const session = Object.assign(vi.fn(), { protect: vi.fn() })
-const handle = proxy as unknown as (
-  auth: typeof session, request: NextRequest
-) => Promise<Response | undefined>
+const handle = (_auth: typeof session, request: NextRequest) =>
+  proxy(request, {} as NextFetchEvent) as Promise<Response | undefined>
 
 describe("private preview request boundary", () => {
   beforeEach(() => {
@@ -67,5 +68,11 @@ describe("private preview request boundary", () => {
   it("does not exempt neighboring admin routes", async () => {
     expect((await handle(session, new NextRequest("http://localhost/api/admin/runs/id/requeue")))?.status)
       .toBe(403)
+  })
+
+  it("allows only the exact liveness path without consulting identity", async () => {
+    expect((await handle(session, new NextRequest("http://localhost/api/health/live")))?.status).toBe(200)
+    expect(session).not.toHaveBeenCalled()
+    expect((await handle(session, new NextRequest("http://localhost/api/health/live/private")))?.status).toBe(403)
   })
 })

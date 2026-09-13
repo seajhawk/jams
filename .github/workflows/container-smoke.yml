@@ -1,0 +1,50 @@
+name: Container smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "codex/**"]
+    paths:
+      - ".github/workflows/container-smoke.yml"
+      - "apps/web/Dockerfile*"
+      - "worker/Dockerfile*"
+      - "worker/scripts/prepare_runtime.py"
+      - "apps/web/next.config.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build standalone web image without secrets
+        run: >-
+          docker build -f apps/web/Dockerfile -t jams-web:smoke
+          --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_ZXhhbXBsZS5jbGVyay5hY2NvdW50cy5kZXYk .
+      - name: Start and probe image without database or Clerk credentials
+        run: |
+          docker run --detach --name jams-web-smoke -p 127.0.0.1:3100:3000 jams-web:smoke
+          trap 'docker logs jams-web-smoke; docker rm -f jams-web-smoke' EXIT
+          test "$(docker inspect --format '{{.Config.User}}' jams-web:smoke)" = node
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3100/api/health/live > /tmp/health.json; then break; fi
+            sleep 1
+          done
+          node -e "const h=require('/tmp/health.json');if(h.status!=='ok')process.exit(1)"
+          curl -fsS http://127.0.0.1:3100/window.svg > /dev/null
+          docker exec jams-web-smoke sh -c 'test -z "$(find /app -name ".env*" -print -quit)"'
+
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build worker with runtime assets
+        run: docker build -f worker/Dockerfile -t jams-worker:smoke .
+      - name: Verify assets and provider imports without network access
+        run: |
+          test "$(docker inspect --format '{{.Config.User}}' jams-worker:smoke)" = jams
+          docker run --rm --network none --entrypoint python jams-worker:smoke -c "from jams_worker.ffmpeg import ffmpeg_paths; from jams_worker.providers.transcription import load_model; from jams_worker.providers.sentiment import classify_onnx; import cv2; print(ffmpeg_paths()); model, digest = load_model(); assert digest; result = classify_onnx(['This works well.']); assert result and result[0].method == 'onnx'; print('Offline worker assets ready')"

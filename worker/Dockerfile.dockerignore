@@ -1,0 +1,11 @@
+**
+!worker/
+!worker/pyproject.toml
+!worker/uv.lock
+!worker/README.md
+!worker/src/
+!worker/src/**
+!worker/scripts/
+!worker/scripts/prepare_runtime.py
+**/__pycache__/**
+**/.env*

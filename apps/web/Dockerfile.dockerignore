@@ -1,0 +1,17 @@
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/
+!apps/web/
+!apps/web/package.json
+!apps/web/next.config.ts
+!apps/web/tsconfig.json
+!apps/web/next-env.d.ts
+!apps/web/postcss.config.mjs
+!apps/web/src/
+!apps/web/src/**
+!apps/web/public/
+!apps/web/public/*.svg
+apps/web/src/**/__tests__/**
+**/.env*

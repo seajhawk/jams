@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server"
 
 import { isPreviewUserAllowed } from "@/lib/preview-access"
 
@@ -26,7 +26,7 @@ const isMachineRecoveryRoute = createRouteMatcher([
   "/api/admin/reconcile",
 ])
 
-export default clerkMiddleware(async (auth, request) => {
+const authenticatedProxy = clerkMiddleware(async (auth, request) => {
   if (isMachineRecoveryRoute(request)) return
   if (process.env.JAMS_PREVIEW_USER_IDS !== undefined && !isPreviewEntryRoute(request)) {
     const { userId } = await auth()
@@ -51,6 +51,13 @@ export default clerkMiddleware(async (auth, request) => {
     await auth.protect()
   }
 })
+
+export default function proxy(request: NextRequest, event: NextFetchEvent) {
+  // Process liveness must work during identity-provider outages and before keys
+  // are configured. This exact route serves no tenant or dependency information.
+  if (request.nextUrl.pathname === "/api/health/live") return NextResponse.next()
+  return authenticatedProxy(request, event)
+}
 
 export const config = {
   matcher: [

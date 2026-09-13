@@ -68,7 +68,30 @@ See `DELETION-LIFECYCLE.md` for the exact limits and operating requirements.
   Astra's focused rereview found no remaining blocker. Actual Azure versioning still
   requires staging verification.
 
-Next bounded task: prepare the two deployment units and local staging rehearsal,
-including migration, scheduler, backup/restore and cleanup monitoring runbooks.
+## Container release preparation implemented
+
+- `apps/web/Dockerfile` builds Next standalone output from the repository root,
+  runs as non-root `node`, exposes `/api/health/live`, and has a container health
+  check. Its Dockerfile-specific ignore file excludes tests, development files,
+  and all `.env*` files.
+- `worker/Dockerfile` uses Python 3.12 and locked `uv` dependencies, installs the
+  runtime media libraries, runs as non-root `jams`, and preloads static ffmpeg,
+  `distil-small.en` Whisper, and the pinned ONNX SST-2 sentiment model. Runtime
+  network access is unnecessary after the image build; no LLM or credentials are
+  baked into either image.
+- `container-smoke.yml` builds both images on Linux, checks non-root identities,
+  probes web liveness, verifies no env files entered the image, and loads both
+  models with `--network none`. Local Docker image builds remain unrun because
+  this host's Docker Desktop engine is unavailable; GitHub CI is the first real
+  image build.
+- Web focused proxy/liveness tests: 16 passed. Worker runtime preparation and
+  sentiment tests: 5 passed. Existing production web build passed after the
+  standalone/liveness changes. Astra reviewed the container files and caught the
+  missing sentiment preload; the corrected design is ready for CI validation.
+
+Next bounded task: local staging rehearsal and operations runbooks, including
+migration, scheduler, backup/restore and cleanup monitoring. Azure provisioning,
+operating-cost validation and customer invitations remain gated. The experimental
+audio proposal precision failure remains unchanged.
 Azure provisioning, operating-cost validation and customer invitations remain
 gated. The experimental audio proposal precision failure remains unchanged.
