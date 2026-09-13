@@ -17,9 +17,11 @@ ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for eviden
    Deletion now revokes reports/shares and queues retryable cleanup of sources,
    accepted copies, snapshots and derived blobs. See `DELETION-LIFECYCLE.md` for
    tested guarantees and remaining Azure verification.
-4. **Build and rehearse staging operations.** `infra/` currently has only a README.
-   Prepare the two deployable units, secrets, migrations, health checks, recovery,
-   deletion and restore runbooks locally. Provisioning still requires approval.
+4. **Build and rehearse staging operations.** The two deployable images, liveness
+   check, scheduler, migration, recovery, deletion and restore procedures are
+   prepared in `CONTAINERS.md` and `OPERATIONS-RUNBOOK.md`. The first Linux image
+   build is a CI gate; Azure provisioning and staging execution still require
+   approval.
 5. **Validate the initial customer experience.** Run consented real task recordings,
    audit report claims and timing, then—after authorized staging and operating-cost
    checks—conduct supervised pilots. Customer invitations remain unsent.

@@ -89,9 +89,10 @@ See `DELETION-LIFECYCLE.md` for the exact limits and operating requirements.
   standalone/liveness changes. Astra reviewed the container files and caught the
   missing sentiment preload; the corrected design is ready for CI validation.
 
-Next bounded task: local staging rehearsal and operations runbooks, including
-migration, scheduler, backup/restore and cleanup monitoring. Azure provisioning,
-operating-cost validation and customer invitations remain gated. The experimental
-audio proposal precision failure remains unchanged.
+Local staging operations are documented in `OPERATIONS-RUNBOOK.md`: migration,
+scheduler authentication, fixture smoke journeys, deletion/late-upload cleanup,
+backup/restore, rollback and alert thresholds. The runbook intentionally stops at
+rehearsal; Azure provisioning, operating-cost validation and customer invitations
+remain gated. The experimental audio proposal precision failure remains unchanged.
 Azure provisioning, operating-cost validation and customer invitations remain
 gated. The experimental audio proposal precision failure remains unchanged.
