@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { analysisRuns, tasks, videos } from "@/db/schema"
 import { HttpError, handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
 import { mintUploadSas } from "@/lib/blob"
+import { assertUploadAdmission } from "@/lib/preview-limits"
 import {
   createVideoSchema,
   originalBlobPath,
@@ -91,6 +92,8 @@ export async function POST(request: Request) {
     const body = await parseJsonBody(request, createVideoSchema)
 
     return await withOrg(async ({ orgId, userId, scopedDb }) => {
+      await assertUploadAdmission(scopedDb, body.size_bytes)
+
       if (body.task_id) {
         const [task] = await scopedDb.db
           .select({ id: tasks.id })

@@ -10,6 +10,7 @@ import {
 } from "@/lib/analyses"
 import { dispatchAnalysisRun, recordDispatchIntent } from "@/lib/analysis-dispatch"
 import { PIPELINE_VERSION } from "@/lib/pipeline-version"
+import { assertAnalysisAdmission } from "@/lib/preview-limits"
 import { getOrCreateDefaultProfile } from "@/lib/report-assembly"
 import { withOrg } from "@/lib/with-org"
 
@@ -41,6 +42,8 @@ export async function POST(request: Request) {
       if (configResult?.success === false) {
         throw new HttpError(400, configResult.error)
       }
+
+      await assertAnalysisAdmission(scopedDb)
 
       // A first upload can arrive before the organization webhook provisions
       // its profile. Commit the scoring prerequisite before dispatching work.

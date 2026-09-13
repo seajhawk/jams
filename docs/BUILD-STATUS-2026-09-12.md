@@ -105,3 +105,30 @@ the local temp directory. Astra rereview found no remaining actionable issues.
 Next bounded implementation: org storage/analysis/active-run admission limits checked
 transactionally before upload SAS issuance or run creation. Deployment and customer
 invitations remain deferred.
+
+## Preview usage admission verified
+
+Added per-org transactionally serialized admission before upload row/SAS issuance
+and analysis row/outbox creation. Preview defaults are 10 GiB declared original
+reservations, 100 recorded analyses and 2 queued/running analyses. Invalid limit
+configuration fails closed with 503; exhausted limits return 429. All video/run
+rows count, including incomplete uploads, failed runs and superseded active runs.
+No schema migration was needed; the existing withOrg transaction holds the org
+advisory lock through insertion.
+
+Six real-Postgres tests verified concurrent reservations, active/total limits,
+rollback, tenant isolation, invalid configuration, unknown sizes and superseded
+work. Route regression tests verify denied requests mint no SAS and enqueue no
+work. Full web suite: 168 passed before two additional integration scenarios;
+the expanded six-scenario integration suite then passed. TypeScript, targeted
+ESLint and production build passed. The actual narrated E2E with preview admission
+and one-analysis/one-active limits passed in 21.7s (26.2s including setup).
+Private evidence: local temp `jams-pipeline-e2e-de77f56d-2ef5-45fb-8352-f6ad5af5486a`.
+Both owned test database instances were stopped.
+
+Luna implemented the bounded helper/route changes; Astra initially hit quota,
+then reviewed successfully after the usage reset was verified. No actionable
+findings. `PREVIEW-READINESS.md` records configuration and the remaining physical
+storage limitations: declared reservation bytes do not cap direct SAS uploads,
+posters or derived artifacts. Next: immutable finalized uploads and complete
+recording deletion, including share revocation and storage cleanup.

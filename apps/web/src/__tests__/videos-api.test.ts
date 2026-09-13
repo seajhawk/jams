@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { POST as completeVideo } from "@/app/api/videos/[id]/complete/route"
 import { POST as createVideo } from "@/app/api/videos/route"
 import { videos } from "@/db/schema"
+import * as previewLimits from "@/lib/preview-limits"
 
 type VideoRow = typeof videos.$inferSelect
 type InsertValues = Record<string, unknown>
@@ -180,6 +181,21 @@ describe("videos API route handlers", () => {
         expiresAt: "2026-07-17T12:15:00.000Z",
       })
     )
+  })
+
+  it("rejects exhausted admission before inserting or issuing SAS credentials", async () => {
+    const db = new MockDb()
+    installContext(db)
+    const guard = vi.spyOn(previewLimits, "assertUploadAdmission")
+      .mockRejectedValueOnce(new previewLimits.PreviewLimitError("Preview storage limit reached"))
+    try {
+      const response = await createVideo(jsonRequest("/api/videos", {
+        title: "Over limit", filename: "test.mp4", content_type: "video/mp4", size_bytes: 10,
+      }))
+      expect(response.status).toBe(429)
+      expect(db.inserts).toHaveLength(0)
+      expect(mocks.mintUploadSas).not.toHaveBeenCalled()
+    } finally { guard.mockRestore() }
   })
 
   it("creates an org-scoped uploading row and mints upload SAS URLs", async () => {

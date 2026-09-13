@@ -9,9 +9,9 @@ ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for eviden
    Clerk user IDs, checked at the request boundary and before tenant data access or
    personal-org creation. Shared reports also require admission during preview.
    Verify the configured preview with an invited account before staging opens.
-2. **Bound usage before accepting work.** Add transactionally enforced aggregate
-   storage, analysis allowance and active-run limits. Current per-file limits do
-   not cap an organization's total storage or queued work.
+2. **Bound usage before accepting work.** Preview admission now serializes org
+   reservations and limits declared original bytes, recorded analyses and active
+   runs. Storage-side byte enforcement remains open; see the limitations below.
 3. **Finalize uploads once and delete recordings completely.** Completion currently
    permits repeated metadata updates; upload SAS credentials can overwrite the
    original until expiry. Add immutable finalized media and a deletion lifecycle
@@ -50,4 +50,33 @@ Enabling this gate does not disable Clerk account registration; it prevents
 uninvited accounts from entering the product or obtaining new report/media access.
 Already-issued blob SAS URLs retain their existing expiry. Removing a user from
 the list therefore blocks new requests, not previously issued storage credentials.
-This is one preview control; usage limits and deletion remain separate blockers.
+Admission limits below complement this control; deletion remains a separate blocker.
+
+## Preview usage admission
+
+With `JAMS_PREVIEW_USER_IDS` present, these server settings apply per organization:
+
+| Setting | Default |
+|---|---:|
+| `JAMS_PREVIEW_MAX_STORAGE_BYTES` | 10737418240 (10 GiB) |
+| `JAMS_PREVIEW_MAX_ANALYSES` | 100 recorded analysis runs |
+| `JAMS_PREVIEW_MAX_ACTIVE_RUNS` | 2 queued/running runs |
+
+Overrides must be positive safe integers; invalid configuration rejects new work
+with 503. Exhausted limits return 429. These are initial preview operating limits,
+not paid-plan entitlements. Counts and inserts share an organization transaction
+lock, so concurrent requests cannot each claim the same remaining capacity.
+
+All video rows reserve their declared original size, including incomplete/failed
+uploads; unknown legacy sizes reserve the 2 GiB file maximum. All run statuses
+count toward the recorded-run allowance, and superseded queued/running work still
+counts as active. Rolled-back requests consume no reservation. Future deletion
+must preserve any intended lifetime allowance using durable usage accounting.
+
+This does **not** cap physical Azure storage: posters/derived artifacts are not
+counted, and upload SAS permissions cannot enforce the declared file size. Completion
+checks original blob size, but oversized or overwritten blobs can exist before that
+check. Immutable uploads, storage cleanup and infrastructure cost controls remain
+required. The active-run check applies to participant admission; trusted operational
+recovery remains separately controlled. Removing preview configuration disables
+these admission limits along with preview access restrictions.

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { GET as getAnalysis } from "@/app/api/analyses/[id]/route"
 import { POST as createAnalysis } from "@/app/api/analyses/route"
 import { analysisRuns } from "@/db/schema"
+import * as previewLimits from "@/lib/preview-limits"
 
 type AnalysisRunRow = typeof analysisRuns.$inferSelect
 type InsertValues = Record<string, unknown>
@@ -177,6 +178,23 @@ describe("analyses API route handlers", () => {
       id: "profile_test",
       orgId: "org_test",
     })
+  })
+
+  it("rejects exhausted admission without a run, outbox or dispatch", async () => {
+    const db = new MockDb()
+    db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
+    installContext(db)
+    const guard = vi.spyOn(previewLimits, "assertAnalysisAdmission")
+      .mockRejectedValueOnce(new previewLimits.PreviewLimitError("Preview analysis limit reached"))
+    try {
+      const response = await createAnalysis(jsonRequest("/api/analyses", {
+        video_id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
+      }))
+      expect(response.status).toBe(429)
+      expect(db.inserts).toHaveLength(0)
+      expect(db.updates).toHaveLength(0)
+      expect(mocks.dispatchAnalysisRun).not.toHaveBeenCalled()
+    } finally { guard.mockRestore() }
   })
 
   it("creates a queued run for an uploaded org video and enqueues it", async () => {
