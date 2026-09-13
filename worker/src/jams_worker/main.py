@@ -191,6 +191,7 @@ def process_run(
                 workdir=Path(temp_dir),
                 owner_id=repo.owner_id,
                 lease_token=repo.lease_token,
+                artifact_write=lambda: repo.artifact_write(run_id),
                 register_artifact=lambda kind, path: repo.register_artifact(
                     run_id,
                     str(run["org_id"]),
@@ -447,7 +448,10 @@ def run_loop(
         settings, "visibility_timeout_seconds", DEFAULT_VISIBILITY_TIMEOUT_SECONDS
     )
 
-    with psycopg.connect(settings.database_url) as conn:
+    # Read-only provider queries must not leave implicit transactions holding
+    # later artifact-registration row locks across expensive media/storage work.
+    # Multi-statement writes use explicit conn.transaction() scopes.
+    with psycopg.connect(settings.database_url, autocommit=True) as conn:
         while not stop.requested:
             messages = queue.receive_messages(
                 messages_per_page=1,

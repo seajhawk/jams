@@ -475,13 +475,14 @@ def _transcribe(
 
 
 def _upload_derived(context: PipelineContext, source: Path, blob_path: str) -> None:
-    container = context.blob_service_client.get_container_client(DERIVED_CONTAINER)
-    try:
-        container.create_container()
-    except ResourceExistsError:
-        pass
-    with source.open("rb") as file:
-        container.upload_blob(blob_path, file, overwrite=True)
+    with context.artifact_write_guard():
+        container = context.blob_service_client.get_container_client(DERIVED_CONTAINER)
+        try:
+            container.create_container()
+        except ResourceExistsError:
+            pass
+        with source.open("rb") as file:
+            container.upload_blob(blob_path, file, overwrite=True)
 
 
 def _download_derived(context: PipelineContext, blob_path: str, target: Path) -> None:

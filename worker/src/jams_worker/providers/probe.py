@@ -179,13 +179,14 @@ def _download_blob(context: PipelineContext, target: Path) -> None:
 
 
 def _upload_blob(context: PipelineContext, source: Path, blob_path: str) -> None:
-    container = context.blob_service_client.get_container_client(DERIVED_CONTAINER)
-    try:
-        container.create_container()
-    except ResourceExistsError:
-        pass
-    with source.open("rb") as file:
-        container.upload_blob(blob_path, file, overwrite=True)
+    with context.artifact_write_guard():
+        container = context.blob_service_client.get_container_client(DERIVED_CONTAINER)
+        try:
+            container.create_container()
+        except ResourceExistsError:
+            pass
+        with source.open("rb") as file:
+            container.upload_blob(blob_path, file, overwrite=True)
 
 
 def _run_ffmpeg_with_progress(
@@ -400,7 +401,7 @@ class ProbeProvider:
                     str(poster),
                 ]
             )
-            poster_path = f"{context.org_id}/{context.video_id}/poster.jpg"
+            poster_path = f"runs/{context.run_id}/attempts/{context.attempt}/probe/poster.jpg"
             _upload_blob(context, poster, poster_path)
             context.register_artifact("poster", poster_path)
 

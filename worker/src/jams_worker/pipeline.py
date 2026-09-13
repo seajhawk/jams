@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,6 +69,7 @@ class PipelineContext:
     heartbeat: Callable[[str, int, str | None], None]
     owner_id: str | None = None
     lease_token: str | None = None
+    artifact_write: Callable[[], AbstractContextManager[None]] | None = None
     provider_summaries: dict[str, dict[str, Any]] = field(default_factory=dict)
     media: MediaMetadata | None = None
 
@@ -85,6 +87,16 @@ class PipelineContext:
 
     def report_provider_summary(self, provider_id: str, summary: dict[str, Any]) -> None:
         self.provider_summaries[provider_id] = summary
+
+    def artifact_write_guard(self) -> AbstractContextManager[None]:
+        """Hold the run lease row while an artifact is uploaded.
+
+        Production injects the repository guard in ``main.process_run``. Isolated
+        provider tests may explicitly inject a no-op guard with mock storage.
+        """
+        if self.artifact_write is not None:
+            return self.artifact_write()
+        raise StaleLeaseError("Artifact write guard is unavailable")
 
 
 @runtime_checkable

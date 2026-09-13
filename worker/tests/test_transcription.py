@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 import wave
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +76,7 @@ def _context(tmp_path: Path) -> tuple[PipelineContext, _BlobService]:
         workdir=tmp_path,
         register_artifact=lambda kind, path: artifacts.append((kind, path)) or "artifact_1",
         heartbeat=lambda _stage, _pct, _detail: None,
+        artifact_write=nullcontext,
     )
     (tmp_path / "normalized.mp4").write_bytes(b"not used when duration_ms is present")
     return context, blob_service

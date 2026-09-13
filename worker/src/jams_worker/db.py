@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any
 
@@ -293,6 +295,52 @@ class RunRepository:
             if row is None:  # pragma: no cover - defensive DB invariant
                 raise RuntimeError("artifact insert returned no id")
             return str(row[0])
+
+    @contextmanager
+    def artifact_write(self, run_id: str) -> Iterator[None]:
+        """Hold the current run row lock for the duration of an Azure upload.
+
+        The row lock makes deletion wait for an in-flight upload. The lease predicate
+        is checked in the same transaction before yielding, so deleted, stolen, or
+        expired runs cannot begin another artifact write.
+        """
+        if self.owner_id is None or self.lease_token is None:
+            raise StaleLeaseError("Artifact write requires an active worker lease")
+
+        with self.conn.transaction():
+            # Lock first, then validate. PostgreSQL may evaluate a WHERE predicate
+            # before waiting for a competing delete; validating only in that SELECT
+            # could admit a lease that expires while the row lock is being acquired.
+            lock_cur = self.conn.execute(
+                """
+                select 1 from analysis_runs
+                where id = %s
+                for key share
+                """,
+                (run_id,),
+            )
+            if lock_cur.fetchone() is None:
+                raise StaleLeaseError(f"Artifact write rejected: run {run_id} no longer exists")
+
+            cur = self.conn.execute(
+                """
+                select 1 from analysis_runs
+                where id = %s
+                  and owner_id = %s
+                  and lease_token = %s
+                  and status = 'running'
+                  and lease_expires_at > clock_timestamp()
+                """,
+                (run_id, self.owner_id, self.lease_token),
+            )
+            if cur.fetchone() is None:
+                raise StaleLeaseError(
+                    f"Artifact write rejected: worker {self.owner_id} lost lease for run {run_id}"
+                )
+            # KEY SHARE blocks deletion but allows heartbeat/lease updates during
+            # slow storage I/O. An already admitted upload may finish after a
+            # takeover; attempt-specific paths and fenced registration isolate it.
+            yield
 
     def set_provider_versions(self, run_id: str, provider_versions: dict[str, str]) -> None:
         if self.owner_id is not None and self.lease_token is not None:

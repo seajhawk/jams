@@ -30,6 +30,25 @@ the production flow with no release-blocking findings.
 
 ## Remaining preview work
 
+Worker deletion prerequisite completed after the media-integrity change:
+
+- All derived uploads now check the active lease and hold a deletion-blocking
+  row lock during storage I/O. Renewal remains possible during slow uploads.
+- Worker autocommit prevents implicit reads retaining stronger registration
+  locks. Generated posters now use attempt-specific paths.
+- 67 focused worker tests passed, 3 optional model tests skipped; Ruff passed.
+  PostgreSQL integration tests are included in CI using the migrated schema.
+- Narrated recovery E2E passed with the final locking/transaction changes: 26.1s
+  (30.5s total). Evidence: `jams-pipeline-e2e-92101607-d4ed-4d05-8150-18d78847d557`.
+- Earlier broad worker run: 195 passed, 8 skipped, one known experimental audio
+  proposal gate failed (TP 6, FP 126, FN 0; precision 0.04545 vs 0.85).
+- Luna implemented the initial guard. Astra caught renewal blocking; primary
+  revised locking, transaction boundaries and poster isolation. Astra reviewed
+  the revision with no remaining prerequisite blocker. All owned services stopped.
+
+See `DELETION-LIFECYCLE.md` for the bounded guarantee and remaining API/cleanup
+work, including ambiguous remote writes and upload-SAS expiry.
+
 See `PREVIEW-READINESS.md` and `FINALIZED-MEDIA.md`. Complete deletion must revoke
 shares and remove upload sources, accepted copies, derived artifacts and orphaned
 copies. Sources currently remain until cleanup, and failed transactions can leave

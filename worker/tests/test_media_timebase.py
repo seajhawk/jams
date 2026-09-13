@@ -187,6 +187,28 @@ def _make_context(
 # ==============================================================================
 
 
+def test_generated_posters_are_isolated_by_attempt(tmp_path: Path) -> None:
+    source = tmp_path / "source.mp4"
+    _create_synthetic_av(source, video_duration=1, audio_duration=1)
+    paths = []
+    for attempt in (1, 2):
+        context = _make_context(tmp_path)
+        context.run["poster_blob_path"] = None
+        context.run["attempt"] = attempt
+        with (
+            patch("jams_worker.providers.probe._download_blob",
+                  side_effect=lambda c, p: shutil.copyfile(source, p)),
+            patch("jams_worker.providers.probe._upload_blob") as upload,
+        ):
+            ProbeProvider().run(context)
+        poster_path = next(
+            call.args[2] for call in upload.call_args_list if call.args[1].name == "poster.jpg"
+        )
+        assert poster_path == f"runs/{context.run_id}/attempts/{attempt}/probe/poster.jpg"
+        paths.append(poster_path)
+    assert paths[0] != paths[1]
+
+
 def test_transport_mux_origin_does_not_delay_video_relative_to_audio(tmp_path: Path) -> None:
     source = tmp_path / "transport.ts"
     subprocess.run(

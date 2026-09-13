@@ -297,7 +297,11 @@ def test_run_loop_drain_exits_when_queue_empty(monkeypatch: pytest.MonkeyPatch, 
         "jams_worker.main.BlobServiceClient.from_connection_string",
         lambda *_args: object(),
     )
-    monkeypatch.setattr("jams_worker.main.psycopg.connect", lambda *_args: _Conn())
+    def connect(*_args, **kwargs):
+        assert kwargs == {"autocommit": True}
+        return _Conn()
+
+    monkeypatch.setattr("jams_worker.main.psycopg.connect", connect)
 
     run_loop(settings=_Settings(), drain=True)  # type: ignore[arg-type]
 
