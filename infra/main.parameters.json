@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "postgresAdminPassword": {
+      "value": "${POSTGRES_ADMIN_PASSWORD}"
+    },
+    "jamsWebDbPassword": {
+      "value": "${JAMS_WEB_DB_PASSWORD}"
+    },
+    "jamsWorkerDbPassword": {
+      "value": "${JAMS_WORKER_DB_PASSWORD}"
+    },
+    "ghcrUsername": {
+      "value": "${GHCR_USERNAME=}"
+    },
+    "ghcrToken": {
+      "value": "${GHCR_TOKEN=}"
+    },
+    "clerkSecretKey": {
+      "value": "${CLERK_SECRET_KEY}"
+    },
+    "clerkPublishableKey": {
+      "value": "${CLERK_PUBLISHABLE_KEY}"
+    },
+    "clerkWebhookSigningSecret": {
+      "value": "${CLERK_WEBHOOK_SIGNING_SECRET}"
+    },
+    "watchdogSecret": {
+      "value": "${WATCHDOG_SECRET}"
+    },
+    "jamsPreviewUserIds": {
+      "value": "${JAMS_PREVIEW_USER_IDS=}"
+    },
+    "jamsPreviewMaxStorageBytes": {
+      "value": "${JAMS_PREVIEW_MAX_STORAGE_BYTES=10737418240}"
+    },
+    "jamsPreviewMaxAnalyses": {
+      "value": "${JAMS_PREVIEW_MAX_ANALYSES=100}"
+    },
+    "jamsPreviewMaxActiveRuns": {
+      "value": "${JAMS_PREVIEW_MAX_ACTIVE_RUNS=2}"
+    },
+    "webImage": {
+      "value": "${SERVICE_WEB_IMAGE_NAME=mcr.microsoft.com/k8se/quickstart:latest}"
+    },
+    "workerImage": {
+      "value": "${SERVICE_WORKER_IMAGE_NAME=mcr.microsoft.com/k8se/quickstart:latest}"
+    }
+  }
+}

@@ -20,8 +20,13 @@ ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for eviden
 4. **Build and rehearse staging operations.** The two deployable images, liveness
    check, scheduler, migration, recovery, deletion and restore procedures are
    prepared in `CONTAINERS.md` and `OPERATIONS-RUNBOOK.md`. The first Linux image
-   build is a CI gate; Azure provisioning and staging execution still require
-   approval.
+   build is a CI gate. **Azure infra is now provisioned** (`rg-jams-staging`,
+   approved and applied 2026-09-17 — see `infra/readme.md`); migrations are
+   applied and the `jams_web`/`jams_worker` passwords are rotated off their
+   migration defaults. The deployed `jams-web`/`jams-worker` are still
+   placeholder images, not the real app — no GHCR publish step exists in CI
+   yet. Staging execution proper (real images, smoke rehearsal) remains open,
+   tracked in `docs/CHRIS-TODO.md`.
 5. **Validate the initial customer experience.** Run consented real task recordings,
    audit report claims and timing, then—after authorized staging and operating-cost
    checks—conduct supervised pilots. Customer invitations remain unsent.

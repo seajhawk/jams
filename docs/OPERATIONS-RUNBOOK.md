@@ -10,8 +10,20 @@ the intended staging resource group and never paste secret values into logs.
    Container smoke workflow passed. Verify the web image runs as `node` and the
    worker as `jams`.
 2. Create a staging database backup before migration. Apply Drizzle migrations
-   from `apps/web` with the staging `DATABASE_URL`; verify migration `0012` creates
+   from `apps/web` with the staging admin `DATABASE_URL` (the Postgres
+   Flexible Server admin login provisioned in `infra/resources.bicep`, never
+   `jams_web`/`jams_worker`); verify migration `0012` creates
    `recording_deletions` and its `jams_web` RLS policy.
+2a. **Rotate the application role passwords immediately after the first
+   migration.** Migration `0007_postgres_rls.sql` creates `jams_web` and
+   `jams_worker` with hardcoded placeholder passwords (`jams_web`/
+   `jams_worker` — the local compose defaults). Using the admin connection,
+   run `ALTER ROLE jams_web PASSWORD '<generated>';` and
+   `ALTER ROLE jams_worker PASSWORD '<generated>';` with the real generated
+   passwords supplied to `infra/main.bicep` as `jamsWebDbPassword` /
+   `jamsWorkerDbPassword`, before pointing any container at the server. Do
+   not run this against local compose — it intentionally keeps the weak
+   defaults there.
 3. Configure runtime secrets only in the platform secret store: Clerk secret and
    publishable keys, storage connection/managed identity settings, database URL,
    queue names, `WATCHDOG_SECRET`, and `JAMS_PREVIEW_USER_IDS`. Keep preview IDs
