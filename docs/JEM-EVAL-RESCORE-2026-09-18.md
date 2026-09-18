@@ -80,3 +80,82 @@ and the `min_content_val=4` variant already recovers both at the cost of two fal
    separately and never silently counted as detector misses.
 3. The 95% target applies to corroborated events. Scoring against proxy-only events would train the
    detector to invent cuts where no pixels changed, which makes JAMS worse, not better.
+
+---
+
+# Follow-up: is the IANA failure hillclimbable?
+
+IANA was the one session whose truth events were both visually corroborated and both missed, so it
+looked like the legitimate hillclimb target. Four experiments say the problem is harder and different
+than "the content floor is too high".
+
+## 1. Magnitude cannot separate true from false
+
+Detector output over the full IANA video at descending adaptive content floors:
+
+| floor | cuts found |
+|---|---|
+| 12.0 (default) | 600, 49800 — **both are sync flashes; zero real detections** |
+| 8.0 | + 18400 (true), + 33400 (false) |
+| 6.0 | + 43200 (false) |
+| 4.0 and below | + 12000 (true) — saturates here |
+
+The false positive at 33400 appears at a *higher* floor than the true event at 12000. Measured peak
+visual delta confirms the overlap directly:
+
+| t (ms) | what it is | peak delta |
+|---:|---|---:|
+| 12000 | true — JEM window to Edge | 1.13 |
+| 18583 | true — page navigation | 1.89 |
+| 33400 | false positive | 1.06 |
+| 43200 | false positive | 1.25 |
+
+A true event sits *between* the two false positives. No threshold on magnitude separates them.
+
+## 2. The existing scroll filter cannot fire here
+
+`translation_like()` requires phase-correlation response >= 0.25 **and** shift >= 2.5 px. Measured
+shift at all four candidates is **0.01 to 0.03 px**. The filter is inert on this recording, not
+mis-tuned.
+
+## 3. There is no motion to detect, at any sample rate
+
+Cropping away browser chrome and a 4x4 tile vote both return zero shift. Re-sampling the source at
+30 fps in a +/-300 ms window around each candidate returns max |dy| of 0.02 to 0.05 px, with no
+coherent run in any direction. Whatever happens at 33400 and 43200, it is not an animated scroll, so
+no motion-based discriminator can help.
+
+## 4. There is no scroll signature to find either
+
+A direct vertical-offset overlap search (normalised cross-correlation across +/-90% of frame height)
+finds no offset that improves on dy=0. The reason is the headline number: the frames 350 ms either
+side of every candidate correlate at **0.994 to 0.996**. Before and after are all but identical.
+
+## What this actually means
+
+IANA's transitions are two renderings of the **same site template** — same header, same styling, same
+white background, a similar block of text. The whole discrimination lives in about one grey level out
+of 255, and the distractors live there too.
+
+This corrects the earlier characterisation in this document. Calling IANA "a genuine detector failure"
+was too generous to the test. It is a near-noise-floor discrimination task, and the corpus currently
+has no way to tell "the detector is weak" apart from "this transition was nearly invisible".
+
+The measured spectrum across every session on disk:
+
+| band | peak delta | example |
+|---|---|---|
+| invisible | < 0.1 | Outlook foreground switch, 0.039 |
+| near-noise | ~1 | IANA truths 1.13/1.89 — **and its false positives 1.06/1.25** |
+| clearly visible | 2 to 12 | controlled fixture, where F1 is 0.889 |
+
+## Consequences
+
+1. **Visual corroboration should be graded, not a binary at 0.30.** A 1.1 event and an 11.7 event are
+   not the same evidence. Report the band, and report detector performance per band.
+2. **A journey only measures detector quality if its transitions sit in the clearly-visible band.**
+   The corpus needs transitions in the 2-12 range to measure quality at all, plus a deliberately
+   subtle stratum scored separately rather than pooled.
+3. **Do not hillclimb on IANA.** Tuning to recover a 1.13 event while rejecting a 1.06 distractor is
+   fitting noise on a sample of two, and it would drag the detector's operating point down to where
+   every page wobble becomes a cut.
