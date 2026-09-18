@@ -17,16 +17,22 @@ ready for a customer accuracy claim. See `AUDIO-ONSET-DIAGNOSTICS.md` for eviden
    Deletion now revokes reports/shares and queues retryable cleanup of sources,
    accepted copies, snapshots and derived blobs. See `DELETION-LIFECYCLE.md` for
    tested guarantees and remaining Azure verification.
-4. **Build and rehearse staging operations.** The two deployable images, liveness
-   check, scheduler, migration, recovery, deletion and restore procedures are
-   prepared in `CONTAINERS.md` and `OPERATIONS-RUNBOOK.md`. The first Linux image
-   build is a CI gate. **Azure infra is now provisioned** (`rg-jams-staging`,
-   approved and applied 2026-09-17 — see `infra/readme.md`); migrations are
-   applied and the `jams_web`/`jams_worker` passwords are rotated off their
-   migration defaults. The deployed `jams-web`/`jams-worker` are still
-   placeholder images, not the real app — no GHCR publish step exists in CI
-   yet. Staging execution proper (real images, smoke rehearsal) remains open,
-   tracked in `docs/CHRIS-TODO.md`.
+4. **Build and rehearse staging operations — done for a first pass, 2026-09-18.**
+   `rg-jams-staging` is provisioned and running the real `jams-web`/`jams-worker`
+   images via a CI pipeline (`azd provision`/`azd deploy` with federated OIDC,
+   no long-lived Azure secrets in GitHub). A live end-to-end rehearsal passed
+   against real Azure infrastructure: authenticated upload → SAS → blob
+   finalize → analysis dispatch → KEDA-scaled worker execution → real
+   transcription/context-switch/physical/sentiment providers → effort score →
+   report render → recording deletion with durable cleanup. Unauthenticated
+   access to protected routes correctly rejected. Two real bugs surfaced and
+   were fixed live (a missing `DATABASE_URL` for the web app's RLS-bypass
+   client, and drifted Postgres credentials); a missing watchdog scheduler was
+   also found and added. Full detail in `docs/CHRIS-TODO.md`. Not yet done:
+   a real throughput/benchmark run (tonight's test was a single 8-second
+   clip), and Azure provisioning was run by Claude with Chris's explicit
+   authorization while he slept, not by Chris directly — worth a look when
+   you're up.
 5. **Validate the initial customer experience.** Run consented real task recordings,
    audit report claims and timing, then—after authorized staging and operating-cost
    checks—conduct supervised pilots. Customer invitations remain unsent.
