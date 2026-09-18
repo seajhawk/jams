@@ -1,4 +1,4 @@
-# JAMS project review — September 5, 2026
+# JAMS project review — September  5, 2026
 
 Reviewed commit: `79dfa13d54a17b2dec6d63d772b531886f651022`. The working tree was clean at the start. This review adds documentation and an executable diagnostic; it does not change application behavior or the approved plan.
 
