@@ -37,6 +37,23 @@ MATCH_TOLERANCE_MS = 500
 MAX_DRIFT_MS = 250
 NORMALIZED_FPS = 30
 
+# Frame rate for the visual-change profile. 10 fps resolves a transition well inside the 500 ms
+# match tolerance while decoding a fraction of the frames.
+VISUAL_DELTA_FPS = 10
+
+# A truth event is reported as visually corroborated when the screen changed at least this much
+# (mean per-pixel grey delta between adjacent frames) near it. Calibrated against measured sessions:
+# genuine transitions produced 1.13 and 1.89, a foreground switch to an already-visible window
+# produced 0.03, and a sync flash produces ~180. This threshold only STRATIFIES the report; the
+# headline metric is still computed over every truth event, and each event's measured delta is
+# emitted so the split can be audited or re-cut without re-running the evaluation.
+VISUAL_CORROBORATION_DELTA = 0.30
+
+# The flash takes the foreground, so the span it causes starts a few ms after the flash is logged
+# (measured: flash at 512 ms, span start at 517 ms). Kept tight so a flash that merely precedes an
+# unrelated span cannot misidentify that span's app as the recorder.
+RECORDER_FLASH_TOLERANCE_MS = 250
+
 
 class EvaluationError(ValueError):
     """A malformed or unsafe-to-score JEM session."""
@@ -225,6 +242,81 @@ def _inclusive_percentile(values: list[int], percentile: float) -> float | None:
     return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
 
 
+def _visual_delta_profile(video: Path, fps: int = VISUAL_DELTA_FPS) -> list[float]:
+    """Mean per-pixel frame-to-frame delta of a downscaled grayscale decode.
+
+    Used to record how much the screen actually changed at each truth event. JEM's context switches
+    are foreground/title changes, which are a proxy for visual change and can diverge from it
+    completely: a measured session logged a switch to an already-visible Outlook window whose peak
+    delta was 0.03, against 1.13-1.89 for genuine transitions and ~180 for a sync flash. Scoring a
+    video analyser as wrong for missing a 0.03 event measures the proxy, not the detector.
+    """
+    command = [
+        ffmpeg_path(), "-v", "error", "-i", str(video),
+        "-vf", f"fps={fps},scale=64:36,format=gray", "-f", "rawvideo", "-",
+    ]
+    try:
+        completed = subprocess.run(command, capture_output=True, timeout=300, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise EvaluationError(f"visual delta decode failed: {exc}") from exc
+    if completed.returncode != 0:
+        raise EvaluationError("visual delta decode failed")
+
+    frame_bytes = 64 * 36
+    raw = completed.stdout
+    frames = [raw[i : i + frame_bytes] for i in range(0, len(raw) - frame_bytes + 1, frame_bytes)]
+    deltas: list[float] = []
+    for index in range(1, len(frames)):
+        previous, current = frames[index - 1], frames[index]
+        deltas.append(sum(abs(a - b) for a, b in zip(previous, current)) / frame_bytes)
+    return deltas
+
+
+def _peak_delta_near(
+    profile: list[float],
+    t_ms: int,
+    *,
+    window_ms: int = MATCH_TOLERANCE_MS,
+    fps: int = VISUAL_DELTA_FPS,
+) -> float:
+    """Largest frame-to-frame delta within ``window_ms`` of ``t_ms``."""
+    if not profile:
+        return 0.0
+    span = max(1, round(window_ms * fps / 1000))
+    centre = round(t_ms * fps / 1000)
+    low = max(0, centre - span)
+    high = min(len(profile), centre + span + 1)
+    if low >= high:
+        return 0.0
+    return max(profile[low:high])
+
+
+def _recorder_processes(events: list[dict[str, str]], manifest: dict[str, Any]) -> set[str]:
+    """Identify the recorder by which context span was foreground during a sync flash.
+
+    Matching a hardcoded process name silently breaks the moment the recorder is renamed or driven
+    headlessly: the flash spans stop being excluded and become truth events sitting on the single
+    most detectable visual transition that exists, handing the detector free true positives.
+    """
+    flashes = _manifest_flashes(manifest)
+    found: set[str] = set()
+    for flash_ms in flashes:
+        for row in events:
+            if row.get("kind") != "context_switch":
+                continue
+            try:
+                start = int(row["t_start_ms"])
+                end = int(row["t_end_ms"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            # The flash takes the foreground, so the span it causes may start a few ms after it.
+            if start - RECORDER_FLASH_TOLERANCE_MS <= flash_ms <= end:
+                process = row.get("process", "").casefold()
+                if process:
+                    found.add(process)
+    return found or {"jem.app.exe"}
+
+
 def _point_match(
     expected: list[int],
     detected: list[int],
@@ -323,10 +415,12 @@ def evaluate_session(
         if params is not None:
             detector_kwargs["params"] = resolved_params
         cuts = detect_context_switches(normalized, workdir, **detector_kwargs)
+        delta_profile = _visual_delta_profile(normalized)
+    recorder_processes = _recorder_processes(events, manifest)
     workload = [
         row for row in events
         if row.get("kind") == "context_switch"
-        and row.get("process", "").casefold() != "jem.app.exe"
+        and row.get("process", "").casefold() not in recorder_processes
     ]
     if not workload:
         raise EvaluationError(
@@ -354,6 +448,16 @@ def evaluate_session(
         if any(start <= cut.t_start_ms <= end for start, end in scored_windows)
     ]
     exposure_ms = _union_duration_ms(scored_windows)
+    truth_details = [
+        (t_ms, _peak_delta_near(delta_profile, t_ms), row)
+        for t_ms, row in zip(truth, workload)
+    ]
+    corroborated_truth = [
+        t_ms for t_ms, delta, _ in truth_details if delta >= VISUAL_CORROBORATION_DELTA
+    ]
+    proxy_only_truth = [
+        t_ms for t_ms, delta, _ in truth_details if delta < VISUAL_CORROBORATION_DELTA
+    ]
     return {
         "status": "succeeded",
         "session": str(manifest_path),
@@ -384,11 +488,43 @@ def evaluate_session(
             }
         },
         "metrics": {
+            # Unchanged definition, so this stays directly comparable to every earlier baseline.
             "context_switch": _point_match(
                 truth,
                 detected,
                 exposure_ms=exposure_ms,
-            )
+            ),
+            # Same detections, truth split by whether the screen actually changed. Reported
+            # alongside rather than replacing: a foreground switch with no visual delta is a
+            # limitation of the proxy label, not evidence about the detector.
+            "context_switch_visually_corroborated": _point_match(
+                corroborated_truth,
+                detected,
+                exposure_ms=exposure_ms,
+            ),
+            "context_switch_proxy_only": _point_match(
+                proxy_only_truth,
+                detected,
+                exposure_ms=exposure_ms,
+            ),
+        },
+        "visual_corroboration": {
+            "delta_threshold": VISUAL_CORROBORATION_DELTA,
+            "delta_fps": VISUAL_DELTA_FPS,
+            "window_ms": MATCH_TOLERANCE_MS,
+            "corroborated_count": len(corroborated_truth),
+            "proxy_only_count": len(proxy_only_truth),
+            "recorder_processes": sorted(recorder_processes),
+            "events": [
+                {
+                    "t_ms": t_ms,
+                    "peak_delta": round(delta, 3),
+                    "corroborated": delta >= VISUAL_CORROBORATION_DELTA,
+                    "process": row.get("process", ""),
+                    "context": (row.get("value_text") or "")[:80],
+                }
+                for t_ms, delta, row in truth_details
+            ],
         },
         "expected_context_ms": truth,
         "detected_context_ms": detected,
