@@ -267,6 +267,7 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
       ] : [], [
         { name: 'azure-storage-connection-string', value: storageConnectionString }
         { name: 'database-url-web', value: databaseUrlWeb }
+        { name: 'database-url', value: databaseUrlWorker }
         { name: 'clerk-secret-key', value: clerkSecretKey }
         { name: 'clerk-webhook-signing-secret', value: clerkWebhookSigningSecret }
         { name: 'watchdog-secret', value: watchdogSecret }
@@ -284,6 +285,11 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
           env: [
             { name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'azure-storage-connection-string' }
             { name: 'DATABASE_URL_WEB', secretRef: 'database-url-web' }
+            // admin-client.server.ts needs an RLS-bypass connection for
+            // Clerk webhook mirroring and dispatch-outbox reads; jams_worker
+            // already has BYPASSRLS + full grants (migration 0007), so reuse
+            // it instead of provisioning a fourth Postgres role.
+            { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'CLERK_SECRET_KEY', secretRef: 'clerk-secret-key' }
             { name: 'CLERK_WEBHOOK_SIGNING_SECRET', secretRef: 'clerk-webhook-signing-secret' }
             { name: 'WATCHDOG_SECRET', secretRef: 'watchdog-secret' }
