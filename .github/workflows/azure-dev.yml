@@ -30,6 +30,7 @@ jobs:
       SERVICE_WORKER_IMAGE_NAME: ${{ vars.SERVICE_WORKER_IMAGE_NAME }}
       AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
       CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY }}
+      JAMS_PREVIEW_USER_IDS: ${{ vars.JAMS_PREVIEW_USER_IDS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
