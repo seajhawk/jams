@@ -17,6 +17,8 @@ services:
       context: ../..
       registry: ghcr.io/seajhawk
       image: jams-web
+      buildArgs:
+        - "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}"
   worker:
     project: worker
     language: docker
