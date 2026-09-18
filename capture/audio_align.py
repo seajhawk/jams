@@ -111,8 +111,15 @@ def detect_tone_onsets(
     audio: Path,
     freq_hz: int = DEFAULT_TONE_HZ,
     min_tone_ms: int = MIN_TONE_MS,
+    merge_within_ms: float = 400.0,
 ) -> list[float]:
-    """Return the onset of every sustained ``freq_hz`` burst, in milliseconds."""
+    """Return the onset of every sustained ``freq_hz`` burst, in milliseconds.
+
+    Onsets closer together than ``merge_within_ms`` are merged to the earliest. Room reflections and
+    brief amplitude dips split a single played tone into consecutive runs — observed live on the
+    real speaker/microphone path, where one 150 ms tone produced anchors 185 ms apart. Two genuine
+    flash anchors are always seconds apart, so merging cannot hide a real one.
+    """
     samples, rate = _read_mono(audio)
     window = int(rate * WINDOW_MS / 1000)
     hop = int(rate * HOP_MS / 1000)
@@ -157,7 +164,13 @@ def detect_tone_onsets(
 
     if run_hops >= hops_needed:
         _emit(run_start_hop)
-    return onsets
+
+    merged: list[float] = []
+    for onset in onsets:
+        if merged and onset - merged[-1] < merge_within_ms:
+            continue
+        merged.append(onset)
+    return merged
 
 
 def video_fps(video: Path) -> float:

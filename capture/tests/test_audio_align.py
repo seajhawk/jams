@@ -81,6 +81,20 @@ def test_detects_every_tone_without_false_positives(tmp_path: Path) -> None:
         assert abs(actual - expected) <= 30.0
 
 
+def test_merges_a_tone_split_by_a_dropout(tmp_path: Path) -> None:
+    """Observed on the real speaker/microphone path: one played 150 ms tone was detected as two
+    anchors 185 ms apart after a mid-tone amplitude dip. Genuine flash anchors are seconds apart."""
+    probe = tmp_path / "split.wav"
+    # Two bursts 185 ms apart stand in for one dropout-split tone.
+    _write_probe(probe, [2000.0, 2185.0, 12000.0])
+
+    found = detect_tone_onsets(probe, TONE_HZ)
+
+    assert len(found) == 2, f"split tone should collapse to one anchor, got {found}"
+    assert abs(found[0] - 2000.0) <= 30.0
+    assert abs(found[1] - 12000.0) <= 30.0
+
+
 def test_ignores_audio_with_no_tone(tmp_path: Path) -> None:
     probe = tmp_path / "silent.wav"
     _write_probe(probe, [])
