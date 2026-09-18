@@ -394,6 +394,53 @@ resource workerJob 'Microsoft.App/jobs@2024-03-01' = {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Watchdog scheduler: POSTs /api/admin/watchdog every 10 minutes, per
+// docs/OPERATIONS-RUNBOOK.md. Trivial curl-based job, negligible cost.
+// ---------------------------------------------------------------------------
+
+resource watchdogScheduler 'Microsoft.App/jobs@2024-03-01' = {
+  name: 'jams-watchdog'
+  location: location
+  tags: tags
+  properties: {
+    environmentId: managedEnvironment.id
+    workloadProfileName: 'Consumption'
+    configuration: {
+      triggerType: 'Schedule'
+      replicaTimeout: 60
+      replicaRetryLimit: 1
+      scheduleTriggerConfig: {
+        cronExpression: '*/10 * * * *'
+        parallelism: 1
+        replicaCompletionCount: 1
+      }
+      secrets: [
+        { name: 'watchdog-secret', value: watchdogSecret }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'watchdog'
+          image: 'curlimages/curl:8.11.1'
+          resources: {
+            cpu: json('0.25')
+            memory: '0.5Gi'
+          }
+          command: [ 'sh', '-c' ]
+          args: [
+            'curl -fsS -X POST -H "Authorization: Bearer $WATCHDOG_SECRET" https://${webApp.properties.configuration.ingress.fqdn}/api/admin/watchdog'
+          ]
+          env: [
+            { name: 'WATCHDOG_SECRET', secretRef: 'watchdog-secret' }
+          ]
+        }
+      ]
+    }
+  }
+}
+
 output storageAccountName string = storageAccount.name
 output environmentName string = managedEnvironment.name
 output postgresFqdn string = postgresServer.properties.fullyQualifiedDomainName
