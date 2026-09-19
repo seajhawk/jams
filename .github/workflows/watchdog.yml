@@ -2,7 +2,7 @@ name: Watchdog and Dispatch Reconciliation
 
 on:
   schedule:
-    # Run periodically to sweep stuck runs (>60 min) and reconcile pending outbox dispatches
+    # Sweep stuck runs and reconcile pending outbox dispatches.
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
@@ -13,13 +13,21 @@ jobs:
     steps:
       - name: Trigger watchdog endpoint
         env:
-          APP_URL: ${{ secrets.JAMS_APP_URL || 'https://jams.azurecontainerapps.io' }}
+          # Public ingress hostname, not a secret. Override via the JAMS_APP_URL variable when the
+          # environment moves; the previous default pointed at a host that never existed, so every
+          # scheduled run failed on DNS resolution.
+          APP_URL: ${{ vars.JAMS_APP_URL || 'https://jams-web.wittysky-66807383.eastus2.azurecontainerapps.io' }}
           WATCHDOG_SECRET: ${{ secrets.WATCHDOG_SECRET }}
         run: |
           if [ -z "$WATCHDOG_SECRET" ]; then
             echo "WATCHDOG_SECRET not configured, skipping scheduled trigger"
             exit 0
           fi
-          curl -fsSL -X POST "$APP_URL/api/admin/watchdog" \
+          # jams-web runs at min-replicas 0, so a scheduled poke often lands on a cold start and the
+          # ingress answers 5xx while the replica boots. Retry across those rather than reporting a
+          # failed reconciliation run.
+          curl -fsS -X POST "$APP_URL/api/admin/watchdog" \
             -H "Authorization: Bearer $WATCHDOG_SECRET" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            --retry 5 --retry-delay 10 --retry-all-errors \
+            --connect-timeout 15 --max-time 180
