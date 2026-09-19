@@ -94,6 +94,24 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
   parent: storageAccount
   name: 'default'
+  properties: {
+    // The browser uploads straight to Blob with a SAS URL and streams playback from one, so the
+    // account must allow the web origin. Without this every browser upload fails with a bare
+    // "Failed to fetch": CORS is enforced by the browser, so curl-based tests pass regardless.
+    // Derived from the environment's default domain rather than the web app resource to avoid a
+    // dependency cycle through the storage connection string the app consumes.
+    cors: {
+      corsRules: [
+        {
+          allowedOrigins: [ 'https://jams-web.${managedEnvironment.properties.defaultDomain}' ]
+          allowedMethods: [ 'GET', 'HEAD', 'OPTIONS', 'PUT' ]
+          allowedHeaders: [ '*' ]
+          exposedHeaders: [ '*' ]
+          maxAgeInSeconds: 3600
+        }
+      ]
+    }
+  }
 }
 
 resource videosContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
