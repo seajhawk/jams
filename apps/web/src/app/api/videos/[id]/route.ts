@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { tasks, videos } from "@/db/schema"
-import { handleRouteError, jsonError } from "@/lib/api"
+import { handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
 import { serializeVideo } from "@/lib/video-response"
 import { withOrg } from "@/lib/with-org"
 import { requestRecordingDeletion } from "@/lib/recording-deletion"
@@ -12,6 +12,45 @@ import { reconcileRecordingCleanup } from "@/lib/recording-cleanup"
 export const dynamic = "force-dynamic"
 
 const idSchema = z.string().uuid()
+
+const archiveSchema = z.object({ archived: z.boolean() })
+
+/**
+ * Archive or unarchive a recording. Archiving only hides it from the default library view: nothing is
+ * deleted, reports and share links keep working, and it still counts toward preview usage limits
+ * (delete is the way to free those). Idempotent, and re-archiving keeps the original timestamp.
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    if (!idSchema.safeParse(id).success) return jsonError("Not found", 404)
+    const body = await parseJsonBody(request, archiveSchema)
+
+    return await withOrg(async ({ scopedDb }) => {
+      const [updated] = await scopedDb.db
+        .update(videos)
+        .set({
+          archivedAt: body.archived ? sql`coalesce(${videos.archivedAt}, now())` : null,
+        })
+        .where(scopedDb.orgFilter(videos, eq(videos.id, id)))
+        .returning({ id: videos.id, archivedAt: videos.archivedAt })
+
+      if (!updated) return jsonError("Not found", 404)
+
+      return NextResponse.json({
+        video: {
+          id: updated.id,
+          archived_at: updated.archivedAt ? updated.archivedAt.toISOString() : null,
+        },
+      })
+    })
+  } catch (error) {
+    return handleRouteError(error)
+  }
+}
 
 export async function DELETE(
   _request: Request,

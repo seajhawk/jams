@@ -150,6 +150,7 @@ function videoRow(overrides: Partial<VideoRow> = {}): VideoRow {
     variantLabel: null,
     status: "uploading",
     uploadedBy: "user_test",
+    archivedAt: null,
     createdAt: new Date("2026-07-17T12:00:00.000Z"),
     ...overrides,
   }

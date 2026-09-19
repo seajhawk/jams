@@ -21,6 +21,7 @@ export function serializeVideo(video: VideoRow, taskName: string | null = null) 
     variant_label: video.variantLabel,
     status: video.status,
     uploaded_by: video.uploadedBy,
+    archived_at: video.archivedAt ? video.archivedAt.toISOString() : null,
     created_at: video.createdAt.toISOString(),
   }
 }

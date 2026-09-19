@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, type SQL } from "drizzle-orm"
+import { and, count, desc, eq, inArray, isNotNull, isNull, type SQL } from "drizzle-orm"
 import { NextResponse, type NextRequest } from "next/server"
 
 import { analysisRuns, tasks, videos } from "@/db/schema"
@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
   try {
     const taskId = request.nextUrl.searchParams.get("task_id")
     const status = request.nextUrl.searchParams.get("status")
+    // Archived recordings are hidden by default so the library stays usable. "archived" shows only
+    // those, "all" shows both; anything else is rejected rather than silently treated as the default.
+    const archived = request.nextUrl.searchParams.get("archived") ?? "active"
+    if (!["active", "archived", "all"].includes(archived)) {
+      return jsonError("Invalid archived filter", 400)
+    }
 
     if (taskId && !createVideoSchema.shape.task_id.safeParse(taskId).success) {
       return jsonError("Invalid task_id", 400)
@@ -39,6 +45,14 @@ export async function GET(request: NextRequest) {
       where = addFilter(
         where,
         status ? eq(videos.status, videoStatusSchema.parse(status)) : undefined
+      )
+      where = addFilter(
+        where,
+        archived === "active"
+          ? isNull(videos.archivedAt)
+          : archived === "archived"
+            ? isNotNull(videos.archivedAt)
+            : undefined
       )
 
       const rows = await scopedDb.db
@@ -75,11 +89,19 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Independent of the current filters: the library uses it to show "N archived" so hiding
+      // your last recording never looks like it disappeared.
+      const [archivedTotal] = await scopedDb.db
+        .select({ value: count() })
+        .from(videos)
+        .where(scopedDb.orgFilter(videos, isNotNull(videos.archivedAt)))
+
       return NextResponse.json({
         videos: rows.map((row) => ({
           ...serializeVideo(row.video, row.taskName),
           latest_run: latestRunMap.get(row.video.id) ?? null,
         })),
+        archived_count: Number(archivedTotal?.value ?? 0),
       })
     })
   } catch (error) {

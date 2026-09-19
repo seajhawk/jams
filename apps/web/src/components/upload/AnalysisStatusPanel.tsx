@@ -7,14 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { estimateRemainingMs, formatEta } from "@/lib/eta"
+import { failureCopy, type AnalysisErrorCode } from "@/lib/analysis-failure"
 
 type AnalysisStatus = "queued" | "running" | "succeeded" | "partial" | "failed"
-type AnalysisErrorCode =
-  | "no_audio"
-  | "too_long"
-  | "corrupt_file"
-  | "transient"
-  | "unknown"
 
 type AnalysisPayload = {
   id: string
@@ -73,21 +68,6 @@ const terminalStatuses = new Set<AnalysisStatus>([
 
 function isTerminal(status: AnalysisStatus) {
   return terminalStatuses.has(status)
-}
-
-function failureCopy(code: AnalysisErrorCode | null) {
-  switch (code) {
-    case "too_long":
-      return "This video is over the 20-minute analysis limit."
-    case "corrupt_file":
-      return "The worker could not read this video file."
-    case "no_audio":
-      return "No narration audio was available for the requested stage."
-    case "transient":
-      return "The worker hit a temporary processing error."
-    default:
-      return "The worker could not finish this analysis."
-  }
 }
 
 async function readAnalysis(id: string) {

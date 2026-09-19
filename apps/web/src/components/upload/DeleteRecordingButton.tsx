@@ -16,14 +16,30 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
-type Props = {
+type DialogProps = {
   videoId: string
   title: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** Called once the server has accepted the deletion. */
+  onDeleted: () => void
+  /** Optional trigger; omit when the parent opens the dialog itself (e.g. from a menu). */
+  trigger?: React.ReactElement
 }
 
-export function DeleteRecordingButton({ videoId, title }: Props) {
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
+/**
+ * Confirm-and-delete for one recording. Controlled, so it can be opened from a dropdown item on a
+ * library card as well as from the detail page's button. Deleting removes the recording together
+ * with every analysis, report and share link that belongs to it.
+ */
+export function DeleteRecordingDialog({
+  videoId,
+  title,
+  open,
+  onOpenChange,
+  onDeleted,
+  trigger,
+}: DialogProps) {
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,10 +53,9 @@ export function DeleteRecordingButton({ videoId, title }: Props) {
         throw new Error(body?.error ?? "Failed to remove recording")
       }
 
-      setOpen(false)
+      onOpenChange(false)
       toast.success("Recording removed. Storage cleanup is queued.")
-      router.replace("/library")
-      router.refresh()
+      onDeleted()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove recording")
     } finally {
@@ -50,26 +65,19 @@ export function DeleteRecordingButton({ videoId, title }: Props) {
 
   function handleOpenChange(nextOpen: boolean) {
     if (deleting) return
-    setOpen(nextOpen)
+    onOpenChange(nextOpen)
     if (nextOpen) setError(null)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger
-        render={
-          <Button variant="destructive" size="sm">
-            <Trash2 data-icon="inline-start" className="size-4" />
-            Delete recording
-          </Button>
-        }
-      />
+      {trigger && <DialogTrigger render={trigger} />}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Delete this recording?</DialogTitle>
           <DialogDescription>
-            This permanently removes <strong>{title}</strong>, its reports, and its share links.
-            Storage cleanup will be queued after deletion.
+            This permanently removes <strong>{title}</strong>, its analyses, reports, and share links.
+            Storage cleanup will be queued after deletion. To just tidy it away, archive it instead.
           </DialogDescription>
         </DialogHeader>
 
@@ -80,7 +88,7 @@ export function DeleteRecordingButton({ videoId, title }: Props) {
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={deleting}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={() => void removeRecording()} disabled={deleting}>
@@ -90,5 +98,35 @@ export function DeleteRecordingButton({ videoId, title }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+type Props = {
+  videoId: string
+  title: string
+}
+
+/** The detail page's delete control: same dialog, then back to the library. */
+export function DeleteRecordingButton({ videoId, title }: Props) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <DeleteRecordingDialog
+      videoId={videoId}
+      title={title}
+      open={open}
+      onOpenChange={setOpen}
+      onDeleted={() => {
+        router.replace("/library")
+        router.refresh()
+      }}
+      trigger={
+        <Button variant="destructive" size="sm">
+          <Trash2 data-icon="inline-start" className="size-4" />
+          Delete recording
+        </Button>
+      }
+    />
   )
 }

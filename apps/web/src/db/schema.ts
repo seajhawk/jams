@@ -155,6 +155,9 @@ export const videos = pgTable(
     variantLabel: text("variant_label"),
     status: videoStatusEnum("status").notNull().default("uploading"),
     uploadedBy: text("uploaded_by").notNull(),
+    // Hidden from the library when set. Archiving only hides: the recording, its runs, reports and
+    // share links all keep working, and it still counts against preview usage limits.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

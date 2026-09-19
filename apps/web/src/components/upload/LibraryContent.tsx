@@ -4,13 +4,20 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   Activity,
+  Archive,
+  ArchiveRestore,
   ArrowRight,
   FileVideo,
   Loader2,
+  MoreHorizontal,
+  Play,
   RotateCcw,
+  Trash2,
   Upload,
+  XCircle,
 } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -22,10 +29,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
+import { failureCopy } from "@/lib/analysis-failure"
+import { estimateRemainingMs, formatEta } from "@/lib/eta"
 import { formatMs } from "@/lib/format-ms"
 import { cn } from "@/lib/utils"
 import { UploadDialog } from "./UploadDialog"
+import { DeleteRecordingDialog } from "./DeleteRecordingButton"
+import { useAnalysisProgress, type AnalysisProgress } from "./useAnalysisProgress"
 import { ComparePicker } from "@/components/compare/ComparePicker"
 
 interface VideoRecord {
@@ -46,6 +64,7 @@ interface VideoRecord {
   variant_label: string | null
   status: "uploading" | "uploaded" | "failed"
   uploaded_by: string
+  archived_at: string | null
   created_at: string
   latest_run: { id: string; status: string } | null
 }
@@ -121,12 +140,119 @@ function VideoCardSkeleton() {
   )
 }
 
+/** Hides or restores a recording. Module-level so an Undo toast can call it after the card is gone. */
+async function patchArchived(videoId: string, archived: boolean) {
+  const res = await fetch(`/api/videos/${videoId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ archived }),
+  })
+  return res.ok
+}
+
+function isRunActive(status: string | undefined) {
+  return status === "queued" || status === "running"
+}
+
+/**
+ * Progress shown over the whole card while an analysis runs. Deliberately large and centred: it is
+ * the only thing on the card the user should be looking at, and it blocks clicks through to the
+ * recording until the analysis has finished.
+ */
+function AnalysisOverlay({
+  analysis,
+  unavailable,
+  durationMs,
+  onRetry,
+  onDismiss,
+}: {
+  analysis: AnalysisProgress | null
+  unavailable: boolean
+  durationMs: number | null
+  onRetry: () => void
+  onDismiss: () => void
+}) {
+  if (analysis?.status === "failed") {
+    return (
+      <div
+        role="alert"
+        data-testid="analysis-overlay"
+        className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-background/95 p-6 text-center backdrop-blur-sm"
+      >
+        <XCircle className="size-10 text-destructive" />
+        <div className="space-y-1">
+          <p className="text-base font-semibold">Analysis failed</p>
+          <p className="text-sm text-muted-foreground">{failureCopy(analysis.error_code)}</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={onRetry}>
+            <RotateCcw data-icon="inline-start" className="size-4" />
+            Retry
+          </Button>
+          <Button size="sm" variant="outline" onClick={onDismiss}>
+            Dismiss
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  const pct = Math.max(0, Math.min(100, Math.round(analysis?.progress_pct ?? 0)))
+  const label = !analysis
+    ? "Starting analysis…"
+    : analysis.status === "queued"
+      ? "Queued — waiting for a worker"
+      : (analysis.stage_detail ?? analysis.stage)
+  const eta = analysis?.status === "running" ? formatEta(estimateRemainingMs(pct, durationMs)) : null
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="analysis-overlay"
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-background/90 p-6 text-center backdrop-blur-sm"
+    >
+      <p className="text-5xl font-semibold tabular-nums leading-none">{pct}%</p>
+      <div
+        role="progressbar"
+        aria-label="Analysis progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct}
+        className="h-3 w-full max-w-xs overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{label}</p>
+        {eta && <p className="text-xs text-muted-foreground">{eta}</p>}
+        {unavailable && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            Status temporarily unavailable — retrying…
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function VideoCard({
   video,
   highlighted,
+  archivedView,
+  onRemoved,
+  onRefresh,
 }: {
   video: VideoRecord
   highlighted: boolean
+  archivedView: boolean
+  /** The recording left the current view (archived, restored, or deleted). */
+  onRemoved: (id: string) => void
+  /** Something changed server-side; reload the list without a loading flash. */
+  onRefresh: () => void
 }) {
   const { url: posterUrl, loading: posterLoading } = usePosterSas(
     video.id,
@@ -135,9 +261,33 @@ function VideoCard({
   const router = useRouter()
   const [starting, setStarting] = useState(false)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  // A run already in flight when the page loads (or started here) is followed in place.
+  const [activeRunId, setActiveRunId] = useState<string | null>(
+    isRunActive(video.latest_run?.status) ? video.latest_run!.id : null
+  )
+  // Bridges the gap between a run finishing and the refreshed list arriving.
+  const [localRun, setLocalRun] = useState<{ id: string; status: string } | null>(null)
+  const latestRun = localRun ?? video.latest_run
+
+  const handleSettled = useCallback(
+    (settled: AnalysisProgress) => {
+      setLocalRun({ id: settled.id, status: settled.status })
+      if (settled.status === "failed") return // stays on screen until dismissed or retried
+      setActiveRunId(null)
+      toast.success(`Analysis complete: ${video.title}`, {
+        action: { label: "View report", onClick: () => router.push(`/reports/${settled.id}`) },
+      })
+      onRefresh()
+    },
+    [onRefresh, router, video.title]
+  )
+  const { analysis, unavailable } = useAnalysisProgress(activeRunId, handleSettled)
 
   async function startAnalysis() {
-    if (video.status !== "uploaded" || starting) return
+    if (video.status !== "uploaded" || starting || activeRunId) return
     setStarting(true)
     setAnalysisError(null)
     try {
@@ -152,7 +302,10 @@ function VideoCard({
           | null
         throw new Error(body?.error ?? "Failed to start analysis")
       }
-      router.push(`/library/${video.id}`)
+      const body = (await res.json()) as { analysis: { id: string; status: string } }
+      // Stay in the library: progress appears as an overlay on this card.
+      setLocalRun({ id: body.analysis.id, status: body.analysis.status })
+      setActiveRunId(body.analysis.id)
     } catch (err) {
       setAnalysisError(
         err instanceof Error ? err.message : "Failed to start analysis"
@@ -161,6 +314,45 @@ function VideoCard({
       setStarting(false)
     }
   }
+
+  function dismissFailure() {
+    setActiveRunId(null)
+    onRefresh()
+  }
+
+  async function setArchived(next: boolean) {
+    if (busy) return
+    setBusy(true)
+    try {
+      if (!(await patchArchived(video.id, next))) throw new Error("archive failed")
+      onRemoved(video.id)
+      if (next) {
+        toast(`Archived “${video.title}”`, {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              void patchArchived(video.id, false).then((ok) => {
+                if (ok) onRefresh()
+                else toast.error("Could not restore the recording. Try again.")
+              })
+            },
+          },
+        })
+      } else {
+        toast(`Restored “${video.title}” to your library`)
+      }
+    } catch {
+      toast.error(
+        next
+          ? "Could not archive the recording. Try again."
+          : "Could not restore the recording. Try again."
+      )
+      setBusy(false)
+    }
+  }
+
+  const hasReport = latestRun && (latestRun.status === "succeeded" || latestRun.status === "partial")
+  const lastRunFailed = latestRun?.status === "failed"
 
   return (
     <div
@@ -171,6 +363,67 @@ function VideoCard({
         highlighted && "ring-2 ring-primary ring-offset-1"
       )}
     >
+      {activeRunId && (
+        <AnalysisOverlay
+          analysis={analysis}
+          unavailable={unavailable}
+          durationMs={video.duration_ms}
+          onRetry={() => {
+            setActiveRunId(null)
+            void startAnalysis()
+          }}
+          onDismiss={dismissFailure}
+        />
+      )}
+
+      {/* Actions: above the overlay, so a stuck analysis can still be archived or deleted */}
+      <div className="absolute right-2 top-2 z-30">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="icon-sm"
+                variant="secondary"
+                className="bg-background/85 shadow-sm backdrop-blur"
+                aria-label={`Actions for ${video.title}`}
+                disabled={busy}
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-44">
+            {archivedView ? (
+              <DropdownMenuItem onClick={() => void setArchived(false)}>
+                <ArchiveRestore className="size-4" />
+                Restore to library
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => void setArchived(true)}>
+                <Archive className="size-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="size-4" />
+              Delete…
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <DeleteRecordingDialog
+        videoId={video.id}
+        title={video.title}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={() => {
+          onRemoved(video.id)
+          onRefresh()
+        }}
+      />
+
       {/* Poster */}
       <button
         type="button"
@@ -234,33 +487,50 @@ function VideoCard({
         </div>
 
         <div className="flex flex-col gap-2">
-          {video.latest_run &&
-          (video.latest_run.status === "succeeded" ||
-            video.latest_run.status === "partial") ? (
-            <Button
-              variant="default"
-              size="sm"
-              className="w-full"
-              render={<Link href={`/reports/${video.latest_run.id}`} />}
-            >
-              <ArrowRight data-icon="inline-start" className="size-4" />
-              View report
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={video.status !== "uploaded" || starting}
-              className="w-full"
-              onClick={startAnalysis}
-            >
-              {starting ? (
-                <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
-              ) : (
-                <Activity data-icon="inline-start" className="size-4" />
-              )}
-              Analyze
-            </Button>
+          <div className="flex gap-2">
+            {hasReport ? (
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1"
+                render={<Link href={`/reports/${latestRun.id}`} />}
+              >
+                <ArrowRight data-icon="inline-start" className="size-4" />
+                View report
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={video.status !== "uploaded" || starting || Boolean(activeRunId)}
+                className="flex-1"
+                onClick={startAnalysis}
+              >
+                {starting ? (
+                  <Loader2 data-icon="inline-start" className="size-4 animate-spin" />
+                ) : lastRunFailed ? (
+                  <RotateCcw data-icon="inline-start" className="size-4" />
+                ) : (
+                  <Activity data-icon="inline-start" className="size-4" />
+                )}
+                {lastRunFailed ? "Retry" : "Analyze"}
+              </Button>
+            )}
+            {video.status === "uploaded" ? (
+              <Button variant="outline" size="sm" render={<Link href={`/library/${video.id}`} />}>
+                <Play data-icon="inline-start" className="size-4" />
+                Play
+              </Button>
+            ) : (
+              // A link cannot be disabled, so an unplayable recording gets a real disabled button.
+              <Button variant="outline" size="sm" disabled>
+                <Play data-icon="inline-start" className="size-4" />
+                Play
+              </Button>
+            )}
+          </div>
+          {lastRunFailed && !activeRunId && (
+            <p className="text-xs leading-5 text-muted-foreground">Last analysis failed.</p>
           )}
           {analysisError && (
             <p className="text-xs leading-5 text-destructive">{analysisError}</p>
@@ -278,25 +548,33 @@ export function LibraryContent() {
   const taskFilter = searchParams.get("task_id") ?? ""
   const statusFilter = searchParams.get("status") ?? ""
   const newVideoId = searchParams.get("new") ?? ""
+  const view = searchParams.get("view") === "archived" ? "archived" : "active"
 
   const [videos, setVideos] = useState<VideoRecord[]>([])
+  const [archivedCount, setArchivedCount] = useState(0)
   const [allTasks, setAllTasks] = useState<TaskRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const hasFilters = Boolean(taskFilter || statusFilter)
 
+  const fetchVideos = useCallback(async () => {
+    const p = new URLSearchParams()
+    if (taskFilter) p.set("task_id", taskFilter)
+    if (statusFilter) p.set("status", statusFilter)
+    if (view === "archived") p.set("archived", "archived")
+    const res = await fetch(`/api/videos?${p}`)
+    if (!res.ok) throw new Error("Failed to load videos")
+    const body = (await res.json()) as { videos: VideoRecord[]; archived_count?: number }
+    setVideos(body.videos)
+    setArchivedCount(body.archived_count ?? 0)
+  }, [taskFilter, statusFilter, view])
+
   const loadVideos = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const p = new URLSearchParams()
-      if (taskFilter) p.set("task_id", taskFilter)
-      if (statusFilter) p.set("status", statusFilter)
-      const res = await fetch(`/api/videos?${p}`)
-      if (!res.ok) throw new Error("Failed to load videos")
-      const { videos: v } = (await res.json()) as { videos: VideoRecord[] }
-      setVideos(v)
+      await fetchVideos()
     } catch {
       setError(
         "Failed to load your library. Check your connection and try again."
@@ -304,7 +582,30 @@ export function LibraryContent() {
     } finally {
       setLoading(false)
     }
-  }, [taskFilter, statusFilter])
+  }, [fetchVideos])
+
+  // After an archive, delete, or finished analysis: reconcile with the server without the
+  // skeleton flash, and keep whatever is on screen if the refresh itself fails.
+  const refreshVideos = useCallback(async () => {
+    try {
+      await fetchVideos()
+    } catch {}
+  }, [fetchVideos])
+
+  const handleRemoved = useCallback(
+    (id: string) => {
+      setVideos((current) => current.filter((v) => v.id !== id))
+      void refreshVideos()
+    },
+    [refreshVideos]
+  )
+
+  function setView(next: "active" | "archived") {
+    const p = new URLSearchParams(searchParams.toString())
+    if (next === "archived") p.set("view", "archived")
+    else p.delete("view")
+    router.push(`/library?${p}`)
+  }
 
   const loadTasks = useCallback(async () => {
     try {
@@ -345,8 +646,16 @@ export function LibraryContent() {
   }
 
   const showFilters = !loading && (videos.length > 0 || hasFilters)
+  const inArchive = view === "archived"
+  const showViewToggle = !loading && !error && (archivedCount > 0 || inArchive)
+  // Only a genuinely empty library gets the "upload your first journey" pitch. If everything has
+  // been archived, say so instead, or hiding your last recording would look like losing it.
   const showTeachingHero =
-    !loading && !error && videos.length === 0 && !hasFilters
+    !loading && !error && !inArchive && videos.length === 0 && !hasFilters && archivedCount === 0
+  const showAllArchived =
+    !loading && !error && !inArchive && videos.length === 0 && !hasFilters && archivedCount > 0
+  const showArchiveEmpty =
+    !loading && !error && inArchive && videos.length === 0
   const showNoMatches =
     !loading && !error && videos.length === 0 && hasFilters
   const showGrid = !loading && !error && videos.length > 0
@@ -363,6 +672,28 @@ export function LibraryContent() {
         </div>
         <UploadDialog onSuccess={handleUploadSuccess} />
       </div>
+
+      {showViewToggle && (
+        <div className="flex gap-1" role="group" aria-label="Library view">
+          <Button
+            size="sm"
+            variant={inArchive ? "outline" : "secondary"}
+            aria-pressed={!inArchive}
+            onClick={() => setView("active")}
+          >
+            Library
+          </Button>
+          <Button
+            size="sm"
+            variant={inArchive ? "secondary" : "outline"}
+            aria-pressed={inArchive}
+            onClick={() => setView("archived")}
+          >
+            <Archive data-icon="inline-start" className="size-4" />
+            Archived ({archivedCount})
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       {showFilters && (
@@ -479,6 +810,28 @@ export function LibraryContent() {
         </div>
       )}
 
+      {showAllArchived && (
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-12 text-center">
+          <Archive className="size-6 text-muted-foreground" />
+          <p className="text-sm font-medium">Everything is archived</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Your {archivedCount} archived recording{archivedCount === 1 ? "" : "s"} are hidden, not deleted.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setView("archived")}>
+            View archived
+          </Button>
+        </div>
+      )}
+
+      {showArchiveEmpty && (
+        <div className="flex flex-col items-center gap-3 p-12 text-center text-muted-foreground">
+          <p className="text-sm">No archived recordings.</p>
+          <Button variant="outline" size="sm" onClick={() => setView("active")}>
+            Back to library
+          </Button>
+        </div>
+      )}
+
       {/* No matches */}
       {showNoMatches && (
         <div className="flex flex-col items-center gap-3 p-12 text-center text-muted-foreground">
@@ -497,6 +850,9 @@ export function LibraryContent() {
               key={v.id}
               video={v}
               highlighted={v.id === newVideoId && v.id !== expiredHighlightId}
+              archivedView={inArchive}
+              onRemoved={handleRemoved}
+              onRefresh={refreshVideos}
             />
           ))}
         </div>
