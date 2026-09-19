@@ -20,10 +20,17 @@ function diamond(cx: number, cy: number): string {
 interface TimelineProps {
   payload: ReportPayload
   currentTimeMs: number
+  /** Scrub to a point without changing play/pause. */
   onSeek: (ms: number) => void
+  /** Jump to a moment in the analysis (a segment, sentiment, or context switch) and play it. */
+  onPlayMoment: (tMs: number) => void
 }
 
-export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
+function sentimentLabel(v: number): string {
+  return `${v <= -0.5 ? 'Frustrated' : v < -0.15 ? 'Negative' : v >= 0.5 ? 'Positive' : v > 0.15 ? 'Mildly positive' : 'Neutral'} (${v > 0 ? '+' : ''}${v.toFixed(2)})`
+}
+
+export function Timeline({ payload, currentTimeMs, onSeek, onPlayMoment }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(800)
   const [isDragging, setIsDragging] = useState(false)
@@ -103,7 +110,8 @@ export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
           const w = msToX(seg.t_end_ms) - x
           const color = SEGMENT_COLORS[i % SEGMENT_COLORS.length]
           return (
-            <g key={seg.id} onClick={(e) => { e.stopPropagation(); onSeek(seg.t_start_ms) }}>
+            <g key={seg.id} onClick={(e) => { e.stopPropagation(); onPlayMoment(seg.t_start_ms) }}>
+              <title>{`${seg.name} @ ${formatMs(seg.t_start_ms)}`}</title>
               <rect x={x} y={10} width={w} height={35} fill={color} rx={4} />
               {w > 40 && (
                 <text
@@ -142,6 +150,25 @@ export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
         />
         {positiveParts && <path d={positiveParts} fill="rgba(20,184,166,0.3)" />}
         {negativeParts && <path d={negativeParts} fill="rgba(239,68,68,0.3)" />}
+        {/* Invisible hit areas so each sentiment reading can be hovered and played */}
+        {sentimentMs.map(m => {
+          const x0 = msToX(m.t_start_ms)
+          const x1 = msToX(m.t_end_ms ?? m.t_start_ms)
+          return (
+            <rect
+              key={m.id}
+              data-testid="timeline-sentiment"
+              x={x0}
+              y={70}
+              width={Math.max(4, x1 - x0)}
+              height={70}
+              fill="transparent"
+              onClick={(e) => { e.stopPropagation(); onPlayMoment(m.t_start_ms) }}
+            >
+              <title>{`${sentimentLabel(m.value_num ?? 0)} @ ${formatMs(m.t_start_ms)}`}</title>
+            </rect>
+          )
+        })}
 
         {/* Lane 3: Context switch diamonds (y: 150–185) */}
         {contextSwitches.map(m => {
@@ -152,7 +179,13 @@ export function Timeline({ payload, currentTimeMs, onSeek }: TimelineProps) {
             ? `${switchPayload.from} → ${switchPayload.to}`
             : 'Context switch'
           return (
-            <polygon key={m.id} points={pts} fill="rgb(245,158,11)" opacity={0.85}>
+            <polygon
+              key={m.id}
+              points={pts}
+              fill="rgb(245,158,11)"
+              opacity={0.85}
+              onClick={(e) => { e.stopPropagation(); onPlayMoment(m.t_start_ms) }}
+            >
               <title>{`${label} @ ${formatMs(m.t_start_ms)}`}</title>
             </polygon>
           )

@@ -75,7 +75,15 @@ export function TranscriptTab({ payload, currentTimeMs, onSeek }: TranscriptTabP
               data-start-ms={utterance.t_start_ms}
               ref={isActive ? activeRowRef : undefined}
               className={`flex items-start gap-3 px-3 py-2 cursor-pointer border-l-[3px] ${sentimentBorder(sentimentVal)} ${isActive ? 'bg-muted' : 'hover:bg-muted/50'}`}
+              role="button"
+              tabIndex={0}
               onClick={() => onSeek(utterance.t_start_ms)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  onSeek(utterance.t_start_ms)
+                }
+              }}
             >
               <span className="text-muted-foreground text-xs shrink-0 mt-0.5 font-mono">
                 {formatMs(utterance.t_start_ms)}

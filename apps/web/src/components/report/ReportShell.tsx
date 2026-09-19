@@ -5,11 +5,13 @@ import type { MediaPlayerInstance } from '@vidstack/react'
 import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import type { ReportPayload, MeasureKind } from '@/lib/report-contract'
+import { playbackStartMs } from '@/lib/report-moments'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ReportHeader } from './ReportHeader'
 import { VideoPlayer } from './VideoPlayer'
 import { Timeline } from './Timeline'
+import { HighlightsTab } from './HighlightsTab'
 import { TranscriptTab } from './TranscriptTab'
 import { MeasuresTab } from './MeasuresTab'
 import { ScoreTab } from './ScoreTab'
@@ -45,6 +47,19 @@ export function ReportShell({
       playerRef.current.currentTime = ms / 1000
     }
   }, [])
+
+  // Jump to a point in the analysis and start playing it, so the reviewer hears what was said.
+  // Scrubbing (timeline drag, arrow keys) uses seekTo and leaves play/pause alone.
+  const playFrom = useCallback(
+    (ms: number) => {
+      seekTo(ms)
+      // Playback can be refused (autoplay policy, media not ready); the seek itself still stands.
+      void Promise.resolve(playerRef.current?.play()).catch(() => {})
+    },
+    [seekTo]
+  )
+
+  const playMoment = useCallback((tMs: number) => playFrom(playbackStartMs(tMs)), [playFrom])
 
   useEffect(() => {
     if (demo) toast.info('Demo report — upload your own video soon')
@@ -121,19 +136,28 @@ export function ReportShell({
         payload={payload}
         currentTimeMs={currentTimeMs}
         onSeek={seekTo}
+        onPlayMoment={playMoment}
       />
       <div className="mx-auto max-w-6xl px-4 py-6">
-        <Tabs defaultValue="transcript">
+        <Tabs defaultValue="highlights">
           <TabsList>
+            <TabsTrigger value="highlights">Highlights</TabsTrigger>
             <TabsTrigger value="transcript">Transcript</TabsTrigger>
             <TabsTrigger value="measures">Measures</TabsTrigger>
             <TabsTrigger value="score">Score</TabsTrigger>
           </TabsList>
+          <TabsContent value="highlights">
+            <HighlightsTab
+              payload={payload}
+              currentTimeMs={currentTimeMs}
+              onPlayMoment={playMoment}
+            />
+          </TabsContent>
           <TabsContent value="transcript">
-            <TranscriptTab payload={payload} currentTimeMs={currentTimeMs} onSeek={seekTo} />
+            <TranscriptTab payload={payload} currentTimeMs={currentTimeMs} onSeek={playFrom} />
           </TabsContent>
           <TabsContent value="measures">
-            <MeasuresTab payload={payload} onSeek={seekTo} />
+            <MeasuresTab payload={payload} onSeek={playFrom} />
           </TabsContent>
           <TabsContent value="score">
             <ScoreTab

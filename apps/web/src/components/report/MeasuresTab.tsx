@@ -69,7 +69,14 @@ export function MeasuresTab({ payload, onSeek }: MeasuresTabProps) {
               <tr
                 key={m.id}
                 className="border-b hover:bg-muted/50 cursor-pointer"
+                tabIndex={0}
                 onClick={() => onSeek(m.t_start_ms)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    onSeek(m.t_start_ms)
+                  }
+                }}
               >
                 <td className="py-1.5 pr-4 font-mono text-muted-foreground">
                   {formatMs(m.t_start_ms)}

@@ -12,6 +12,8 @@ test("signed-in user can inspect the demo report and seek from transcript", asyn
   await expect(page.getByTestId("score-dial")).toBeVisible()
   await expect(page.getByTestId("report-timeline")).toBeVisible()
 
+  await page.getByRole("tab", { name: "Transcript" }).click()
+
   const targetRow = page.getByTestId("transcript-row").nth(2)
   await expect(targetRow).toBeVisible()
 
