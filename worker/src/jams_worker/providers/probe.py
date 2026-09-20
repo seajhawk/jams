@@ -21,6 +21,12 @@ MAX_DURATION_SECONDS = 20 * 60
 
 ProbeResult = MediaMetadata
 
+# The normalized video only feeds the click and context-switch providers, which both re-derive a
+# 480 px, 5 fps proxy from it, so the encode can be fast and (optionally) smaller without
+# changing what they see. See docs/PIPELINE-PERF-2026-09-19.md for the measured comparison.
+NORMALIZE_PRESET = "ultrafast"
+NORMALIZE_MAX_WIDTH: int | None = 1920
+
 
 def _run_json(args: list[str]) -> dict[str, Any]:
     completed = ffmpeg_tools.run_media_command(
@@ -227,6 +233,73 @@ def _run_ffmpeg(args: list[str]) -> None:
         raise PipelineError("corrupt_file", completed.stderr.strip() or "ffmpeg failed")
 
 
+def build_normalize_args(
+    ffmpeg: str,
+    original: Path,
+    normalized: Path,
+    result: MediaMetadata,
+    *,
+    duration_s: float,
+    preset: str = "veryfast",
+    max_width: int | None = None,
+    threads: int | None = None,
+    progress: bool = False,
+) -> list[str]:
+    """The ffmpeg command that turns an upload into the timestamp-stable normalized mp4."""
+
+    args = [
+        ffmpeg,
+        "-y",
+        "-i",
+        str(original),
+        "-map",
+        "0:v:0",
+    ]
+    filters: list[str] = []
+    video_offset = result.video_start_seconds - result.time_origin_seconds
+    if video_offset > 0.001:
+        filters.append(f"tpad=start_duration={video_offset:.6f}:color=black")
+    elif video_offset < -0.001:
+        trim_start = abs(video_offset)
+        filters.append(f"trim=start={trim_start:.6f},setpts=PTS-STARTPTS")
+    if max_width is not None and result.width > max_width:
+        # Never upscale; -2 keeps the height even for yuv420p.
+        filters.append(f"scale={max_width}:-2")
+    if filters:
+        args.extend(["-vf", ",".join(filters)])
+
+    if result.has_audio:
+        args.extend(
+            [
+                "-map",
+                "0:a:0",
+                "-af",
+                f"aresample=async=1:first_pts=0,apad=whole_dur={duration_s:.6f}",
+                "-c:a",
+                "aac",
+            ]
+        )
+    args.extend(["-c:v", "libx264", "-preset", preset])
+    if threads is not None:
+        args.extend(["-threads", str(threads)])
+    args.extend(
+        [
+            "-pix_fmt",
+            "yuv420p",
+            "-fps_mode",
+            "cfr",
+            "-t",
+            f"{duration_s:.6f}",
+            "-movflags",
+            "+faststart",
+        ]
+    )
+    if progress:
+        args.extend(["-progress", "pipe:1", "-nostats"])
+    args.append(str(normalized))
+    return args
+
+
 class ProbeProvider:
     @property
     def id(self) -> str:
@@ -312,61 +385,15 @@ class ProbeProvider:
 
         duration_s = max(0.001, result.duration_ms / 1000.0)
 
-        normalize_args = [
+        normalize_args = build_normalize_args(
             ffmpeg,
-            "-y",
-            "-i",
-            str(original),
-            "-map",
-            "0:v:0",
-        ]
-        video_offset = result.video_start_seconds - result.time_origin_seconds
-        if video_offset > 0.001:
-            normalize_args.extend(
-                [
-                    "-vf",
-                    f"tpad=start_duration={video_offset:.6f}:color=black",
-                ]
-            )
-        elif video_offset < -0.001:
-            trim_start = abs(video_offset)
-            normalize_args.extend(
-                [
-                    "-vf",
-                    f"trim=start={trim_start:.6f},setpts=PTS-STARTPTS",
-                ]
-            )
-
-        if result.has_audio:
-            normalize_args.extend(
-                [
-                    "-map",
-                    "0:a:0",
-                    "-af",
-                    f"aresample=async=1:first_pts=0,apad=whole_dur={duration_s:.6f}",
-                    "-c:a",
-                    "aac",
-                ]
-            )
-        normalize_args.extend(
-            [
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-pix_fmt",
-                "yuv420p",
-                "-fps_mode",
-                "cfr",
-                "-t",
-                f"{duration_s:.6f}",
-                "-movflags",
-                "+faststart",
-                "-progress",
-                "pipe:1",
-                "-nostats",
-                str(normalized),
-            ]
+            original,
+            normalized,
+            result,
+            duration_s=duration_s,
+            preset=NORMALIZE_PRESET,
+            max_width=NORMALIZE_MAX_WIDTH,
+            progress=True,
         )
         _run_ffmpeg_with_progress(
             normalize_args,

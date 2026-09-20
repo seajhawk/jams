@@ -399,8 +399,8 @@ resource workerJob 'Microsoft.App/jobs@2024-03-01' = {
           name: 'jams-worker'
           image: workerImage
           resources: {
-            cpu: json('2.0')
-            memory: '4Gi'
+            cpu: json('4.0')
+            memory: '8Gi'
           }
           env: [
             { name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'azure-storage-connection-string' }
