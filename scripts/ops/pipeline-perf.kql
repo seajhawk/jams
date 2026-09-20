@@ -1,0 +1,24 @@
+// Per-run pipeline throughput from the worker's structured logs.
+// "x realtime" = processing seconds per second of video (2.0 means a 6 min video takes 12 min).
+// media_profile / probe_timings only exist for runs processed after 2026-09-19; older runs show
+// no media length, so their ratio columns are blank.
+let lookback = ago(__DAYS__d);
+let parsed = ContainerAppConsoleLogs_CL
+    | where TimeGenerated > lookback
+    | where Log_s startswith '{' and (Log_s has '"event":"run_summary"' or Log_s has '"event":"provider_outcome"' or Log_s has '"event":"media_profile"' or Log_s has '"event":"probe_timings"')
+    | extend j = parse_json(Log_s)
+    | project TimeGenerated, ev = tostring(j.event), run = tostring(j.run_id), j;
+let profiles = parsed | where ev == 'media_profile'
+    | project run, media_s = todouble(j.media_duration_ms) / 1000.0, res = strcat(tostring(j.width), 'x', tostring(j.height)), fps = round(todouble(j.fps), 1), mb = round(todouble(j.original_bytes) / 1048576.0, 1);
+let probe = parsed | where ev == 'probe_timings'
+    | project run, download_s = round(todouble(j.download_ms) / 1000.0, 1), normalize_s = round(todouble(j.normalize_ms) / 1000.0, 1), upload_s = round(todouble(j.upload_normalized_ms) / 1000.0, 1);
+let providers = parsed | where ev == 'provider_outcome'
+    | summarize provider_s = make_bag(pack(tostring(j.provider_id), round(todouble(j.duration_ms) / 1000.0, 1))) by run;
+parsed | where ev == 'run_summary'
+    | project finished = TimeGenerated, run, status = tostring(j.status), total_s = round(todouble(j.duration_ms) / 1000.0, 1)
+    | join kind=leftouter profiles on run
+    | join kind=leftouter probe on run
+    | join kind=leftouter providers on run
+    | extend x_realtime = iff(media_s > 0, round(total_s / media_s, 2), real(null))
+    | project finished, run = substring(run, 0, 8), status, media_s, res, fps, mb, total_s, x_realtime, download_s, normalize_s, upload_s, provider_s
+    | order by finished desc

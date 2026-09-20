@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import time
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +13,7 @@ from azure.core.exceptions import ResourceExistsError
 from jams_worker import ffmpeg as ffmpeg_tools
 from jams_worker.errors import PipelineError
 from jams_worker.media import MediaMetadata
-from jams_worker.pipeline import PipelineContext
+from jams_worker.pipeline import PipelineContext, log_event
 
 VIDEOS_CONTAINER = "videos"
 DERIVED_CONTAINER = "derived"
@@ -251,9 +252,34 @@ class ProbeProvider:
         audio = context.workdir / "audio.wav"
         poster = context.workdir / "poster.jpg"
 
+        timings_ms: dict[str, int] = {}
+        stage_started = time.perf_counter()
+
+        def stage_done(name: str) -> None:
+            nonlocal stage_started
+            now = time.perf_counter()
+            timings_ms[name] = round((now - stage_started) * 1000)
+            stage_started = now
+
         _download_blob(context, original)
+        stage_done("download")
         context.heartbeat("probe", 10, "Validating container")
         result = probe_file(original)
+        stage_done("validate")
+
+        # What was processed, so throughput (processing time per minute of video) can be derived
+        # from logs alone. Emitted before the slow work so a run that later fails still reports it.
+        log_event(
+            "media_profile",
+            run_id=context.run_id,
+            video_id=context.video_id,
+            media_duration_ms=result.duration_ms,
+            width=result.width,
+            height=result.height,
+            fps=result.fps,
+            has_audio=result.has_audio,
+            original_bytes=original.stat().st_size,
+        )
 
         context.media = result
         context.run["duration_ms"] = result.duration_ms
@@ -350,9 +376,12 @@ class ProbeProvider:
             progress_end=70,
         )
 
+        stage_done("normalize")
+
         normalized_path = f"runs/{context.run_id}/attempts/{context.attempt}/probe/normalized.mp4"
         _upload_blob(context, normalized, normalized_path)
         context.register_artifact("normalized_video", normalized_path)
+        stage_done("upload_normalized")
 
         if result.has_audio:
             context.heartbeat("probe", 75, "Extracting audio")
@@ -380,6 +409,7 @@ class ProbeProvider:
             audio_path = f"runs/{context.run_id}/attempts/{context.attempt}/probe/audio.wav"
             _upload_blob(context, audio, audio_path)
             context.register_artifact("audio_wav", audio_path)
+            stage_done("audio")
         else:
             context.heartbeat("probe", 80, "No audio stream detected")
 
@@ -404,6 +434,9 @@ class ProbeProvider:
             poster_path = f"runs/{context.run_id}/attempts/{context.attempt}/probe/poster.jpg"
             _upload_blob(context, poster, poster_path)
             context.register_artifact("poster", poster_path)
+            stage_done("poster")
 
+        stage_fields = {f"{name}_ms": ms for name, ms in timings_ms.items()}
+        log_event("probe_timings", run_id=context.run_id, **stage_fields)
         context.heartbeat("probe", 95, "Probe complete")
         return []

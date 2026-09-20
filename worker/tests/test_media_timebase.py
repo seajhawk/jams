@@ -748,3 +748,35 @@ def test_end_of_recording_measures_and_segments_bounded() -> None:
     for seg in segments:
         assert 0 <= seg.t0_ms <= duration_ms
         assert 0 <= seg.t1_ms <= duration_ms
+
+
+def test_probe_reports_what_it_processed_and_where_the_time_went(tmp_path: Path, capsys) -> None:
+    import json
+
+    source = tmp_path / "source.mp4"
+    _create_synthetic_av(source, video_duration=1, audio_duration=1)
+    context = _make_context(tmp_path)
+    context.run["poster_blob_path"] = None
+    with (
+        patch("jams_worker.providers.probe._download_blob",
+              side_effect=lambda c, p: shutil.copyfile(source, p)),
+        patch("jams_worker.providers.probe._upload_blob"),
+    ):
+        ProbeProvider().run(context)
+
+    events = {}
+    for line in capsys.readouterr().out.splitlines():
+        record = json.loads(line)
+        events[record["event"]] = record
+
+    profile = events["media_profile"]
+    assert profile["run_id"] == context.run_id
+    assert profile["original_bytes"] == source.stat().st_size
+    assert profile["width"] > 0 and profile["height"] > 0
+    assert abs(profile["media_duration_ms"] - 1000) < 200
+    assert profile["has_audio"] is True
+
+    timings = events["probe_timings"]
+    assert timings["run_id"] == context.run_id
+    for stage in ("download", "validate", "normalize", "upload_normalized", "audio", "poster"):
+        assert isinstance(timings[f"{stage}_ms"], int) and timings[f"{stage}_ms"] >= 0
