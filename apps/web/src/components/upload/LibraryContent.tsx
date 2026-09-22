@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { failureCopy } from "@/lib/analysis-failure"
+import { analysisStarted, requestAnalysisNotifications } from "@/lib/analysis-watch"
 import { estimateRemainingMs, formatEta } from "@/lib/eta"
 import { formatMs } from "@/lib/format-ms"
 import { cn } from "@/lib/utils"
@@ -277,12 +278,11 @@ function VideoCard({
       setLocalRun({ id: settled.id, status: settled.status })
       if (settled.status === "failed") return // stays on screen until dismissed or retried
       setActiveRunId(null)
-      toast.success(`Analysis complete: ${video.title}`, {
-        action: { label: "View report", onClick: () => router.push(`/reports/${settled.id}`) },
-      })
+      // No toast here: AnalysisWatcher announces every completion, on whatever page the user is
+      // on, so doing it here as well would double up whenever the library happens to be open.
       onRefresh()
     },
-    [onRefresh, router, video.title]
+    [onRefresh]
   )
   const { analysis, unavailable } = useAnalysisProgress(activeRunId, handleSettled)
 
@@ -290,6 +290,8 @@ function VideoCard({
     if (video.status !== "uploaded" || starting || activeRunId) return
     setStarting(true)
     setAnalysisError(null)
+    // Still inside the click, so the browser treats this as a user gesture.
+    requestAnalysisNotifications()
     try {
       const res = await fetch("/api/analyses", {
         method: "POST",
@@ -306,6 +308,7 @@ function VideoCard({
       // Stay in the library: progress appears as an overlay on this card.
       setLocalRun({ id: body.analysis.id, status: body.analysis.status })
       setActiveRunId(body.analysis.id)
+      analysisStarted()
     } catch (err) {
       setAnalysisError(
         err instanceof Error ? err.message : "Failed to start analysis"

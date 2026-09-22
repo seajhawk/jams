@@ -235,10 +235,9 @@ describe("analyzing from the library", () => {
 
     expect(screen.queryByTestId("analysis-overlay")).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: /view report/i })).toHaveAttribute("href", "/reports/run-1")
-    expect(toastMocks.toast.success).toHaveBeenCalledWith(
-      expect.stringContaining("Checkout walkthrough"),
-      expect.objectContaining({ action: expect.objectContaining({ label: "View report" }) })
-    )
+    // AnalysisWatcher announces completions app-wide; the card must not toast as well or the
+    // user gets two of everything whenever the library happens to be the open page.
+    expect(toastMocks.toast.success).not.toHaveBeenCalled()
   })
 
   it("keeps a failed run on screen with Retry and Dismiss, and explains why", async () => {

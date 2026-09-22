@@ -1,3 +1,4 @@
+import { AnalysisWatcher } from "@/components/app/AnalysisWatcher"
 import { AppShell } from "@/components/app/AppShell"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -11,6 +12,7 @@ export default function AuthenticatedLayout({
   return (
     <>
       <AppShell>{children}</AppShell>
+      <AnalysisWatcher />
       <Toaster />
     </>
   )

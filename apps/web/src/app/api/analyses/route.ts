@@ -1,8 +1,8 @@
-import { and, eq, isNull, ne } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
 import { analysisRuns, videos } from "@/db/schema"
-import { HttpError, handleRouteError, parseJsonBody } from "@/lib/api"
+import { HttpError, handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
 import {
   createAnalysisSchema,
   serializeAnalysisRun,
@@ -15,6 +15,42 @@ import { getOrCreateDefaultProfile } from "@/lib/report-assembly"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
+
+/**
+ * The runs still doing work, for the app-wide progress watcher. Deliberately narrow: `active=1` is
+ * the only supported listing, so this never becomes a general run-history endpoint by accident.
+ */
+export async function GET(request: Request) {
+  try {
+    const active = new URL(request.url).searchParams.get("active")
+    if (active !== "1") {
+      return jsonError("Unsupported query; pass active=1", 400)
+    }
+
+    return await withOrg(async ({ scopedDb }) => {
+      const rows = await scopedDb.db
+        .select({ run: analysisRuns, videoTitle: videos.title })
+        .from(analysisRuns)
+        .leftJoin(videos, eq(videos.id, analysisRuns.videoId))
+        .where(
+          scopedDb.orgFilter(
+            analysisRuns,
+            inArray(analysisRuns.status, ["queued", "running"])
+          )
+        )
+        .orderBy(desc(analysisRuns.createdAt))
+
+      return Response.json({
+        analyses: rows.map(({ run, videoTitle }) => ({
+          ...serializeAnalysisRun(run),
+          video_title: videoTitle,
+        })),
+      })
+    })
+  } catch (error) {
+    return handleRouteError(error)
+  }
+}
 
 export async function POST(request: Request) {
   try {

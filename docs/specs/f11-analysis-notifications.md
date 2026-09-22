@@ -8,7 +8,14 @@ its toast, and both vanish when the user navigates away or closes the tab.
 Two independent layers. Build the first now; the second needs one decision and one small Azure
 resource.
 
-## Layer 1: in-app, no new infrastructure
+## Layer 1: in-app, no new infrastructure -- BUILT September 22, 2026
+
+Shipped as `components/app/AnalysisWatcher.tsx`, `lib/analysis-watch.ts` and
+`GET /api/analyses?active=1`, mounted once in the signed-in layout. Covered by
+`__tests__/analysis-watcher.test.tsx` and `__tests__/analyses-active-api.test.ts`.
+Item 3 landed as a tab-title badge only; no favicon badge.
+
+### As specified
 
 Goal: wherever the user is in JAMS, and even while the tab is in the background, they find out.
 
@@ -28,6 +35,10 @@ Goal: wherever the user is in JAMS, and even while the tab is in the background,
 Limits: nothing arrives if every JAMS tab is closed. That is layer 2.
 
 ## Layer 2: email when it is done
+
+Decided September 22, 2026: **Azure Communication Services**, per
+`docs/CLOUDFLARE-EVALUATION-2026-09-22.md`. Cloudflare Email Service is cheaper but its native
+binding is Workers-only, and our sender is Python in Azure. Not yet built.
 
 Recipient is the user who requested the analysis, on their primary Clerk email. Sent once per run on
 the terminal transition (succeeded, partial, failed), opt-out by a single link.
