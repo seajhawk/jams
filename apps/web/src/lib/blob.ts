@@ -91,10 +91,29 @@ function blobServiceClient() {
   return BlobServiceClient.fromConnectionString(storageConfig().connectionString)
 }
 
+let videosContainerReady: Promise<unknown> | null = null
+
+/**
+ * The container is provisioned by infra (and created here for local Azurite), so checking it
+ * once per process is enough. Before this, every SAS mint made a PUT to Storage even though
+ * signing a SAS is purely local, and it did so inside request transactions.
+ */
 async function videosContainerClient() {
   const container = blobServiceClient().getContainerClient(videosContainerName)
-  await container.createIfNotExists()
+  if (!videosContainerReady) {
+    videosContainerReady = container.createIfNotExists().catch((error: unknown) => {
+      // Never cache a failure: the next caller should try again rather than inherit it.
+      videosContainerReady = null
+      throw error
+    })
+  }
+  await videosContainerReady
   return container
+}
+
+/** Test seam: forget the once-per-process container check. */
+export function resetBlobContainerCacheForTests() {
+  videosContainerReady = null
 }
 
 export function isSafeBlobPath(blobPath: string) {
