@@ -23,6 +23,12 @@ from jams_worker.providers.scrolls import detect_scrolls
 DURATION_TOL_MS = 400
 FRAME_DIFF_CUT_THRESHOLD = 40.0
 CV_GENERATOR = Path(__file__).resolve().parents[1] / "scripts" / "make_cv_fixtures"
+# Browser-recorded CV fixtures, generated once and committed. They used to be re-recorded on every
+# run, and a loaded CI runner dropped frames mid-scroll, so the scroll gate measured 6.4% instead of
+# 9.0% on the same code (September 2026). The providers give identical results on identical video
+# across Windows and Linux, so a fixed input makes these gates deterministic. Regenerate with
+# JAMS_REGENERATE_CV_FIXTURES=1 when a scenario changes, review the new numbers, and commit.
+CV_FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "cv"
 
 # Locally a missing tool (espeak-ng, pnpm, Chromium) skips the gates that need it. CI sets
 # JAMS_REQUIRE_FIXTURES=1 so the same gap fails instead: otherwise every accuracy gate here can be
@@ -56,6 +62,17 @@ def _entry(reg: dict[str, Any], fixture_id: str) -> dict[str, Any]:
         if item["id"] == fixture_id:
             return item
     raise KeyError(fixture_id)
+
+
+def _cv_fixtures(out: Path) -> dict[str, Any]:
+    """The committed CV fixtures, copied into ``out``; or freshly recorded when asked to."""
+    if os.environ.get("JAMS_REGENERATE_CV_FIXTURES") == "1":
+        return _run_cv_generator(out)
+    registry_path = CV_FIXTURES / "cv_registry.json"
+    if not registry_path.exists():
+        pytest.fail(f"committed CV fixtures missing at {CV_FIXTURES}")
+    shutil.copytree(CV_FIXTURES, out, dirs_exist_ok=True)
+    return json.loads((out / "cv_registry.json").read_text())
 
 
 def _run_cv_generator(out: Path) -> dict[str, Any]:
@@ -400,7 +417,7 @@ def test_determinism(fxt: tuple[dict[str, Any], Path], tmp_path: Path) -> None:
 @pytest.mark.playwright
 def test_playwright_cv_generator_flash_alignment(tmp_path: Path) -> None:
     out = tmp_path / "cv"
-    registry = _run_cv_generator(out)
+    registry = _cv_fixtures(out)
     assert {entry["id"] for entry in registry["generated"]} == {
         "cv_scroll_page",
         "cv_button_grid",
@@ -414,7 +431,7 @@ def test_playwright_cv_generator_flash_alignment(tmp_path: Path) -> None:
 @pytest.mark.playwright
 def test_playwright_cv_generator_records_ground_truth_jsonl(tmp_path: Path) -> None:
     out = tmp_path / "cv"
-    registry = _run_cv_generator(out)
+    registry = _cv_fixtures(out)
     by_id = {entry["id"]: entry for entry in registry["generated"]}
 
     scroll_rows = g.parse_jsonl(out / by_id["cv_scroll_page"]["events_jsonl"])
@@ -430,6 +447,9 @@ def test_playwright_cv_generator_records_ground_truth_jsonl(tmp_path: Path) -> N
 
 @pytest.mark.playwright
 def test_playwright_cv_generator_determinism(tmp_path: Path) -> None:
+    # Tests the recording tool, not a provider, so it runs only when regenerating fixtures.
+    if os.environ.get("JAMS_REGENERATE_CV_FIXTURES") != "1":
+        pytest.skip("set JAMS_REGENERATE_CV_FIXTURES=1 to exercise the CV fixture recorder")
     out1 = tmp_path / "cv1"
     out2 = tmp_path / "cv2"
     reg1 = _run_cv_generator(out1)
@@ -454,7 +474,7 @@ def test_playwright_cv_generator_determinism(tmp_path: Path) -> None:
 @pytest.mark.playwright
 def test_scrolls_provider_matches_cv_fixture_gate(tmp_path: Path) -> None:
     out = tmp_path / "cv"
-    registry = _run_cv_generator(out)
+    registry = _cv_fixtures(out)
     tolerances = g.load_tolerances()["scrolls"]
     by_id = {entry["id"]: entry for entry in registry["generated"]}
     scroll_entry = by_id["cv_scroll_page"]
@@ -489,7 +509,7 @@ def test_scrolls_provider_matches_cv_fixture_gate(tmp_path: Path) -> None:
 @pytest.mark.playwright
 def test_clicks_provider_matches_cv_button_grid_gate(tmp_path: Path) -> None:
     out = tmp_path / "cv"
-    registry = _run_cv_generator(out)
+    registry = _cv_fixtures(out)
     tolerances = g.load_tolerances()["clicks"]
     by_id = {entry["id"]: entry for entry in registry["generated"]}
     button_entry = by_id["cv_button_grid"]

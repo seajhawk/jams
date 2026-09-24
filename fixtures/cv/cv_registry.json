@@ -1,0 +1,69 @@
+{
+  "generated": [
+    {
+      "id": "cv_scroll_page",
+      "file": "cv_scroll_page.mp4",
+      "kind": "video",
+      "duration_ms": null,
+      "events_jsonl": "cv_scroll_page.events.jsonl",
+      "fps": 30,
+      "has_audio": false,
+      "provider_pending": "F10-b/c",
+      "scroll_events": [
+        {
+          "direction": "down",
+          "percent_viewport": 9
+        }
+      ],
+      "sync_marker": {
+        "flash_count": 2,
+        "flash_duration_ms": 120,
+        "flash_starts_ms": [
+          1000,
+          1600
+        ]
+      },
+      "tts_pending": false
+    },
+    {
+      "id": "cv_button_grid",
+      "file": "cv_button_grid.mp4",
+      "kind": "video",
+      "duration_ms": null,
+      "events_jsonl": "cv_button_grid.events.jsonl",
+      "fps": 30,
+      "has_audio": false,
+      "provider_pending": "F10-b/c",
+      "scroll_events": [],
+      "sync_marker": {
+        "flash_count": 2,
+        "flash_duration_ms": 120,
+        "flash_starts_ms": [
+          1000,
+          1600
+        ]
+      },
+      "tts_pending": false
+    },
+    {
+      "id": "cv_hover_negative",
+      "file": "cv_hover_negative.mp4",
+      "kind": "video",
+      "duration_ms": null,
+      "events_jsonl": "cv_hover_negative.events.jsonl",
+      "fps": 30,
+      "has_audio": false,
+      "provider_pending": "F10-b/c negative",
+      "scroll_events": [],
+      "sync_marker": {
+        "flash_count": 2,
+        "flash_duration_ms": 120,
+        "flash_starts_ms": [
+          1000,
+          1600
+        ]
+      },
+      "tts_pending": false
+    }
+  ]
+}

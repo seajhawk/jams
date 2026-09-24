@@ -1,0 +1,13 @@
+{"kind":"sync_flash","phase":"start","index":1,"t_ms":1072.6000000238419}
+{"kind":"sync_flash","phase":"end","index":1,"t_ms":1197.5}
+{"kind":"sync_flash","phase":"start","index":2,"t_ms":1683.6000000238419}
+{"kind":"sync_flash","phase":"end","index":2,"t_ms":1808}
+{"kind":"wheel","t_ms":1836.3999999761581,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":2019.7000000476837,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":2203.8000000715256,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":2404.100000023842,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":2586.8000000715256,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":2769.100000023842,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":2969.399999976158,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":3153.3000000715256,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}
+{"kind":"wheel","t_ms":3336.2000000476837,"x":0,"y":0,"delta_x":0,"delta_y":180,"key":null,"target":""}

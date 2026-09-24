@@ -1,0 +1,6 @@
+{"kind":"sync_flash","phase":"start","index":1,"t_ms":1062.7000000476837}
+{"kind":"sync_flash","phase":"end","index":1,"t_ms":1187.7000000476837}
+{"kind":"sync_flash","phase":"start","index":2,"t_ms":1677.9000000953674}
+{"kind":"sync_flash","phase":"end","index":2,"t_ms":1805.1000000238419}
+{"kind":"mousemove","t_ms":1863.3000000715256,"x":320,"y":267,"delta_x":null,"delta_y":null,"key":null,"target":"hoverTarget"}
+{"kind":"mousemove","t_ms":2774.100000023842,"x":30,"y":70,"delta_x":null,"delta_y":null,"key":null,"target":""}

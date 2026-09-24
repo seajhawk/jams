@@ -43,6 +43,15 @@ CI secrets for the browser tests, and a migration step in the deploy pipeline.
 | T3 | **The RLS test covered 2 of 13 tenant tables.** | `rls-catalog.integration.test.ts` checks every table with `org_id` from the catalog, and fails on any web-role policy that lets every row through. It failed 4 of 5 checks on the old schema. |
 | T4 | **The click accuracy gate fails and nothing said so.** Precision is 4.5% (TP 6, FP 126). This is known and contained: clicks are weighted 0 in the default score. | Marked `xfail(strict=True)` with its evidence. It runs, and turns red if someone fixes clicks without removing the marker. |
 
+### Found once the new CI jobs ran (September 24)
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| T5 | **The scroll gate was flaky under CI load.** Its fixture video was re-recorded in real time on every run; a loaded runner dropped frames mid-scroll and the gate measured 6.4% instead of 9.0% on unchanged code. The provider itself is platform-consistent: the same video gives 8.4 on Windows and in Linux. | CV fixtures are recorded once and committed (`fixtures/cv/`), so the gates are deterministic and 5x faster; the recorder stays for deliberate regeneration. |
+| T6 | **The scroll provider under-counts distance by about 25% when a recording's effective frame rate is 8 fps or lower**, and misses instant scroll jumps entirely. Found by reproducing the CI failure: resampling the fixture to 8 fps drops the result from 8.4 to 6.3. Scrolls are weighted 0 in the default score, so the headline number is unaffected. | Spun off as its own task (algorithm work). |
+| T7 | **The upload e2e depended on test order**: an empty library renders a second upload dialog with its own hidden file input. | Selector pinned to the header's input. |
+| T8 | **The e2e setup would have created a new Clerk organization on every CI run**, because it found its org only through a local state file. | It now reattaches to the existing org; verified with the state file removed. |
+
 ## Verification run for this review
 
 - Web: 300 unit and integration tests (28 against real Postgres 16), type check, lint, production
@@ -58,15 +67,8 @@ CI secrets for the browser tests, and a migration step in the deploy pipeline.
 1. **Clerk production instance.** Staging runs on the development instance, and the browser logs
    say development keys "should not be used when deploying your application to production". Dev
    instances have strict usage limits.
-2. **Run the browser tests in CI.** They need Clerk test keys as GitHub Actions secrets plus
-   Postgres and Azurite services. This review is the evidence of the cost of not doing it: a
-   broken test shipped and nobody saw. Adding the secrets is a repository configuration change, so
-   it is Chris's call. Recommend a separate Clerk development instance for CI so test users never
-   mix with staging.
-3. **Add a migration step to the deploy pipeline.** Every schema change is currently applied by
-   hand through a temporary firewall rule, and the correct order varies: 0013 had to go before the
-   code, 0014 after. Recommend a pipeline job plus an expand-then-contract rule for migrations so
-   the order is always migrate, then deploy.
+2. **Run the browser tests in CI.** Done September 24: a Browser e2e job runs all six specs on every push, including the real upload-to-worker pipeline, using the Clerk development keys already stored for the staging deploy.
+3. **Add a migration step to the deploy pipeline.** Done September 24: migrations run between provision and deploy, with a runner-only firewall rule and role-password sync; see the runbook's "Schema changes" rule.
 4. **Live verification on staging.** The library archive and overlay, jump-to-moment, the
    notification watcher and this review's fixes are verified locally and in CI, but not by hand on
    staging, because the automation classifier blocks minting a sign-in token. Either allow that

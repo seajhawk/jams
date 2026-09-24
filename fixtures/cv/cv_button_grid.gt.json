@@ -1,0 +1,20 @@
+{
+  "id": "cv_button_grid",
+  "file": "cv_button_grid.mp4",
+  "kind": "video",
+  "duration_ms": null,
+  "events_jsonl": "cv_button_grid.events.jsonl",
+  "fps": 30,
+  "has_audio": false,
+  "provider_pending": "F10-b/c",
+  "scroll_events": [],
+  "sync_marker": {
+    "flash_count": 2,
+    "flash_duration_ms": 120,
+    "flash_starts_ms": [
+      1000,
+      1600
+    ]
+  },
+  "tts_pending": false
+}

@@ -77,8 +77,10 @@ test("uploads a tiny video, opens detail playback, and verifies server truth", a
   await page.goto("/library")
   await expectAppReady(page)
 
+  // An empty library shows a second UploadDialog in its empty state, and each dialog owns a
+  // hidden file input. Use the header's button and the header's input, which come first.
   await page.getByRole("button", { name: "Upload journey" }).first().click()
-  await page.getByTestId("upload-file-input").setInputFiles(fixturePath)
+  await page.getByTestId("upload-file-input").first().setInputFiles(fixturePath)
 
   const titleInput = page.getByLabel("Title")
   await expect(titleInput).toHaveValue("e2e-tiny")
