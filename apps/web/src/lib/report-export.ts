@@ -19,9 +19,18 @@ const CSV_COLUMNS = [
   "provider_id",
 ] as const
 
+/**
+ * A text cell starting with one of these is evaluated as a formula by Excel, Sheets and Numbers
+ * (OWASP "CSV injection"). value_text is transcribed speech and titles are typed by users, so a
+ * recording could carry =HYPERLINK(...) into whoever opens the export.
+ */
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/
+
 export function csvEscape(value: string | number | null): string {
   if (value === null) return ""
-  const raw = String(value)
+  // Only text is neutralized. Numbers stay numbers, so a sentiment of -0.82 is still -0.82.
+  const raw =
+    typeof value === "string" && FORMULA_TRIGGER.test(value) ? `'${value}` : String(value)
   if (/[",\r\n]/.test(raw)) {
     return `"${raw.replaceAll('"', '""')}"`
   }

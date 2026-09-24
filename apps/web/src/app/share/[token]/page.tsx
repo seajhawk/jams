@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { and, eq, gt, isNull, sql } from "drizzle-orm"
 import { auth } from "@clerk/nextjs/server"
 import { notFound } from "next/navigation"
 
@@ -36,6 +36,9 @@ export default async function SharedReportPage({
   if (!TOKEN_RE.test(token)) notFound()
 
   return withDbTransaction(async (tx) => {
+    // RLS reveals only the share link whose token was presented (migration 0014). Scoped to this
+    // transaction, so it cannot leak into another request on the same pooled connection.
+    await tx.execute(sql`select set_config('app.share_token', ${token}, true)`)
     const [link] = await tx
       .select({
         runId: shareLinks.runId,

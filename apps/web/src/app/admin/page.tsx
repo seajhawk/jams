@@ -12,6 +12,7 @@ import {
   type AdminRunRow,
   listAdminRuns,
 } from "@/lib/admin-runs"
+import { requirePlatformAdminPage } from "@/lib/admin-auth"
 import { peekAnalysisPoisonMessages } from "@/lib/queue"
 
 export const dynamic = "force-dynamic"
@@ -59,6 +60,11 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  // The layout's check is not enough on its own: in the App Router a layout does not stop its
+  // page from rendering or from reaching the RSC payload (see Next's authentication guide,
+  // "Layouts and auth checks"). This page reads every tenant's runs, so it guards itself.
+  await requirePlatformAdminPage()
+
   const { status } = await searchParams
   const filter = parseFilter(status)
   const [runs, poisonResult] = await Promise.all([
