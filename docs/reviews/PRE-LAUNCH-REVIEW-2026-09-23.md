@@ -52,6 +52,10 @@ CI secrets for the browser tests, and a migration step in the deploy pipeline.
 | T7 | **The upload e2e depended on test order**: an empty library renders a second upload dialog with its own hidden file input. | Selector pinned to the header's input. |
 | T8 | **The e2e setup would have created a new Clerk organization on every CI run**, because it found its org only through a local state file. | It now reattaches to the existing org; verified with the state file removed. |
 
+| T9 | **Share dialog lost a newly created link.** The list request starts when the dialog opens; if "Create link" finished first, the older response replaced the list and the new link and its Revoke button vanished. A quick click hits it in production. | Fixed; the test holds the list request open and fails on the old code. |
+| T10 | **Share links pointed at the container's bind address.** The share URL was built from `request.url`, which the standalone production server fills from the bind address, so staging produced `http://0.0.0.0:3000/share/...`. `next dev` uses the Host header, so every earlier test passed. | Fixed with `publicOrigin()` (configured origin, then forwarded host, then Host). Found because the CI browser job now runs the production standalone build, not `next dev`. |
+| T11 | **The pipeline e2e raced playback.** Since report rows jump and play, polling `currentTime` passed only when a sample landed right after the seek. | Now measures where the jump landed from the `seeked` event. |
+
 ## Verification run for this review
 
 - Web: 300 unit and integration tests (28 against real Postgres 16), type check, lint, production
@@ -64,15 +68,18 @@ CI secrets for the browser tests, and a migration step in the deploy pipeline.
 
 ## Needs Chris before go-live
 
-1. **Clerk production instance.** Staging runs on the development instance, and the browser logs
-   say development keys "should not be used when deploying your application to production". Dev
-   instances have strict usage limits.
+1. **Clerk production instance.** Free on Clerk's plan (50,000 monthly retained users), but it
+   needs a domain Chris owns: Clerk production does not run on `*.azurecontainerapps.io`. The
+   chain is: pick a domain, bind it to the web Container App (managed certificate), add Clerk's
+   DNS records, create GitHub and Google OAuth apps (production social login uses your own
+   credentials), then switch the keys. Blocked on choosing the domain.
 2. **Run the browser tests in CI.** Done September 24: a Browser e2e job runs all six specs on every push, including the real upload-to-worker pipeline, using the Clerk development keys already stored for the staging deploy.
 3. **Add a migration step to the deploy pipeline.** Done September 24: migrations run between provision and deploy, with a runner-only firewall rule and role-password sync; see the runbook's "Schema changes" rule.
-4. **Live verification on staging.** The library archive and overlay, jump-to-moment, the
-   notification watcher and this review's fixes are verified locally and in CI, but not by hand on
-   staging, because the automation classifier blocks minting a sign-in token. Either allow that
-   step or click through once yourself.
+4. **Live verification on staging.** Still open. Claude will not create an account; Chris signs in
+   once in the in-app browser pane and Claude drives the click-through in that session. It
+   should confirm three things the automated tests cannot: share links now show the public
+   https address, clicking a highlight actually starts audio in a real browser (headless autoplay
+   rules differ), and the notification watcher's toast and tab badge appear.
 
 ## Recommended, not blocking
 
