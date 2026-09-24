@@ -31,8 +31,18 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev --port ${new URL(baseURL).port || "3000"}`,
-    env: localEnv,
+    // CI runs the production standalone build, the artifact the container ships. `next dev`
+    // compiles each route on first request, which made cold-route steps race their timeouts.
+    command:
+      process.env.PLAYWRIGHT_USE_BUILD === "1"
+        ? "node .next/standalone/apps/web/server.js"
+        : `pnpm dev --port ${new URL(baseURL).port || "3000"}`,
+    env: {
+      ...localEnv,
+      PORT: new URL(baseURL).port || "3000",
+      // Dual-stack like `next dev`: Node resolves localhost to ::1 first.
+      HOSTNAME: "::",
+    },
     reuseExistingServer: !process.env.CI && process.env.JAMS_RUN_PIPELINE_E2E !== "1",
     timeout: 120_000,
     url: baseURL,

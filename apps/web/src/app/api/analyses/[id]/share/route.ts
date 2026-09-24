@@ -9,6 +9,7 @@ import {
   serializeShareLink,
   shareUrl,
 } from "@/lib/share-links"
+import { publicOrigin } from "@/lib/public-origin"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
@@ -82,7 +83,7 @@ export async function POST(
     }
 
     const body = await readCreateBody(request)
-    const origin = new URL(request.url).origin
+    const origin = publicOrigin(request)
 
     return await withOrg(async ({ orgId, userId, scopedDb }) => {
       const [run] = await scopedDb.db

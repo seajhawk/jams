@@ -90,6 +90,7 @@ jobs:
       DATABASE_URL_WEB: postgresql://jams_web:jams_web@127.0.0.1:5432/jams
       AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
       WATCHDOG_SECRET: ci-e2e-only
+      PLAYWRIGHT_USE_BUILD: "1"
       # The real upload -> queue -> worker -> report spec, with the silent fixture (no models).
       JAMS_RUN_PIPELINE_E2E: "1"
       E2E_PIPELINE_FIXTURE: ${{ github.workspace }}/.e2e/e2e-pipeline.mp4
@@ -122,6 +123,14 @@ jobs:
       - name: Migrate database
         working-directory: apps/web
         run: pnpm db:migrate
+
+      - name: Build the production server
+        working-directory: apps/web
+        run: |
+          pnpm build
+          # Same layout as apps/web/Dockerfile: standalone server plus its static assets.
+          cp -r .next/static .next/standalone/apps/web/.next/static
+          cp -r public .next/standalone/apps/web/public
 
       - name: Install Chromium
         working-directory: apps/web
