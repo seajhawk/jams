@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Check, Copy, Loader2, Share2, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -40,15 +40,27 @@ export function ShareReportDialog({ runId }: { runId: string }) {
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(0)
+  // Bumped by every create and revoke. The list request starts when the dialog opens, and a
+  // quick "Create link" can finish first; without this, the older response then replaced the
+  // list and the new link (and its Revoke button) vanished.
+  const listVersion = useRef(0)
 
   const loadLinks = useCallback(async () => {
+    const startedAt = listVersion.current
     setLoading(true)
     setError(null)
     try {
       const response = await fetch(`/api/analyses/${runId}/share`)
       if (!response.ok) throw new Error("Failed to load share links")
       const body = (await response.json()) as { links: ShareLink[] }
-      setLinks(body.links)
+      setLinks((current) => {
+        if (listVersion.current === startedAt) return body.links
+        // A link was created or revoked while this request was in flight. That local change is
+        // newer than the response, so keep it and fill in everything else from the server.
+        const merged = new Map(body.links.map((link) => [link.id, link]))
+        for (const link of current) merged.set(link.id, link)
+        return [...merged.values()].sort((a, b) => b.created_at.localeCompare(a.created_at))
+      })
       setNowMs(Date.now())
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load share links")
@@ -78,6 +90,7 @@ export function ShareReportDialog({ runId }: { runId: string }) {
         throw new Error(body?.error ?? "Failed to create share link")
       }
       const body = (await response.json()) as CreatedShareLink
+      listVersion.current += 1
       setCreated(body)
       setLinks((current) => [body.link, ...current])
       setNowMs(Date.now())
@@ -108,6 +121,7 @@ export function ShareReportDialog({ runId }: { runId: string }) {
         throw new Error(body?.error ?? "Failed to revoke link")
       }
       const body = (await response.json()) as { link: ShareLink }
+      listVersion.current += 1
       setLinks((current) => current.map((link) => (link.id === id ? body.link : link)))
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to revoke link")
