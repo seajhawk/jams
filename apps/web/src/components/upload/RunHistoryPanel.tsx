@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
+import { LocalTime } from "@/components/ui/local-time"
 import { ReanalyzeDialog } from "@/components/upload/ReanalyzeDialog"
 
 type RunHistoryItem = {
@@ -76,7 +77,7 @@ export function RunHistoryPanel({
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-medium">
-                    {new Date(run.created_at).toLocaleString()}
+                    <LocalTime value={run.created_at} />
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {run.pipeline_version}

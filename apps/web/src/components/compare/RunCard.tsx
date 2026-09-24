@@ -4,6 +4,7 @@ import type { ReportPayload } from '@/lib/report-contract'
 import type { ScoreDeltas, VideoLabels } from '@/lib/compare'
 import { EffortScoreDial } from '@/components/report/EffortScoreDial'
 import { Badge } from '@/components/ui/badge'
+import { LocalTime } from '@/components/ui/local-time'
 import { DeltaChip } from './DeltaChip'
 import { formatMs } from '@/lib/format-ms'
 
@@ -46,7 +47,7 @@ export function RunCard({
             </Badge>
           )}
           <span className="text-xs text-muted-foreground">
-            {new Date(run.finished_at).toLocaleDateString()}
+            <LocalTime value={run.finished_at} format="date" />
           </span>
           {run.status === 'partial' && (
             <Badge variant="outline" className="text-xs">
