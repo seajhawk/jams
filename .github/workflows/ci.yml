@@ -77,12 +77,34 @@ jobs:
   worker:
     name: Worker
     runs-on: ubuntu-latest
+    env:
+      # The accuracy gates must actually run here. Without these, every narrated, CV and
+      # transcription gate skipped for a missing tool and the job still went green.
+      JAMS_REQUIRE_FIXTURES: "1"
+      JAMS_RUN_WHISPER_TESTS: "1"
+      JAMS_WHISPER_MODEL_CACHE: ${{ github.workspace }}/.cache/whisper
     defaults:
       run:
         working-directory: worker
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install espeak-ng for narrated golden fixtures
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends espeak-ng
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js for the CV fixture generator
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install CV fixture generator and Chromium
+        working-directory: worker/scripts/make_cv_fixtures
+        run: |
+          pnpm install --ignore-workspace --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -91,6 +113,15 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      - name: Cache Whisper model
+        uses: actions/cache@v4
+        with:
+          path: .cache/whisper
+          key: whisper-distil-small.en-v1
+
+      - name: Prepare Whisper and sentiment models
+        run: uv run python scripts/prepare_runtime.py
 
       - name: Lint
         run: uv run ruff check

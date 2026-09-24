@@ -219,10 +219,17 @@ def test_silence_and_tones_produce_partial_no_speech(
         assert calls == [0.5, 0.35]
 
 
+def _require_whisper_model() -> None:
+    """Skip unless asked to run; once asked, a missing model is a failure, not a quiet skip."""
+    if os.environ.get("JAMS_RUN_WHISPER_TESTS") != "1":
+        pytest.skip("set JAMS_RUN_WHISPER_TESTS=1 with cached faster-whisper weights")
+    if not model_cache_dir().exists():
+        pytest.fail(f"JAMS_RUN_WHISPER_TESTS=1 but no model cache at {model_cache_dir()}")
+
+
 @pytest.mark.whisper_model
 def test_whisper_espeak_wer_gate_if_model_cache_present(tmp_path: Path) -> None:
-    if os.environ.get("JAMS_RUN_WHISPER_TESTS") != "1" or not model_cache_dir().exists():
-        pytest.skip("set JAMS_RUN_WHISPER_TESTS=1 with cached faster-whisper weights")
+    _require_whisper_model()
 
     import make_fixtures as mf
     from golden import compute_wer
@@ -241,8 +248,7 @@ def test_whisper_espeak_wer_gate_if_model_cache_present(tmp_path: Path) -> None:
 
 @pytest.mark.whisper_model
 def test_speech_offsets_if_model_cache_present(tmp_path: Path) -> None:
-    if os.environ.get("JAMS_RUN_WHISPER_TESTS") != "1" or not model_cache_dir().exists():
-        pytest.skip("set JAMS_RUN_WHISPER_TESTS=1 with cached faster-whisper weights")
+    _require_whisper_model()
 
     import make_fixtures as mf
 
@@ -261,8 +267,7 @@ def test_speech_offsets_if_model_cache_present(tmp_path: Path) -> None:
 
 @pytest.mark.whisper_model
 def test_av_sync_cross_stage_if_model_cache_present(tmp_path: Path) -> None:
-    if os.environ.get("JAMS_RUN_WHISPER_TESTS") != "1" or not model_cache_dir().exists():
-        pytest.skip("set JAMS_RUN_WHISPER_TESTS=1 with cached faster-whisper weights")
+    _require_whisper_model()
 
     import golden as g
     import make_fixtures as mf

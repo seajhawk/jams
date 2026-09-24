@@ -135,7 +135,7 @@ test.describe("shared reports", () => {
     await page.goto(`/reports/${RUN_ID}`)
     await expectAppReady(page)
 
-    await page.getByRole("button", { name: "Share" }).click()
+    await page.getByRole("button", { name: "Share", exact: true }).click()
     await page.getByRole("button", { name: "Create link" }).click()
     const shareUrl = await page.getByTestId("created-share-url").inputValue()
     expect(shareUrl).toContain("/share/")

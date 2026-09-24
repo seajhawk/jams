@@ -86,7 +86,7 @@ test("uploads a tiny video, opens detail playback, and verifies server truth", a
 
   await page.getByLabel("Task").selectOption("__new__")
   await page.getByTestId("new-task-name").fill(taskName)
-  await page.getByRole("button", { name: "Upload" }).click()
+  await page.getByRole("button", { name: "Upload", exact: true }).click()
 
   await expect(page.getByText("Video uploaded")).toBeVisible({
     timeout: 30_000,

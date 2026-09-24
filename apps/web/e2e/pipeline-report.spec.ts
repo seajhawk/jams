@@ -41,7 +41,7 @@ test.describe("real upload to worker report", () => {
     const createdVideoPromise = page.waitForResponse((response) =>
       response.url().endsWith("/api/videos") && response.request().method() === "POST",
     )
-    await page.getByRole("button", { name: "Upload" }).click()
+    await page.getByRole("button", { name: "Upload", exact: true }).click()
     const createdVideoResponse = await createdVideoPromise
     expect(createdVideoResponse.status()).toBe(201)
     const createdVideo = await createdVideoResponse.json() as {
