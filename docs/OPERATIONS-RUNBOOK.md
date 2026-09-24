@@ -9,21 +9,17 @@ the intended staging resource group and never paste secret values into logs.
 1. Confirm the two image digests are from the same `main` commit and that the
    Container smoke workflow passed. Verify the web image runs as `node` and the
    worker as `jams`.
-2. Create a staging database backup before migration. Apply Drizzle migrations
-   from `apps/web` with the staging admin `DATABASE_URL` (the Postgres
-   Flexible Server admin login provisioned in `infra/resources.bicep`, never
-   `jams_web`/`jams_worker`); verify migration `0012` creates
-   `recording_deletions` and its `jams_web` RLS policy.
-2a. **Rotate the application role passwords immediately after the first
-   migration.** Migration `0007_postgres_rls.sql` creates `jams_web` and
-   `jams_worker` with hardcoded placeholder passwords (`jams_web`/
-   `jams_worker` — the local compose defaults). Using the admin connection,
-   run `ALTER ROLE jams_web PASSWORD '<generated>';` and
-   `ALTER ROLE jams_worker PASSWORD '<generated>';` with the real generated
-   passwords supplied to `infra/main.bicep` as `jamsWebDbPassword` /
-   `jamsWorkerDbPassword`, before pointing any container at the server. Do
-   not run this against local compose — it intentionally keeps the weak
-   defaults there.
+2. Migrations are applied by the deploy pipeline (`.github/workflows/azure-dev.yml`,
+   "Migrate database"), after provision and before the new images deploy, using
+   `scripts/ops/migrate-azure-db.sh`. It opens the Postgres firewall to the runner's IP
+   only, runs `drizzle-kit migrate` as the admin login, then re-asserts the `jams_web` and
+   `jams_worker` passwords from `JAMS_WEB_DB_PASSWORD` / `JAMS_WORKER_DB_PASSWORD`
+   (`apps/web/scripts/sync-db-roles.mjs`), and removes the firewall rule on exit. That
+   last step replaces the old manual role rotation: migration `0007` creates both roles
+   with placeholder passwords, and a fresh server now gets the real ones on its first
+   deploy. Azure Postgres keeps point-in-time restore backups (7 days by default), so no
+   separate pre-migration dump is needed. The same script runs by hand after `az login`;
+   see its header.
 3. Configure runtime secrets only in the platform secret store: Clerk secret and
    publishable keys, storage connection/managed identity settings, database URL,
    queue names, `WATCHDOG_SECRET`, and `JAMS_PREVIEW_USER_IDS`. Keep preview IDs
@@ -81,6 +77,24 @@ and do not run application code against a partially migrated database. Migration
 `0012` is additive; never edit an applied migration. Investigate failed deletion
 jobs through `recording_deletions` and retry the scheduler after storage access is
 restored.
+
+## Schema changes
+
+Migrations run before the new code is live, so for a few minutes the old code runs against
+the new schema. Every migration must therefore be safe for the code already deployed:
+
+- **Additive changes ship in one push**: new nullable columns, new tables, new indexes, new
+  policies that only allow more. Example: `0013` (`videos.archived_at`).
+- **Anything the running code cannot tolerate ships in two pushes**: first code that works
+  with both the old and new schema, then the migration in a later push. That includes
+  dropping or renaming columns, making a column required, and tightening an RLS policy the
+  old code relies on. Example: `0014` narrowed the share-link policy; the share page had to
+  start setting `app.share_token` before the policy required it.
+- Never edit a migration that has been applied anywhere.
+
+If the migrate step fails, the pipeline stops before deploying, so the old code keeps
+running against a schema it understands. Fix forward with a new migration, or restore to a
+point in time from the Azure portal if data was damaged.
 
 ## Exit criteria for supervised preview
 

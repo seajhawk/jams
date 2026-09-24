@@ -132,14 +132,41 @@ async function writeUserFile(user: E2eUserFile) {
   })
 }
 
+const E2E_ORG_NAME = "JAMS E2E workspace"
+
+/**
+ * The org this user already belongs to from an earlier run. CI starts with no local state file,
+ * and without this lookup every CI run created another Clerk organization in the shared
+ * development instance (the free plan retains 100).
+ */
+async function findExistingE2eOrganization(userId: string): Promise<string | undefined> {
+  const response = await clerkRequest(`/users/${userId}/organization_memberships?limit=100`)
+  if (!response.ok) {
+    throw new Error(`Failed to list Clerk E2E memberships: ${response.status}`)
+  }
+  const body = (await response.json()) as
+    | { data?: { organization?: { id: string; name: string } }[] }
+    | { organization?: { id: string; name: string } }[]
+  const memberships = Array.isArray(body) ? body : (body.data ?? [])
+  return memberships
+    .map((membership) => membership.organization)
+    .filter((organization): organization is { id: string; name: string } => Boolean(organization))
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .find((organization) => organization.name === E2E_ORG_NAME)?.id
+}
+
 async function ensureClerkOrganization(user: E2eUserFile, userId: string) {
-  let organizationId = user.orgId
+  let organizationId = user.orgId ?? (await findExistingE2eOrganization(userId))
+  if (organizationId && organizationId !== user.orgId) {
+    user.orgId = organizationId
+    await writeUserFile(user)
+  }
 
   if (!organizationId) {
     const createResponse = await clerkRequest("/organizations", {
       method: "POST",
       body: JSON.stringify({
-        name: "JAMS E2E workspace",
+        name: E2E_ORG_NAME,
         created_by: userId,
         max_allowed_memberships: 1,
         private_metadata: { personal: true, e2e: true },

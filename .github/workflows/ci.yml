@@ -74,6 +74,82 @@ jobs:
           JAMS_TEST_DATABASE_URL: postgresql://jams:jams@localhost:5432/jams
         run: uv run --locked --project worker pytest worker/tests/test_artifact_write_integration.py -ra
 
+  e2e:
+    name: Browser e2e
+    runs-on: ubuntu-latest
+    needs: web
+    timeout-minutes: 30
+    # Uses the Clerk development instance's keys (already repository secrets for the staging
+    # deploy) and its one dedicated E2E user and org; no users or orgs are created per run.
+    # Secrets are not available to pull requests from forks, so those skip this job.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ vars.CLERK_PUBLISHABLE_KEY }}
+      DATABASE_URL: postgresql://jams:jams@127.0.0.1:5432/jams
+      DATABASE_URL_WEB: postgresql://jams_web:jams_web@127.0.0.1:5432/jams
+      AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
+      WATCHDOG_SECRET: ci-e2e-only
+      # The real upload -> queue -> worker -> report spec, with the silent fixture (no models).
+      JAMS_RUN_PIPELINE_E2E: "1"
+      E2E_PIPELINE_FIXTURE: ${{ github.workspace }}/.e2e/e2e-pipeline.mp4
+      E2E_PIPELINE_NARRATED: "0"
+      E2E_PIPELINE_RECOVERY: "0"
+      HF_HUB_OFFLINE: "1"
+      OPENROUTER_API_KEY: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The specs seed data with `docker compose exec postgres psql`, so use compose, not services.
+      - name: Start Postgres and Azurite
+        run: |
+          docker compose up -d postgres azurite
+          for i in $(seq 1 60); do docker compose exec -T postgres pg_isready -U jams && break; sleep 1; done
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate database
+        working-directory: apps/web
+        run: pnpm db:migrate
+
+      - name: Install Chromium
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Start the worker for the pipeline spec
+        run: |
+          mkdir -p .e2e
+          uv sync --project worker --locked
+          uv run --project worker python worker/scripts/make_pipeline_e2e_fixture.py --output "$E2E_PIPELINE_FIXTURE"
+          cd worker
+          DATABASE_URL=postgresql://jams_worker:jams_worker@127.0.0.1:5432/jams \
+            nohup uv run python -m jams_worker.main > "$GITHUB_WORKSPACE/.e2e/worker.log" 2>&1 &
+
+      # Traces and videos can hold session cookies and SAS URLs, so they are not uploaded.
+      - name: Run browser tests
+        working-directory: apps/web
+        run: pnpm exec playwright test --project chromium --reporter=list
+
+      - name: Worker log
+        if: failure()
+        run: tail -n 200 .e2e/worker.log || true
+
   worker:
     name: Worker
     runs-on: ubuntu-latest

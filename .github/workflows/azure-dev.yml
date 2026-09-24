@@ -14,6 +14,11 @@ permissions:
   contents: read
   packages: write
 
+# One deploy at a time: two pushes in quick succession must not migrate the database concurrently.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 
 jobs:
   build:
@@ -57,6 +62,40 @@ jobs:
           JAMS_WEB_DB_PASSWORD: ${{ secrets.JAMS_WEB_DB_PASSWORD }}
           JAMS_WORKER_DB_PASSWORD: ${{ secrets.JAMS_WORKER_DB_PASSWORD }}
           CLERK_WEBHOOK_SIGNING_SECRET: ${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}
+
+      # Migrations run after provision and BEFORE the new code deploys, so every migration must
+      # work with the code that is still running (expand, then contract). A change the old code
+      # cannot tolerate ships in two steps: code that handles both shapes first, the migration in
+      # a later push. See docs/OPERATIONS-RUNBOOK.md, "Schema changes".
+      - name: Log in to Azure CLI for the migration firewall rule
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js for migrations
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies for migrations
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate database
+        run: |
+          export AZURE_RESOURCE_GROUP="$(azd env get-value AZURE_RESOURCE_GROUP)"
+          export AZURE_POSTGRES_SERVER_FQDN="$(azd env get-value AZURE_POSTGRES_SERVER_FQDN)"
+          bash scripts/ops/migrate-azure-db.sh
+        env:
+          POSTGRES_ADMIN_PASSWORD: ${{ secrets.POSTGRES_ADMIN_PASSWORD }}
+          JAMS_WEB_DB_PASSWORD: ${{ secrets.JAMS_WEB_DB_PASSWORD }}
+          JAMS_WORKER_DB_PASSWORD: ${{ secrets.JAMS_WORKER_DB_PASSWORD }}
+          FIREWALL_RULE_NAME: gha-migrate-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt

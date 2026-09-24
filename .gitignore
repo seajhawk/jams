@@ -24,3 +24,4 @@ test-results/
 .aider*
 worker/tests/fixtures/generated/
 .vally-results/
+.e2e/
