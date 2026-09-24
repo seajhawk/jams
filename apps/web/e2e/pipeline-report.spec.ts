@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test, type Locator, type Page } from "@playwright/test"
 import { BlobServiceClient, BlockBlobClient } from "@azure/storage-blob"
 import path from "node:path"
 import { readFile } from "node:fs/promises"
@@ -20,6 +20,40 @@ type AnalysisResponse = {
   analysis: { id: string; video_id: string; status: string }
 }
 
+async function removeLeftoverFixtureRecordings() {
+  const databaseUrl = process.env.DATABASE_URL
+  if (!databaseUrl || !["localhost", "127.0.0.1"].includes(new URL(databaseUrl).hostname)) return
+  const { orgId } = JSON.parse(
+    await readFile(path.join(process.cwd(), ".e2e-user.local.json"), "utf8")
+  ) as { orgId?: string }
+  if (!orgId) return
+  const db = postgres(databaseUrl, { max: 1 })
+  try {
+    // Cascades to runs, measures and share links; only ever the E2E org's fixture recordings.
+    await db`delete from videos where org_id = ${orgId} and title = ${fixtureTitle}`
+  } finally {
+    await db.end()
+  }
+}
+
+type SeekWindow = Window & { __jamsSeekedMs?: number }
+
+/** Click something that should seek the report video, and return where the seek landed. */
+async function clickAndCaptureSeek(page: Page, target: Locator): Promise<number> {
+  await page.locator("video").first().evaluate((video: HTMLVideoElement) => {
+    const w = window as SeekWindow
+    delete w.__jamsSeekedMs
+    video.addEventListener("seeked", () => {
+      w.__jamsSeekedMs = video.currentTime * 1000
+    }, { once: true })
+  })
+  await target.click()
+  await expect
+    .poll(() => page.evaluate(() => (window as SeekWindow).__jamsSeekedMs ?? null), { timeout: 5_000 })
+    .not.toBeNull()
+  return page.evaluate(() => (window as SeekWindow).__jamsSeekedMs as number)
+}
+
 test.describe("real upload to worker report", () => {
   test.skip(
     process.env.JAMS_RUN_PIPELINE_E2E !== "1",
@@ -30,6 +64,10 @@ test.describe("real upload to worker report", () => {
     page,
   }) => {
     test.setTimeout(240_000)
+
+    // A previous run that failed before its own cleanup leaves a recording with this title, and
+    // the steps below locate the new upload by title. Start from a clean slate for this user.
+    await removeLeftoverFixtureRecordings()
 
     await signInE2eUser(page)
     await page.goto("/library")
@@ -253,29 +291,14 @@ test.describe("real upload to worker report", () => {
     await page.getByRole("tab", { name: "Measures" }).click()
     const switchRow = page.locator("tbody tr").filter({ hasText: "context_switch" }).first()
     await expect(switchRow).toBeVisible()
-    await switchRow.click()
-
     const expectedCutMs = switches[0].t_start_ms
-    await expect
-      .poll(
-        async () => {
-          const state = await page.locator("video").first().evaluate((video: HTMLVideoElement) => ({
-            currentTimeMs: video.currentTime * 1000,
-            readyState: video.readyState,
-            seeking: video.seeking,
-          }))
-          return state.seeking || state.readyState < 2
-            ? Number.POSITIVE_INFINITY
-            : Math.abs(state.currentTimeMs - expectedCutMs)
-        },
-        { timeout: 5_000 },
-      )
-      .toBeLessThanOrEqual(250)
+    // Selecting a measure jumps there and starts playing, so currentTime keeps moving after the
+    // seek. Measure where the jump landed from the seeked event itself. (Whether play() is called,
+    // and that a browser refusing it is harmless, is covered by report-jump-to-moment.test.tsx;
+    // headless autoplay policy differs from a real browser, so it is not asserted here.)
+    const playbackMs = await clickAndCaptureSeek(page, switchRow)
+    expect(Math.abs(playbackMs - expectedCutMs)).toBeLessThanOrEqual(250)
 
-    const playbackMs = await page
-      .locator("video")
-      .first()
-      .evaluate((video: HTMLVideoElement) => video.currentTime * 1000)
     let transcriptPlaybackMs: number | undefined
     if (narrated) {
       const utterance = report.measures.find((measure) => measure.kind === "utterance")
@@ -286,32 +309,15 @@ test.describe("real upload to worker report", () => {
       // Start away from the target; otherwise a no-op click could pass when the
       // first utterance and the previously selected cut share a timestamp.
       await page.locator("video").first().evaluate((video: HTMLVideoElement) => {
+        video.pause()
         video.currentTime = 0
       })
       await expect.poll(async () => page.locator("video").first().evaluate(
         (video: HTMLVideoElement) => !video.seeking && video.currentTime < 0.25,
       )).toBe(true)
-      await transcriptRow.click()
       const expectedTranscriptMs = utterance!.t_start_ms
-      await expect
-        .poll(
-          async () => {
-            const state = await page.locator("video").first().evaluate((video: HTMLVideoElement) => ({
-              currentTimeMs: video.currentTime * 1000,
-              readyState: video.readyState,
-              seeking: video.seeking,
-            }))
-            return state.seeking || state.readyState < 2
-              ? Number.POSITIVE_INFINITY
-              : Math.abs(state.currentTimeMs - expectedTranscriptMs)
-          },
-          { timeout: 5_000 },
-        )
-        .toBeLessThanOrEqual(250)
-      transcriptPlaybackMs = await page
-        .locator("video")
-        .first()
-        .evaluate((video: HTMLVideoElement) => video.currentTime * 1000)
+      transcriptPlaybackMs = await clickAndCaptureSeek(page, transcriptRow)
+      expect(Math.abs(transcriptPlaybackMs - expectedTranscriptMs)).toBeLessThanOrEqual(250)
     }
 
     // Keep the attachment useful in CI while excluding the playback SAS token.
@@ -415,7 +421,9 @@ test.describe("real upload to worker report", () => {
         headers: { Authorization: `Bearer ${process.env.WATCHDOG_SECRET}` },
       })
       expect(sweep.status()).toBe(200)
-      expect((await sweep.json()).cleanup_swept_count).toBe(1)
+      // The sweep processes every due deletion, and a run interrupted before this point can leave
+      // one behind locally; this recording's own job is checked directly below.
+      expect((await sweep.json()).cleanup_swept_count).toBeGreaterThanOrEqual(1)
       const [job] = await cleanupDb`select last_verified_at, analysis_count from recording_deletions
         where video_id=${videoId}`
       expect(job.last_verified_at).toBeInstanceOf(Date)
