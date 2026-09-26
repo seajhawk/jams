@@ -32,7 +32,7 @@ def test_hash_is_independent_of_key_order() -> None:
     )
 
 
-def test_hash_changes_with_provider_model_or_config_but_not_labeling() -> None:
+def test_hash_changes_with_provider_model_or_any_config() -> None:
     base = build_fingerprint(VERSIONS, SUMMARIES, {})[1]
 
     assert build_fingerprint({**VERSIONS, "sentiment": "1.3.0"}, SUMMARIES, {})[1] != base
@@ -40,5 +40,6 @@ def test_hash_changes_with_provider_model_or_config_but_not_labeling() -> None:
     assert build_fingerprint(VERSIONS, fell_back, {})[1] != base
     tuned = {"context_switch": {"params": {"min_content_val": 4}}}
     assert build_fingerprint(VERSIONS, SUMMARIES, tuned)[1] != base
-    assert build_fingerprint(VERSIONS, SUMMARIES, {"llm_labeling": {"enabled": True}})[1] == base
+    # Labeling can merge segments and rewrite time_segment measures, so it counts too.
+    assert build_fingerprint(VERSIONS, SUMMARIES, {"llm_labeling": {"enabled": True}})[1] != base
     assert build_fingerprint(VERSIONS, SUMMARIES, None)[1] == base

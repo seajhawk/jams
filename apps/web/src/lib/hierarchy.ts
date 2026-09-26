@@ -111,6 +111,7 @@ export type JourneySession = {
     status: string
     total: number | null
     fingerprint_hash: string | null
+    created_at: string
   } | null
 }
 
@@ -150,6 +151,7 @@ export async function loadJourneySessions(
           videoId: analysisRuns.videoId,
           status: analysisRuns.status,
           fingerprintHash: analysisRuns.fingerprintHash,
+          createdAt: analysisRuns.createdAt,
         })
         .from(analysisRuns)
         .where(
@@ -197,6 +199,7 @@ export async function loadJourneySessions(
             status: run.status,
             total: totals.get(run.id) ?? null,
             fingerprint_hash: run.fingerprintHash,
+            created_at: run.createdAt.toISOString(),
           }
         : null,
     }
@@ -206,16 +209,44 @@ export async function loadJourneySessions(
   return byJourney
 }
 
-/** Stats over sessions with a scored analysis, and whether they mix scoring definitions. */
+/**
+ * The scoring definition a journey's numbers use: the fingerprint of the newest scored analysis
+ * that recorded one. Analyses without a fingerprint (scored before fingerprints existed) are never
+ * treated as comparable, even with each other: their models and score formula are unknown.
+ */
+export function referenceFingerprint(sessions: JourneySession[]): string | null {
+  const newest = sessions
+    .filter((session) => session.analysis?.total != null && session.analysis.fingerprint_hash)
+    .sort((a, b) => b.analysis!.created_at.localeCompare(a.analysis!.created_at))[0]
+  return newest?.analysis?.fingerprint_hash ?? null
+}
+
+/** True when a session's score is on the given reference definition and may be aggregated. */
+export function isComparable(session: JourneySession, reference: string | null) {
+  return (
+    reference !== null &&
+    session.analysis?.total != null &&
+    session.analysis.fingerprint_hash === reference
+  )
+}
+
+/**
+ * Stats over sessions scored with the reference definition only. Sessions scored any other way
+ * are excluded and counted, never averaged in (docs/design/customer-journeys-ux.md §3.2).
+ */
 export function journeyStats(sessions: JourneySession[]) {
   const scored = sessions.filter((session) => session.analysis?.total != null)
+  const reference = referenceFingerprint(sessions)
+  const comparable = scored.filter((session) => isComparable(session, reference))
   const fingerprints = new Set(
     scored.map((session) => session.analysis?.fingerprint_hash ?? "unrecorded")
   )
   return {
     session_count: sessions.length,
-    ...summarizeTotals(scored.map((session) => session.analysis!.total as number)),
+    ...summarizeTotals(comparable.map((session) => session.analysis!.total as number)),
+    reference_fingerprint: reference,
+    excluded: scored.length - comparable.length,
     fingerprint_count: fingerprints.size,
-    mixed_definitions: fingerprints.size > 1,
+    mixed_definitions: scored.length > comparable.length,
   }
 }

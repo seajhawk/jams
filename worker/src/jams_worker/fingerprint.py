@@ -12,9 +12,6 @@ from typing import Any
 
 from jams_worker.effort_score import SCORE_FORMULA_VERSION
 
-# Config keys that do not change any number (LLM segment naming only affects labels).
-_IGNORED_CONFIG_KEYS = frozenset({"llm_labeling"})
-
 
 def build_fingerprint(
     provider_versions: dict[str, str],
@@ -29,11 +26,10 @@ def build_fingerprint(
     fingerprint = {
         "provider_versions": dict(sorted(provider_versions.items())),
         "models": models,
-        "config": {
-            key: value
-            for key, value in sorted((config or {}).items())
-            if key not in _IGNORED_CONFIG_KEYS
-        },
+        # The whole run config: every setting can change the numbers. llm_labeling looks like
+        # naming only, but the labeling provider can merge adjacent segments and rewrite the
+        # time_segment measures the score uses.
+        "config": dict(sorted((config or {}).items())),
         "score_formula": SCORE_FORMULA_VERSION,
     }
     canonical = json.dumps(fingerprint, sort_keys=True, separators=(",", ":"))
