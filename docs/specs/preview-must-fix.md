@@ -38,7 +38,7 @@ committed and pushed after it is validated, so Chris can pick up from his laptop
 ## Progress
 
 - [x] B1 regression test on PR #19 (`e2e/typography.spec.ts`; fails on the old CSS with "Times New Roman", passes with the fix)
-- [ ] B6 honest report (own PR)
+- [x] B6 honest report: PR #20 (branch `honest-report`; worker 203 + web 295 tests pass)
 - [ ] B3 + B4 + B7 access and trust pages (own PR)
 - [ ] B10 + B2 prep: deploy gating, smoke, CORS parameter (own PR)
 - [ ] B8 deletion on account/org deletion (own PR)
