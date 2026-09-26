@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { Play } from "lucide-react"
 
 import { ClipPlayer } from "@/components/projects/ClipPlayer"
+import { SaveFindingButton } from "@/components/projects/SaveFindingButton"
 import { Button } from "@/components/ui/button"
 import type { StepHotspot } from "@/lib/hotspots"
 
@@ -163,6 +164,18 @@ export function StepsPanel({
                 <td className="py-2 text-right tabular-nums">{seconds(hotspot.mean_duration_ms)}</td>
                 <td className="py-2 text-right tabular-nums">{hotspot.mean_switches ?? "–"}</td>
                 <td className="py-2 text-right">
+                  {hotspot.frustrated_sessions > 0 && (
+                    <SaveFindingButton
+                      source={{
+                        kind: "hotspot",
+                        journey_id: journeyId,
+                        step_index: hotspot.index,
+                        ...(cohort ? { cohort } : {}),
+                        ...(variant ? { variant } : {}),
+                      }}
+                      defaultTitle={`People struggle at ${hotspot.step}`}
+                    />
+                  )}
                   {hotspot.frustrated_sessions > 0 && (
                     <Button size="sm" variant="ghost" onClick={() => setPlaying(hotspot.index)}>
                       <Play data-icon="inline-start" className="size-3.5" />

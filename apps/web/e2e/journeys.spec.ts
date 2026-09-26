@@ -33,7 +33,7 @@ test("files a session under project > goal > journey with a participant and vari
   const { task: journey } = await post("/api/tasks", { goal_id: goal.id, name: names.journey })
 
   await page.reload()
-  await expect(page.getByRole("link", { name: names.project })).toBeVisible()
+  await expect(page.getByRole("link", { name: names.project, exact: true })).toBeVisible()
   await expect(page.getByText(names.goal)).toBeVisible()
   await page.getByRole("link", { name: new RegExp(names.journey) }).click()
 

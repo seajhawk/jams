@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { RotateCcw, Trophy } from "lucide-react"
 
+import { SaveFindingButton } from "@/components/projects/SaveFindingButton"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { GoalJourneyResult } from "@/lib/comparisons"
@@ -110,7 +111,15 @@ export function GoalView({ goalId }: { goalId: string }) {
 
       <section className="rounded-lg border bg-card">
         <header className="border-b px-5 py-3">
-          <h2 className="text-sm font-medium">Which way is easiest?</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-medium">Which way is easiest?</h2>
+            {measured.length > 1 && (
+              <SaveFindingButton
+                source={{ kind: "leaderboard", goal_id: data.goal.id }}
+                defaultTitle={`Easiest way to ${data.goal.name}`}
+              />
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             Journeys ranked by median Effort Score, each compared with the easiest.
             {data.excluded > 0 &&

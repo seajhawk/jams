@@ -221,6 +221,29 @@ export const variants = pgTable(
   ]
 )
 
+/**
+ * A saved insight (U4): a comparison, hotspot or leaderboard frozen with the numbers and verdict as
+ * they were, so it means the same thing next month. The snapshot is computed server-side.
+ */
+export const findings = pgTable(
+  "findings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    title: text("title").notNull(),
+    note: text("note"),
+    kind: text("kind").notNull(),
+    source: jsonb("source").$type<Record<string, unknown>>().notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("findings_org_id_created_at_idx").on(table.orgId, table.createdAt.desc()),
+    check("findings_kind_check", sql`${table.kind} in ('comparison', 'hotspot', 'leaderboard')`),
+  ]
+)
+
 export const videos = pgTable(
   "videos",
   {
