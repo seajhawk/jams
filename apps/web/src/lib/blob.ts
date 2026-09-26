@@ -31,7 +31,9 @@ type SasResult = {
 export class BlobFinalizationError extends Error {
   constructor(
     message: string,
-    readonly status: 400 | 409
+    readonly status: 400 | 409,
+    /** True when the uploaded blob broke a size rule and has been deleted. */
+    readonly rejected = false
   ) {
     super(message)
     this.name = "BlobFinalizationError"
@@ -300,8 +302,9 @@ export async function blobStats(blobPath: string) {
  */
 export async function finalizeBlob(
   sourcePath: string,
-  expectedSize: number | null
-): Promise<{ blobPath: string }> {
+  expectedSize: number | null,
+  options: { maxBytes?: number } = {}
+): Promise<{ blobPath: string; sizeBytes: number }> {
   assertSafeBlobPath(sourcePath)
 
   const container = await videosContainerClient()
@@ -316,10 +319,20 @@ export async function finalizeBlob(
     throw error
   }
 
-  if (expectedSize !== null && properties.contentLength !== expectedSize) {
+  // The write SAS cannot cap what a client uploads, so this is the authoritative size check. A
+  // blob that breaks it is deleted rather than left to accumulate storage cost.
+  const actualSize = properties.contentLength
+  const sizeMismatch = expectedSize !== null && actualSize !== expectedSize
+  const oversize =
+    options.maxBytes !== undefined && (actualSize === undefined || actualSize > options.maxBytes)
+  if (sizeMismatch || oversize) {
+    await source.deleteIfExists({ deleteSnapshots: "include" })
     throw new BlobFinalizationError(
-      "Uploaded blob size does not match requested size",
-      400
+      sizeMismatch
+        ? "Uploaded blob size does not match requested size"
+        : "Uploaded blob is larger than the upload limit",
+      400,
+      true
     )
   }
   if (!properties.etag) {
@@ -356,5 +369,18 @@ export async function finalizeBlob(
     throw error
   }
 
-  return { blobPath: destinationPath }
+  return { blobPath: destinationPath, sizeBytes: actualSize ?? 0 }
+}
+
+/**
+ * Deletes one server-known blob (and its snapshots) from the videos container. Returns false if
+ * it did not exist. Used to remove client-writable upload paths after their SAS has expired.
+ */
+export async function deleteVideoBlob(blobPath: string): Promise<boolean> {
+  assertSafeBlobPath(blobPath)
+  const container = await videosContainerClient()
+  const result = await container
+    .getBlockBlobClient(blobPath)
+    .deleteIfExists({ deleteSnapshots: "include", abortSignal: AbortSignal.timeout(BLOB_REQUEST_TIMEOUT_MS) })
+  return result.succeeded
 }

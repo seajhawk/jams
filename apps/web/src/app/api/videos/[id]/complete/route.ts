@@ -5,6 +5,7 @@ import { z } from "zod"
 import { videos } from "@/db/schema"
 import { handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
 import { BlobFinalizationError, finalizeBlob } from "@/lib/blob"
+import { limitPolicyForOrg } from "@/lib/limits"
 import { serializeVideo } from "@/lib/video-response"
 import { completeVideoSchema } from "@/lib/videos"
 import { withOrg } from "@/lib/with-org"
@@ -25,7 +26,7 @@ export async function POST(
 
     const body = await parseJsonBody(request, completeVideoSchema)
 
-    return await withOrg(async ({ scopedDb }) => {
+    return await withOrg(async ({ orgId, scopedDb }) => {
       const [video] = await scopedDb.db
         .select()
         .from(videos)
@@ -61,11 +62,50 @@ export async function POST(
         return jsonError("Video is not awaiting upload completion", 409)
       }
 
+      const policy = limitPolicyForOrg(orgId)
+      const markFailed = () =>
+        scopedDb.db
+          .update(videos)
+          .set({ status: "failed" })
+          .where(scopedDb.orgFilter(videos, eq(videos.id, id)))
+
+      // The client measured the duration, so this is advisory; the worker's probe is the
+      // authoritative check. Refusing here spares an upload the user would see fail later.
+      if (body.duration_ms > policy.upload.maxDurationMs) {
+        await markFailed()
+        return jsonError(
+          `Recording is longer than the ${policy.upload.maxDurationMs / 60_000}-minute limit`,
+          400
+        )
+      }
+
       // Client SAS credentials remain scoped to the upload paths. Readers and
       // analysis workers switch to server-owned copies only after both complete.
-      const original = await finalizeBlob(video.blobPath, video.sizeBytes)
-      const poster = body.poster_uploaded && video.posterBlobPath
-        ? await finalizeBlob(video.posterBlobPath, null) : null
+      let original: { blobPath: string }
+      try {
+        original = await finalizeBlob(video.blobPath, video.sizeBytes, {
+          maxBytes: policy.upload.maxBytes,
+        })
+      } catch (error) {
+        // A blob that broke the size rules is already deleted. Record the failure in this
+        // transaction so the recording stops waiting for completion.
+        if (error instanceof BlobFinalizationError && error.rejected) {
+          await markFailed()
+          return jsonError(error.message, error.status)
+        }
+        throw error
+      }
+      let poster: { blobPath: string } | null = null
+      if (body.poster_uploaded && video.posterBlobPath) {
+        try {
+          poster = await finalizeBlob(video.posterBlobPath, null, {
+            maxBytes: policy.upload.maxPosterBytes,
+          })
+        } catch (error) {
+          // An oversized poster is deleted and dropped; the worker extracts its own poster.
+          if (!(error instanceof BlobFinalizationError && error.rejected)) throw error
+        }
+      }
 
       const [updated] = await scopedDb.db
         .update(videos)

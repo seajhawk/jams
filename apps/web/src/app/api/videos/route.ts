@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     const body = await parseJsonBody(request, createVideoSchema)
 
     return await withOrg(async ({ orgId, userId, scopedDb }) => {
-      await assertUploadAdmission(scopedDb, body.size_bytes)
+      await assertUploadAdmission(scopedDb, body.size_bytes, { durationMs: body.duration_ms })
 
       if (body.task_id) {
         const [task] = await scopedDb.db
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
         },
         { status: 201 }
       )
-    })
+    }, { rateLimit: "upload_create" })
   } catch (error) {
     return handleRouteError(error)
   }
