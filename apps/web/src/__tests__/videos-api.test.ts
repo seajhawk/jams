@@ -136,6 +136,8 @@ function videoRow(overrides: Partial<VideoRow> = {}): VideoRow {
     id: "8c980f72-91f2-4778-bf2c-57c6f72f9b40",
     orgId: "org_test",
     taskId: null,
+    participantId: null,
+    variantId: null,
     title: "Checkout flow",
     blobPath: "org_test/8c980f72-91f2-4778-bf2c-57c6f72f9b40/original.mp4",
     posterBlobPath: "org_test/8c980f72-91f2-4778-bf2c-57c6f72f9b40/poster.jpg",

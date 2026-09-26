@@ -120,8 +120,9 @@ export const userProvisioningLocks = pgTable("user_provisioning_locks", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const tasks = pgTable(
-  "tasks",
+/** A product or product area. Top of the customer's hierarchy inside a workspace (U1). */
+export const projects = pgTable(
+  "projects",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     orgId: text("org_id").notNull(),
@@ -130,8 +131,93 @@ export const tasks = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("tasks_org_id_name_idx").on(table.orgId, table.name),
+    uniqueIndex("projects_org_id_name_idx").on(table.orgId, table.name),
+    index("projects_org_id_idx").on(table.orgId),
+  ]
+)
+
+/** A job to be done ("Get my code running in the cloud"), shown in the UI as a Goal. */
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    successCriterion: text("success_criterion"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("goals_project_id_name_idx").on(table.projectId, table.name),
+    index("goals_org_id_idx").on(table.orgId),
+  ]
+)
+
+/**
+ * A journey: one way to get a goal done ("Deploy from VS Code"). The SQL table keeps its original
+ * name `tasks` so existing routes, runs and data keep working; the UI calls it a Journey.
+ */
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    goalId: uuid("goal_id").references(() => goals.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Ordered step names; empty when the journey declares none. */
+    steps: jsonb("steps").$type<string[]>().notNull().default([]),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tasks_goal_id_name_idx").on(table.goalId, table.name),
+    // Journeys created by older clients have no goal; keep their names unique per workspace.
+    uniqueIndex("tasks_org_id_name_ungrouped_idx")
+      .on(table.orgId, table.name)
+      .where(sql`${table.goalId} is null`),
     index("tasks_org_id_idx").on(table.orgId),
+    index("tasks_goal_id_idx").on(table.goalId),
+    check("tasks_status_check", sql`${table.status} in ('active', 'retired')`),
+  ]
+)
+
+/** A pseudonymous person who performs journeys ("P07"), tagged with cohorts (beginner, expert). */
+export const participants = pgTable(
+  "participants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    label: text("label").notNull(),
+    cohorts: text("cohorts").array().notNull().default(sql`'{}'::text[]`),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("participants_org_id_label_idx").on(table.orgId, sql`lower(${table.label})`),
+    index("participants_org_id_idx").on(table.orgId),
+  ]
+)
+
+/** A variant of a journey: an A/B arm, a build, or before/after a fix. */
+export const variants = pgTable(
+  "variants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: text("org_id").notNull(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    build: text("build"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("variants_task_id_name_idx").on(table.taskId, table.name),
+    index("variants_org_id_idx").on(table.orgId),
   ]
 )
 
@@ -153,6 +239,10 @@ export const videos = pgTable(
     hasAudio: boolean("has_audio"),
     subjectLabel: text("subject_label"),
     variantLabel: text("variant_label"),
+    participantId: uuid("participant_id").references(() => participants.id, {
+      onDelete: "set null",
+    }),
+    variantId: uuid("variant_id").references(() => variants.id, { onDelete: "set null" }),
     status: videoStatusEnum("status").notNull().default("uploading"),
     uploadedBy: text("uploaded_by").notNull(),
     // Hidden from the library when set. Archiving only hides: the recording, its runs, reports and
@@ -202,6 +292,9 @@ export const analysisRuns = pgTable(
     configSource: text("config_source"),
     pipelineVersion: text("pipeline_version").notNull(),
     providerVersions: jsonb("provider_versions").notNull().default({}),
+    /** Everything that changes the numbers (providers, models, score formula); written by the worker. */
+    fingerprint: jsonb("fingerprint").$type<Record<string, unknown>>(),
+    fingerprintHash: text("fingerprint_hash"),
     providerResults: jsonb("provider_results").notNull().default({}),
     status: analysisStatusEnum("status").notNull().default("queued"),
     stage: text("stage").notNull().default("queued"),
