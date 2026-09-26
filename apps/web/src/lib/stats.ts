@@ -115,17 +115,19 @@ export function compareGroups(
 }
 
 /**
- * Comparisons use one scoring definition: the fingerprint of the newest scored analysis. Sessions
- * scored under any other (or unrecorded) definition are excluded and counted.
+ * Comparisons use one scoring definition: the fingerprint of the newest scored analysis that
+ * recorded one. Sessions scored under any other definition, or with no recorded fingerprint, are
+ * excluded and counted; unrecorded definitions are never comparable, even with each other.
  */
 export function splitByReferenceFingerprint<
   T extends { analysis: { total: number | null; fingerprint_hash: string | null; created_at: string } | null },
 >(sessions: T[]) {
   const scored = sessions.filter((session) => session.analysis?.total != null)
-  const newest = [...scored].sort((x, y) =>
-    (y.analysis!.created_at ?? "").localeCompare(x.analysis!.created_at ?? "")
-  )[0]
+  const newest = scored
+    .filter((session) => session.analysis!.fingerprint_hash)
+    .sort((x, y) => (y.analysis!.created_at ?? "").localeCompare(x.analysis!.created_at ?? ""))[0]
   const reference = newest?.analysis?.fingerprint_hash ?? null
-  const included = scored.filter((session) => session.analysis!.fingerprint_hash === reference)
+  const included =
+    reference === null ? [] : scored.filter((session) => session.analysis!.fingerprint_hash === reference)
   return { reference, included, excluded: scored.length - included.length }
 }

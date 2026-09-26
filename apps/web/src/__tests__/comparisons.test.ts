@@ -70,6 +70,13 @@ describe("compareJourneysOfGoal", () => {
   })
 })
 
+describe("outdatedSessions with only legacy analyses", () => {
+  it("offers every scored session for re-analysis when no definition was recorded", () => {
+    const legacy = [session(40, { hash: null }), session(50, { hash: null })]
+    expect(outdatedSessions(legacy)).toHaveLength(2)
+  })
+})
+
 describe("outdatedSessions", () => {
   it("picks never-analyzed, failed and old-definition sessions, and leaves in-flight ones", () => {
     const old = session(40, { hash: "old" })

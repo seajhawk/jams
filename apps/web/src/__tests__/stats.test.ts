@@ -81,4 +81,18 @@ describe("splitByReferenceFingerprint", () => {
     expect(included.map((s) => s.analysis!.total)).toEqual([40, 45])
     expect(excluded).toBe(1)
   })
+
+  it("never uses an unrecorded definition as the reference, even when it is the newest", () => {
+    const sessions = [
+      session(40, "fp", "2026-09-20T00:00:00Z"),
+      session(30, null, "2026-09-26T00:00:00Z"),
+      session(35, null, "2026-09-25T00:00:00Z"),
+    ]
+    const { reference, included, excluded } = splitByReferenceFingerprint(sessions)
+    expect(reference).toBe("fp")
+    expect(included).toHaveLength(1)
+    expect(excluded).toBe(2)
+    const legacyOnly = splitByReferenceFingerprint(sessions.slice(1))
+    expect(legacyOnly).toMatchObject({ reference: null, included: [], excluded: 2 })
+  })
 })
