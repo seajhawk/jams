@@ -28,6 +28,9 @@ export const analysisConfigSchema = z
     transcription: immutableEnabledProviderSchema.default({ enabled: true }),
     sentiment: configurableProviderSchema
       .extend({
+        // Worker registry ids (worker/src/jams_worker/providers/sentiment_models.py). Omitted =
+        // the worker's default model. "remote" is configured on the worker by environment only.
+        model: z.enum(["roberta-3class", "sst2", "vader", "remote"]).optional(),
         fallback: z.enum(["none", "vader"]).default("none"),
       })
       .default({ enabled: true, fallback: "none" }),

@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 from jams_worker import ffmpeg
-from jams_worker.providers import sentiment, transcription
+from jams_worker.providers import sentiment_models, transcription
 
 
 def prepare_runtime(*, prewarm_models: bool = True) -> tuple[str, str]:
@@ -19,9 +19,8 @@ def prepare_runtime(*, prewarm_models: bool = True) -> tuple[str, str]:
     if prewarm_models:
         model, _model_sha256 = transcription.load_model(transcription.MODEL_NAME)
         del model
-        model_path, tokenizer_path = sentiment._download_model()
-        if not model_path.is_file() or not tokenizer_path.is_file():
-            raise RuntimeError("sentiment model preparation did not produce required files")
+        # The image bakes in the default local model; remote or alternate models prepare on use.
+        sentiment_models.get_model(sentiment_models.DEFAULT_MODEL_ID).prepare()
 
     return ffmpeg_path, ffprobe_path
 

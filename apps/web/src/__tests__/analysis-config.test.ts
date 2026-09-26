@@ -34,6 +34,19 @@ describe("analysis config schema", () => {
     }
   })
 
+  it("accepts a known sentiment model and rejects unknown ones", () => {
+    expect(analysisConfigSchema.parse({ sentiment: { model: "vader" } }).sentiment).toEqual({
+      enabled: true,
+      model: "vader",
+      fallback: "none",
+    })
+    const result = analysisConfigSchema.safeParse({ sentiment: { model: "gpt-anything" } })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(formatAnalysisConfigError(result.error)).toContain("sentiment.model")
+    }
+  })
+
   it("exports a displayable JSON Schema", () => {
     expect(analysisConfigJsonSchema).toMatchObject({
       $schema: "http://json-schema.org/draft-07/schema#",

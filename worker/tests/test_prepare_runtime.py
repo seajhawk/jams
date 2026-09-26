@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from jams_worker import ffmpeg
-from jams_worker.providers import sentiment, transcription
+from jams_worker.providers import sentiment_models, transcription
 from scripts.prepare_runtime import prepare_runtime
 
 
@@ -26,10 +26,20 @@ def test_prepare_runtime_prefetches_ffmpeg_and_whisper(
         "load_model",
         lambda model_name: calls.append(model_name) or (object(), "sha"),
     )
-    monkeypatch.setattr(sentiment, "_download_model", lambda: (ffmpeg_bin, ffprobe_bin))
+    class FakeSentimentModel:
+        def prepare(self) -> None:
+            calls.append("sentiment:prepare")
+
+    prepared: list[str] = []
+    monkeypatch.setattr(
+        sentiment_models,
+        "get_model",
+        lambda model_id: prepared.append(model_id) or FakeSentimentModel(),
+    )
 
     assert prepare_runtime() == (str(ffmpeg_bin), str(ffprobe_bin))
-    assert calls == [transcription.MODEL_NAME]
+    assert calls == [transcription.MODEL_NAME, "sentiment:prepare"]
+    assert prepared == [sentiment_models.DEFAULT_MODEL_ID]
 
 
 def test_prepare_runtime_can_skip_model_download(
