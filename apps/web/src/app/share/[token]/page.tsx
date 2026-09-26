@@ -10,6 +10,7 @@ import {
 } from "@/lib/report-assembly"
 import { bindOrgToTransaction, withDbTransaction } from "@/lib/with-org"
 import { ReportShell } from "@/components/report/ReportShell"
+import { publicShareLinksEnabled } from "@/lib/contact"
 import { isPreviewUserAllowed } from "@/lib/preview-access"
 
 const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/
@@ -28,7 +29,10 @@ export default async function SharedReportPage({
 }: {
   params: Promise<{ token: string }>
 }) {
-  if (process.env.JAMS_PREVIEW_USER_IDS !== undefined) {
+  // During the invitation-only preview, share links open only for invited accounts unless Chris
+  // turns on public share links (JAMS_PUBLIC_SHARE_LINKS=1). The token is still validated below
+  // and RLS reveals only the link whose token was presented.
+  if (process.env.JAMS_PREVIEW_USER_IDS !== undefined && !publicShareLinksEnabled()) {
     const { userId } = await auth()
     if (!isPreviewUserAllowed(userId)) notFound()
   }

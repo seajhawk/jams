@@ -62,7 +62,7 @@ export function ReportShell({
   const playMoment = useCallback((tMs: number) => playFrom(playbackStartMs(tMs)), [playFrom])
 
   useEffect(() => {
-    if (demo) toast.info('Demo report — upload your own video soon')
+    if (demo) toast.info('Example report. Upload a recording from your library to see your own.')
   }, [demo])
 
   // Keyboard shortcuts

@@ -9,6 +9,7 @@ import {
   serializeShareLink,
   shareUrl,
 } from "@/lib/share-links"
+import { publicShareLinksEnabled } from "@/lib/contact"
 import { publicOrigin } from "@/lib/public-origin"
 import { withOrg } from "@/lib/with-org"
 
@@ -65,7 +66,14 @@ export async function GET(
         .where(scopedDb.orgFilter(shareLinks, eq(shareLinks.runId, id)))
         .orderBy(desc(shareLinks.createdAt), desc(shareLinks.id))
 
-      return Response.json({ links: rows.map(serializeShareLink) })
+      return Response.json({
+        links: rows.map(serializeShareLink),
+        // Who can open a link today, so the dialog can say so plainly (preview review B4).
+        audience:
+          process.env.JAMS_PREVIEW_USER_IDS !== undefined && !publicShareLinksEnabled()
+            ? "invited_accounts"
+            : "anyone_with_link",
+      })
     })
   } catch (error) {
     return handleRouteError(error)
