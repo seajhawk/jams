@@ -34,12 +34,20 @@ Sentiment model cache:
 - Default path: `%USERPROFILE%\.cache\jams-worker\sentiment` on Windows, or
   `~/.cache/jams-worker/sentiment` elsewhere.
 - Override with `JAMS_SENTIMENT_MODEL_CACHE`.
-- The provider downloads the pinned
-  `Xenova/twitter-roberta-base-sentiment-latest (three-class: negative/neutral/positive)` revision
-  `f3ec4d0925f90c3ca7ee7814f52d6ee7cf180445` on first use and runs
-  `onnx/model_int8.onnx` with ONNX Runtime CPU. Build images may pre-warm this
-  cache by importing `jams_worker.providers.sentiment` and calling
-  `classify_onnx(["cache warmup"])`.
+- Models are registered in `jams_worker/providers/sentiment_models.py` behind one
+  `SentimentModel` interface. Ids: `roberta-3class` (default:
+  `Xenova/twitter-roberta-base-sentiment-latest`, three-class, revision
+  `f3ec4d0925f90c3ca7ee7814f52d6ee7cf180445`, `onnx/model_int8.onnx` on ONNX Runtime CPU),
+  `sst2` (the previous two-class model, for reproducing old runs), `vader`, and `remote`.
+- Selection: the run's `sentiment.model`, then `JAMS_SENTIMENT_MODEL`, then the default.
+  `sentiment.fallback: "vader"` switches to VADER if the chosen model fails, and the run summary
+  records `fallback_used`. Every measure's payload names the model that produced it.
+- `remote` calls any OpenAI-compatible chat-completions endpoint and is never a default:
+  `JAMS_SENTIMENT_REMOTE_URL` (default OpenRouter), `JAMS_SENTIMENT_REMOTE_MODEL`, and
+  `JAMS_SENTIMENT_REMOTE_KEY_ENV` naming the variable that holds the key (default
+  `OPENROUTER_API_KEY`). Tests use an injected transport; CI never calls it.
+- The image bakes in the default model (`scripts/prepare_runtime.py` calls
+  `get_model(DEFAULT_MODEL_ID).prepare()`); the container smoke test classifies offline.
 
 Optional LLM segment naming:
 

@@ -14,7 +14,8 @@ import { expectAppReady, signInE2eUser } from "./helpers"
  *
  * A recording already in the library under the same title, whose latest run finished, is reused
  * rather than uploaded again (preview quotas count analyses). Set JAMS_UPLOAD_REUSE=0 to force a
- * fresh upload and analysis.
+ * fresh upload and analysis, or JAMS_UPLOAD_RERUN=1 to analyze the existing recording again (for
+ * comparing a model or config change on the same video).
  */
 const uploadFile = process.env.JAMS_UPLOAD_FILE
 const reportOut = process.env.JAMS_UPLOAD_OUT
@@ -36,13 +37,28 @@ test.describe("submit a recording through the website", () => {
       const r = await fetch("/api/videos")
       return ((await r.json()) as { videos: LibraryVideo[] }).videos
     })
+    const rerun = process.env.JAMS_UPLOAD_RERUN === "1"
     const existing = process.env.JAMS_UPLOAD_REUSE === "0"
       ? undefined
-      : library.find((v) => v.title === title && ["succeeded", "partial"].includes(v.latest_run?.status ?? ""))
+      : library.find((v) =>
+          v.title === title && (rerun || ["succeeded", "partial"].includes(v.latest_run?.status ?? "")))
 
     let videoId: string
     let runId: string
-    if (existing) {
+    if (existing && rerun) {
+      videoId = existing.id
+      const created = await page.evaluate(async (id) => {
+        const r = await fetch("/api/analyses", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ video_id: id }),
+        })
+        return { status: r.status, body: (await r.json()) as { analysis?: { id: string } } }
+      }, videoId)
+      expect(created.status, JSON.stringify(created.body)).toBe(201)
+      runId = created.body.analysis!.id
+      console.log(`re-analyzing ${title}: video ${videoId}, new run ${runId}`)
+    } else if (existing) {
       videoId = existing.id
       runId = existing.latest_run!.id
       console.log(`reusing ${title}: video ${videoId}, run ${runId}`)

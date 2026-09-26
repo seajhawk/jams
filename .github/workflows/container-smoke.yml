@@ -47,4 +47,4 @@ jobs:
       - name: Verify assets and provider imports without network access
         run: |
           test "$(docker inspect --format '{{.Config.User}}' jams-worker:smoke)" = jams
-          docker run --rm --network none --entrypoint python jams-worker:smoke -c "from jams_worker.ffmpeg import ffmpeg_paths; from jams_worker.providers.transcription import load_model; from jams_worker.providers.sentiment import classify_onnx; import cv2; print(ffmpeg_paths()); model, digest = load_model(); assert digest; result = classify_onnx(['This works well.']); assert result and result[0].method == 'onnx'; print('Offline worker assets ready')"
+          docker run --rm --network none --entrypoint python jams-worker:smoke -c "from jams_worker.ffmpeg import ffmpeg_paths; from jams_worker.providers.transcription import load_model; from jams_worker.providers.sentiment_models import DEFAULT_MODEL_ID, get_model; import cv2; print(ffmpeg_paths()); model, digest = load_model(); assert digest; result = get_model(DEFAULT_MODEL_ID).classify(['This works well.']); assert result and result[0].method == 'onnx' and result[0].label == 'POSITIVE'; print('Offline worker assets ready')"
