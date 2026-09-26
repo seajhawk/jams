@@ -52,3 +52,36 @@ committed and pushed after it is validated, so Chris can pick up from his laptop
 - The cloud session hardening against abuse (branch `hardening-abuse`) will open its own PR.
 - Reply-and-resolve helper for review threads:
   `C:\Users\chris\AppData\Local\Temp\claude\D--git-jams\2ee34531-fc5d-40a5-bb34-553fcfd4be24\scratchpad\reply_resolve.sh PR COMMENT_ID "message"`.
+
+## B6 design (Claude, patent-core; decided 2026-09-26)
+
+Work on branch `honest-report` from `main`. Scoring changes must stay identical in
+`worker/src/jams_worker/effort_score.py` and `apps/web/src/lib/effort-score.ts` (parity tests:
+`worker/tests/test_effort_score.py`, the web effort-score tests, and `fixtures/demo-report.v1.json`).
+
+1. **Speech is not physical.** `spoken_word` moves from category `physical` to `speech` in
+   `KIND_CATEGORY` (both scorers). Physical then holds only clicks, keypresses and scrolls (weight 0
+   by default), so the default report shows Physical as "Not measured".
+2. **Not measured is not zero.** `normalize()` adds `measured: boolean` per kind:
+   - `spoken_word`, `utterance`: measured iff the video has audio (`has_audio`); audio with no speech
+     is a real 0, not missing.
+   - `sentiment`: measured iff at least one `sentiment` measure exists (nothing to classify otherwise).
+   - `context_switch`, `time_segment`: always measured. `clicks`, `keypresses`, `scrolls`: measured
+     iff at least one measure of that kind exists.
+   `score()` uses only kinds with weight > 0 AND measured, in both numerator and denominator. A
+   category with no such kind is `null` ("Not measured"); `total` is `null` if nothing is active.
+3. **Storage and contract.** `effort_scores` integer columns stay NOT NULL (0 when not measured);
+   `breakdown` gains `measured` per kind and a `components_measured` map. `report-contract.ts`
+   components and total become `number | null`; report assembly maps not-measured to `null` from the
+   breakdown. Old stored rows without `measured` are treated as measured (unchanged rendering).
+   Bump `SCORE_FORMULA_VERSION` in `effort_score.py` (it feeds the U1 fingerprint once merged).
+4. **Tests.** A silent recording (no audio, no utterances) scores the same total as the same
+   measures without the speech kinds, never lower because of zeros; parity between Python and
+   TypeScript on the demo fixture and on a silent fixture; spoken_word contributes to speech, not
+   physical.
+5. **UI.** "Experimental" badge next to the Effort Score dial with one line ("A relative indicator
+   for comparing sessions of the same task. Not a validated measure of workload."); components show
+   "Not measured" for null; weight-0 kinds hidden in the Measures tab and timeline behind "Show
+   experimental signals"; wording: "narration sentiment", and "Strongly negative narration"
+   instead of "Frustrated" in Highlights (`report-moments.ts`); plain-word run status instead of
+   "succeeded"/"partial".
