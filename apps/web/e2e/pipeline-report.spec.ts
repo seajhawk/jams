@@ -74,7 +74,8 @@ test.describe("real upload to worker report", () => {
     await expectAppReady(page)
 
     await page.getByRole("button", { name: "Upload journey" }).first().click()
-    await page.getByTestId("upload-file-input").setInputFiles(fixturePath)
+    // An empty library also renders the empty state's own upload dialog; use the header's input.
+    await page.getByTestId("upload-file-input").first().setInputFiles(fixturePath)
     await expect(page.getByLabel("Title")).toHaveValue(fixtureTitle)
     const createdVideoPromise = page.waitForResponse((response) =>
       response.url().endsWith("/api/videos") && response.request().method() === "POST",
