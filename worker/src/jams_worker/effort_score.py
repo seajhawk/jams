@@ -24,6 +24,10 @@ KIND_CATEGORY = {
 # lines slightly below zero, which -0.15 counted as negative. Keep in sync with effort-score.ts.
 NEGATIVE_SENTIMENT_THRESHOLD = -0.3
 
+# Bump on any change to how scores are computed from measures (thresholds, scales, weighting
+# rules). Recorded in every analysis fingerprint so old and new scores are never compared blindly.
+SCORE_FORMULA_VERSION = "2026-09-26"
+
 SCORE_KIND_ORDER = [
     "clicks",
     "context_switch",

@@ -85,7 +85,7 @@ U2); re-analysis is offered, never automatic (U2); Library stays as **All sessio
 ## Progress
 
 - [x] Schema + migration 0015 (+ RLS, grants, backfill) and snapshot. Verified on local Postgres 16: backfill on seeded pre-0015 data (case/space dedupe, per-org isolation, no-task variants skipped), idempotent re-run, RLS catalog test covers the new tables (fails when one is unprotected).
-- [ ] Worker fingerprint
+- [x] Worker fingerprint (`fingerprint.py`, `RunRepository.set_fingerprint` with lease fencing, `SCORE_FORMULA_VERSION`); unit + Postgres integration tests.
 - [ ] APIs: catalog, projects, goals, tasks extensions, participants, variants, videos, journey summary
 - [ ] UI: nav, /projects, /projects/[id], /journeys/[id], upload dialog, session breadcrumbs
 - [ ] Tests: unit, integration (local Postgres), worker, Playwright
