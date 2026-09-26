@@ -109,7 +109,8 @@ test("uploads a tiny video, opens detail playback, and verifies server truth", a
 
   const detailPlayer = page.getByTestId("video-detail-player")
   await expect(detailPlayer).toHaveAttribute("data-src", /sig=/)
-  await expect(page.getByText(taskName, { exact: true })).toBeVisible()
+  // The journey appears in the breadcrumb and the metadata sidebar; either proves the filing.
+  await expect(page.getByText(taskName, { exact: true }).first()).toBeVisible()
 
   expect(truth.status).toBe("uploaded")
   expect(truth.taskName).toBe(taskName)
