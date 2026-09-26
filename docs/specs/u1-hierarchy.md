@@ -88,5 +88,5 @@ U2); re-analysis is offered, never automatic (U2); Library stays as **All sessio
 - [x] Worker fingerprint (`fingerprint.py`, `RunRepository.set_fingerprint` with lease fencing, `SCORE_FORMULA_VERSION`); unit + Postgres integration tests.
 - [x] APIs: catalog, projects, goals, tasks extensions, participants, variants, videos, journey summary (`lib/hierarchy.ts`); unit + Postgres integration tests (latest-run selection, default-profile totals, quartiles, mixed definitions, cross-org isolation and id rejection).
 - [x] UI: nav (Projects, All sessions, Compare), /projects and /projects/[id] (catalog view, inline create, example template), /journeys/[id] (stats, strip plot, cohort/variant filters, mixed-definition notice, pick-two compare), upload dialog (journey picker by goal, participant with cohorts, variant per journey, deep link), session breadcrumbs and chips, /tasks redirect, /compare empty state.
-- [ ] Tests: unit, integration (local Postgres), worker, Playwright
+- [x] Tests: unit, integration (local Postgres), worker, Playwright (`journeys.spec.ts` passes locally; Docker-seeded specs run in CI)
 - [ ] Full suites green; PR opened (not merged)
