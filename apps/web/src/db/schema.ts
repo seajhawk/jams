@@ -243,6 +243,8 @@ export const videos = pgTable(
       onDelete: "set null",
     }),
     variantId: uuid("variant_id").references(() => variants.id, { onDelete: "set null" }),
+    /** Manual step cuts (U3): m-1 ascending times in ms for the journey's m declared steps. */
+    stepBoundariesMs: jsonb("step_boundaries_ms").$type<number[]>(),
     status: videoStatusEnum("status").notNull().default("uploading"),
     uploadedBy: text("uploaded_by").notNull(),
     // Hidden from the library when set. Archiving only hides: the recording, its runs, reports and
