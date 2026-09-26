@@ -37,25 +37,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
       const sessions = (await loadJourneySessions(orgId, scopedDb, [id])).get(id) ?? []
       const { reference } = splitByReferenceFingerprint(sessions)
-      const [referenceRun] = reference
-        ? await scopedDb.db
-            .select({ config: analysisRuns.config })
-            .from(analysisRuns)
-            .where(
-              scopedDb.orgFilter(
-                analysisRuns,
-                and(
-                  eq(analysisRuns.fingerprintHash, reference),
-                  inArray(
-                    analysisRuns.videoId,
-                    sessions.map((session) => session.video_id)
+      // Reuse the reference run's config so re-analysis converges on one definition; with no
+      // reference yet (only legacy, failed or unanalyzed sessions), the newest run's config.
+      const videoIds = sessions.map((session) => session.video_id)
+      const newestRun = async (fingerprint: string | null) =>
+        videoIds.length === 0
+          ? undefined
+          : (
+              await scopedDb.db
+                .select({ config: analysisRuns.config })
+                .from(analysisRuns)
+                .where(
+                  scopedDb.orgFilter(
+                    analysisRuns,
+                    fingerprint
+                      ? and(eq(analysisRuns.fingerprintHash, fingerprint), inArray(analysisRuns.videoId, videoIds))
+                      : inArray(analysisRuns.videoId, videoIds)
                   )
                 )
-              )
-            )
-            .orderBy(desc(analysisRuns.createdAt))
-            .limit(1)
-        : []
+                .orderBy(desc(analysisRuns.createdAt))
+                .limit(1)
+            )[0]
+      const referenceRun = (reference ? await newestRun(reference) : undefined) ?? (await newestRun(null))
 
       const queued: { runId: string; outboxId: string; videoId: string }[] = []
       const skipped: { video_id: string; reason: string }[] = []

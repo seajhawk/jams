@@ -90,12 +90,16 @@ describe("journey sessions and stats (real Postgres, jams_web role)", () => {
     expect(first?.participant).toEqual({ id: ids.participantA, label: "P01", cohorts: ["beginner"] })
     expect(first?.variant).toEqual({ id: ids.variant, name: "B", build: "2026.09.2" })
 
+    // The two scored sessions use different definitions: only the newest one's (fp1, total 60)
+    // is aggregated; the other is excluded rather than averaged in.
     expect(journeyStats(journeySessions)).toEqual({
       session_count: 3,
-      n: 2,
-      median: 50,
-      p25: 45,
-      p75: 55,
+      n: 1,
+      median: 60,
+      p25: 60,
+      p75: 60,
+      reference_fingerprint: "fp1",
+      excluded: 1,
       fingerprint_count: 2,
       mixed_definitions: true,
     })
