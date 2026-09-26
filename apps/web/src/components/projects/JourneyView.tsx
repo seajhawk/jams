@@ -294,8 +294,8 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
                       {session.variant && (
                         <span className="inline-flex items-center gap-1">
                           · <span className="size-2 rounded-full" style={{ background: colorFor(session) }} />
-                          {session.variant.name}
-                          {session.variant.build ? ` (${session.variant.build})` : ""}
+                          <span>{session.variant.name}</span>
+                          {session.variant.build && <span>({session.variant.build})</span>}
                         </span>
                       )}
                     </div>
