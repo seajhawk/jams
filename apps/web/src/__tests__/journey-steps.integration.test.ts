@@ -83,6 +83,25 @@ describe("loadJourneySteps (real Postgres, jams_web role)", () => {
     expect(view.estimated).toBe(false)
   })
 
+  it("suggests step names from an analysis that has segments but no score yet", async () => {
+    const bareJourney = crypto.randomUUID()
+    const video = crypto.randomUUID()
+    const run = crypto.randomUUID()
+    await admin`insert into tasks (id, org_id, name) values (${bareJourney}, ${ORG}, 'Unscored')`
+    await admin`insert into videos (id, org_id, task_id, title, blob_path, uploaded_by, status, duration_ms)
+                values (${video}, ${ORG}, ${bareJourney}, 'partial', 's/partial', 'u', 'uploaded', 30000)`
+    await admin`insert into analysis_runs (id, org_id, video_id, pipeline_version, status)
+                values (${run}, ${ORG}, ${video}, 'test', 'partial')`
+    await admin`insert into segments (org_id, run_id, name, t_start_ms, t_end_ms, source)
+                values (${ORG}, ${run}, 'Open the wizard', 0, 10000, 'audio_cue'),
+                       (${ORG}, ${run}, 'Fill in details', 10000, 30000, 'audio_cue')`
+    const view = await withScopedDb(ORG, (scopedDb) =>
+      loadJourneySteps(ORG, scopedDb, { id: bareJourney, steps: [] }, {})
+    )
+    expect(view.sessions).toEqual([])
+    expect([...view.suggestions].sort()).toEqual(["Fill in details", "Open the wizard"])
+  })
+
   it("shows another workspace nothing", async () => {
     const view = await withScopedDb(OTHER, (scopedDb) =>
       loadJourneySteps(OTHER, scopedDb, { id: journeyId, steps }, {})

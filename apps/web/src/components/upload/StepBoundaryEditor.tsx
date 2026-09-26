@@ -29,9 +29,8 @@ export function StepBoundaryEditor({
   boundariesMs: number[] | null
 }) {
   const router = useRouter()
-  const initial =
-    boundariesMs ?? steps.slice(1).map((_, index) => Math.round((durationMs * (index + 1)) / steps.length))
-  const [values, setValues] = useState(initial.map(toClock))
+  const evenSplit = steps.slice(1).map((_, index) => Math.round((durationMs * (index + 1)) / steps.length))
+  const [values, setValues] = useState((boundariesMs ?? evenSplit).map(toClock))
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -57,8 +56,14 @@ export function StepBoundaryEditor({
   }
   const reset = async () => {
     setBusy(true)
-    await fetch(`/api/videos/${videoId}/step-boundaries`, { method: "DELETE" })
+    const response = await fetch(`/api/videos/${videoId}/step-boundaries`, { method: "DELETE" })
     setBusy(false)
+    if (!response.ok) {
+      setStatus(((await response.json().catch(() => ({}))) as { error?: string }).error ?? "Could not reset")
+      return
+    }
+    // Show the automatic starting point again, so a later Save does not write the old cuts back.
+    setValues(evenSplit.map(toClock))
     setStatus("Back to automatic alignment.")
     router.refresh()
   }

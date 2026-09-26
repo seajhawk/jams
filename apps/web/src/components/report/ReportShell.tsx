@@ -68,22 +68,28 @@ export function ReportShell({
     if (demo) toast.info('Demo report — upload your own video soon')
   }, [demo])
 
-  // A deep link lands on its moment. The player mounts and loads media asynchronously, so wait
-  // (briefly) until it can play; setting currentTime earlier is not reliably honoured.
+  // A deep link lands on its moment however long the media takes to load: wait for the player to
+  // mount, then for it to report it can play (setting currentTime earlier is not reliably
+  // honoured). No deadline; everything is torn down on unmount.
   useEffect(() => {
     if (initialSeekMs === undefined) return
-    let attempts = 0
+    let stopWatching: (() => void) | undefined
+    let done = false
     const timer = window.setInterval(() => {
-      attempts += 1
       const player = playerRef.current
-      if (player?.state.canPlay) {
-        seekTo(initialSeekMs)
-        window.clearInterval(timer)
-      } else if (attempts > 50) {
-        window.clearInterval(timer)
-      }
-    }, 200)
-    return () => window.clearInterval(timer)
+      if (!player) return
+      window.clearInterval(timer)
+      stopWatching = player.subscribe(({ canPlay }) => {
+        if (canPlay && !done) {
+          done = true
+          seekTo(initialSeekMs)
+        }
+      })
+    }, 100)
+    return () => {
+      window.clearInterval(timer)
+      stopWatching?.()
+    }
   }, [initialSeekMs, seekTo])
 
   // Keyboard shortcuts
