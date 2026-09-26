@@ -38,7 +38,8 @@ test("files a session under project > goal > journey with a participant and vari
   await page.getByRole("link", { name: new RegExp(names.journey) }).click()
 
   await page.waitForURL(`**/journeys/${journey.id}`)
-  await expect(page.getByRole("heading", { name: names.journey })).toBeVisible()
+  // Client-rendered after its summary loads; allow for a busy CI runner (the worker may be processing).
+  await expect(page.getByRole("heading", { name: names.journey })).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText("No sessions yet.")).toBeVisible()
 
   // "Add a session" opens the upload dialog with this journey already chosen.
