@@ -1,9 +1,10 @@
 import { and, count, desc, eq, inArray, isNotNull, isNull, type SQL } from "drizzle-orm"
 import { NextResponse, type NextRequest } from "next/server"
 
-import { analysisRuns, tasks, videos } from "@/db/schema"
+import { analysisRuns, participants, tasks, variants, videos } from "@/db/schema"
 import { HttpError, handleRouteError, jsonError, parseJsonBody } from "@/lib/api"
 import { mintUploadSas } from "@/lib/blob"
+import { assertInOrg } from "@/lib/hierarchy"
 import { assertUploadAdmission } from "@/lib/preview-limits"
 import {
   createVideoSchema,
@@ -128,6 +129,22 @@ export async function POST(request: Request) {
         }
       }
 
+      if (body.participant_id) {
+        await assertInOrg(scopedDb, participants, body.participant_id, "Participant")
+      }
+      if (body.variant_id) {
+        // A variant belongs to one journey; it must be the journey this session is filed under.
+        const [variant] = await scopedDb.db
+          .select({ taskId: variants.taskId })
+          .from(variants)
+          .where(scopedDb.orgFilter(variants, eq(variants.id, body.variant_id)))
+          .limit(1)
+        if (!variant) throw new HttpError(400, "Variant not found")
+        if (variant.taskId !== body.task_id) {
+          throw new HttpError(400, "Variant belongs to a different journey")
+        }
+      }
+
       const videoId = crypto.randomUUID()
       const blobPath = originalBlobPath({
         orgId,
@@ -149,6 +166,8 @@ export async function POST(request: Request) {
           contentType: body.content_type,
           subjectLabel: body.subject_label,
           variantLabel: body.variant_label,
+          participantId: body.participant_id,
+          variantId: body.variant_id,
           status: "uploading",
           uploadedBy: userId,
         })
