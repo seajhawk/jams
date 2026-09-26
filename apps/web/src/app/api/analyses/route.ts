@@ -9,6 +9,7 @@ import {
   validateAnalysisConfig,
 } from "@/lib/analyses"
 import { dispatchAnalysisRun, recordDispatchIntent } from "@/lib/analysis-dispatch"
+import { findDuplicateActiveRun } from "@/lib/analysis-idempotency"
 import { PIPELINE_VERSION } from "@/lib/pipeline-version"
 import { assertAnalysisAdmission } from "@/lib/preview-limits"
 import { getOrCreateDefaultProfile } from "@/lib/report-assembly"
@@ -80,6 +81,14 @@ export async function POST(request: Request) {
         throw new HttpError(400, configResult.error)
       }
 
+      // A repeated submit (double click, client retry) returns the run already in flight.
+      const duplicate = await findDuplicateActiveRun(scopedDb, {
+        videoId: body.video_id,
+        config: configResult?.config ?? {},
+        configSource: body.config_source ?? null,
+      })
+      if (duplicate) return { run: duplicate, outboxId: null }
+
       await assertAnalysisAdmission(scopedDb)
 
       // A first upload can arrive before the organization webhook provisions
@@ -120,8 +129,12 @@ export async function POST(request: Request) {
         orgId,
       })
 
-      return { run, outboxId: outbox.id }
-    })
+      return { run, outboxId: outbox.id as string | null }
+    }, { rateLimit: "analysis_create" })
+
+    if (created.outboxId === null) {
+      return NextResponse.json({ analysis: serializeAnalysisRun(created.run) }, { status: 200 })
+    }
 
     // Transaction is committed and visible in PostgreSQL. Dispatch outside the transaction.
     await dispatchAnalysisRun({
