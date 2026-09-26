@@ -36,7 +36,7 @@ next month.
 
 ## Progress
 
-- [ ] Migration 0017 + findings API (+ tests)
+- [x] Migration 0017 + findings API (+ Postgres integration test: server-side snapshot, workspace isolation, change detection; RLS catalog covers the table)
 - [ ] Save-as-finding buttons, /findings page, nav item
 - [ ] Project heat view and workspace summary
 - [ ] Playwright; suites green; PR against `u3-steps-hotspots`
