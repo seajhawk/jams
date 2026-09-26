@@ -297,6 +297,7 @@ export function resolveLimitPolicy(
  * here (from the billing mirror) and pass them to `resolveLimitPolicy`. Until then every
  * organization gets the configured values.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- the plan lookup will use it
 export function limitPolicyForOrg(_orgId: string): LimitPolicy {
   return resolveLimitPolicy()
 }

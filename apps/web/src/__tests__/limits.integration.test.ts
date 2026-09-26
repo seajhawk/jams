@@ -107,9 +107,12 @@ describe.skipIf(!process.env.DATABASE_URL)("usage limits against Postgres", () =
     const orgA = await newOrg()
     const orgB = await newOrg()
     await upload(orgA, 1000, policy({}))
+    // Other suites add and remove rows concurrently, but this org's 1000 bytes stay counted, so a
+    // breaker at 1000 bytes must refuse even one more byte from anyone.
     const since = new Date(Date.now() - 86_400_000).toISOString()
     const [{ bytes }] = await admin<{ bytes: string }[]>`select jams_global_upload_bytes_since(${since}::timestamptz) as bytes`
-    const limits = policy({ JAMS_LIMIT_GLOBAL_UPLOAD_BYTES_PER_DAY: String(Number(bytes)) })
+    expect(Number(bytes)).toBeGreaterThanOrEqual(1000)
+    const limits = policy({ JAMS_LIMIT_GLOBAL_UPLOAD_BYTES_PER_DAY: "1000" })
     const error = await upload(orgB, 1, limits).catch((e) => e)
     expect(error).toMatchObject({ status: 429, code: "global_upload", retryAfterSeconds: 3600 })
   })
