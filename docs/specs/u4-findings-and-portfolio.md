@@ -38,5 +38,5 @@ next month.
 
 - [x] Migration 0017 + findings API (+ Postgres integration test: server-side snapshot, workspace isolation, change detection; RLS catalog covers the table)
 - [x] Save-as-finding buttons (compare panel, hotspot rows, goal leaderboard), /findings page with still-holds check, nav item
-- [ ] Project heat view and workspace summary
-- [ ] Playwright; suites green; PR against `u3-steps-hotspots`
+- [x] Project heat view and workspace summary
+- [x] Playwright (`findings-u4.spec.ts`; all U-series specs pass locally together); web 331 tests, type check and lint clean; PR against `u3-steps-hotspots`

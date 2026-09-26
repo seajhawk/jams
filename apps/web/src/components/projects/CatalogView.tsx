@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 import { AlertTriangle, FolderKanban, Plus, RotateCcw, Route, Sparkles, Target } from "lucide-react"
 
+import { ProjectHeatmap, WorkspaceSummary } from "@/components/projects/PortfolioViews"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,7 @@ interface CatalogJourney {
   steps: string[]
   stats: JourneyStats
   last_session_at: string | null
+  recent_session_count: number
 }
 
 interface CatalogGoal {
@@ -300,6 +302,8 @@ export function CatalogView({ projectId }: { projectId?: string }) {
 
   return (
     <div className="space-y-5">
+      {!projectId && <WorkspaceSummary projects={projects} />}
+      {projectId && projects[0] && <ProjectHeatmap project={projects[0]} />}
       {projects.map((project) => (
         <section key={project.id} className="rounded-lg border bg-card">
           <header className="flex flex-wrap items-start justify-between gap-3 border-b p-5">

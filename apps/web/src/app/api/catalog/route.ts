@@ -8,6 +8,8 @@ import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
 
+const RECENT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+
 /**
  * The workspace's projects → goals → journeys, each journey with session counts and the median
  * of its sessions' latest totals. Journeys created before U1 without a goal appear under
@@ -37,6 +39,9 @@ export async function GET() {
           steps: row.steps,
           stats: journeyStats(journeySessions),
           last_session_at: journeySessions[0]?.created_at ?? null,
+          recent_session_count: journeySessions.filter(
+            (session) => Date.parse(session.created_at) >= Date.now() - RECENT_WINDOW_MS
+          ).length,
         }
       }
 
