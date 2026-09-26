@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import { HttpError } from "@/lib/http-error"
 import { isUnauthorized } from "@/lib/with-org"
 import { PreviewAccessError } from "@/lib/preview-access"
 
-export class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string
-  ) {
-    super(message)
-  }
-}
+export { HttpError }
 
-export function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status })
+export function jsonError(message: string, status: number, retryAfterSeconds?: number) {
+  const headers: Record<string, string> = {}
+  if (retryAfterSeconds !== undefined && Number.isFinite(retryAfterSeconds)) {
+    headers["Retry-After"] = String(Math.max(1, Math.ceil(retryAfterSeconds)))
+  }
+  return NextResponse.json({ error: message }, { status, headers })
 }
 
 export async function parseJsonBody<TSchema extends z.ZodType>(
@@ -56,7 +54,7 @@ export function handleRouteError(error: unknown) {
   }
 
   if (error instanceof HttpError) {
-    return jsonError(error.message, error.status)
+    return jsonError(error.message, error.status, error.retryAfterSeconds)
   }
 
   throw error

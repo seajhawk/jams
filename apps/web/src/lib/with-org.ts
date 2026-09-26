@@ -5,7 +5,9 @@ import type { PgColumn } from "drizzle-orm/pg-core"
 import { db } from "@/db/client"
 import { ensurePersonalOrganization } from "./clerk/personal-org"
 import type { ClerkBackendClient, MirrorStore } from "./clerk/types"
+import type { RateLimitName } from "./limits"
 import { assertPreviewUserAllowed } from "./preview-access"
+import { enforceRateLimit } from "./rate-limit"
 
 type AuthSession = Awaited<ReturnType<typeof auth>>
 type TransactionDb = Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -128,6 +130,11 @@ export async function resolveOrgContext({
   }
 }
 
+export type WithOrgOptions = {
+  /** Per-user request rate limit to enforce after authentication (see `@/lib/limits`). */
+  rateLimit?: RateLimitName
+}
+
 /**
  * Chokepoint for tenant-owned server work.
  *
@@ -144,9 +151,14 @@ export async function resolveOrgContext({
  * }
  */
 export async function withOrg<T>(
-  handler: (context: OrgContext) => Promise<T> | T
+  handler: (context: OrgContext) => Promise<T> | T,
+  options: WithOrgOptions = {}
 ): Promise<T> {
   const { userId, orgId } = await resolveOrgContext()
+  if (options.rateLimit) {
+    // Before the transaction opens: the limiter uses its own pooled connection.
+    await enforceRateLimit(options.rateLimit, `user:${userId}`)
+  }
   return withScopedDb(orgId, (scopedDb) => handler({ userId, orgId, scopedDb }))
 }
 
