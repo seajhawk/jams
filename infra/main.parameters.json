@@ -47,6 +47,51 @@
     "jamsPreviewMaxActiveRuns": {
       "value": "${JAMS_PREVIEW_MAX_ACTIVE_RUNS=2}"
     },
+    "webMinReplicas": {
+      "value": "${WEB_MIN_REPLICAS=0}"
+    },
+    "webMaxReplicas": {
+      "value": "${WEB_MAX_REPLICAS=1}"
+    },
+    "webHttpConcurrency": {
+      "value": "${WEB_HTTP_CONCURRENCY=10}"
+    },
+    "workerMaxExecutions": {
+      "value": "${WORKER_MAX_EXECUTIONS=3}"
+    },
+    "workerParallelism": {
+      "value": "${WORKER_PARALLELISM=1}"
+    },
+    "workerReplicaTimeoutSeconds": {
+      "value": "${WORKER_REPLICA_TIMEOUT_SECONDS=3600}"
+    },
+    "workerPollingIntervalSeconds": {
+      "value": "${WORKER_POLLING_INTERVAL_SECONDS=30}"
+    },
+    "workerDrainMode": {
+      "value": "${WORKER_DRAIN_MODE=true}"
+    },
+    "jamsLimitUploadMaxBytes": {
+      "value": "${JAMS_LIMIT_UPLOAD_MAX_BYTES=2147483648}"
+    },
+    "jamsLimitUploadMaxDurationMs": {
+      "value": "${JAMS_LIMIT_UPLOAD_MAX_DURATION_MS=1200000}"
+    },
+    "jamsLimitOrgStorageBytes": {
+      "value": "${JAMS_LIMIT_ORG_STORAGE_BYTES=10737418240}"
+    },
+    "jamsLimitOrgActiveAnalyses": {
+      "value": "${JAMS_LIMIT_ORG_ACTIVE_ANALYSES=5}"
+    },
+    "jamsLimitOrgAnalysesPerWindow": {
+      "value": "${JAMS_LIMIT_ORG_ANALYSES_PER_WINDOW=50}"
+    },
+    "jamsLimitGlobalActiveAnalyses": {
+      "value": "${JAMS_LIMIT_GLOBAL_ACTIVE_ANALYSES=30}"
+    },
+    "jamsLimitGlobalUploadBytesPerDay": {
+      "value": "${JAMS_LIMIT_GLOBAL_UPLOAD_BYTES_PER_DAY=214748364800}"
+    },
     "webImage": {
       "value": "${SERVICE_WEB_IMAGE_NAME=mcr.microsoft.com/k8se/quickstart:latest}"
     },

@@ -55,6 +55,32 @@ param jamsPreviewMaxAnalyses string = '100'
 @description('JAMS_PREVIEW_MAX_ACTIVE_RUNS override.')
 param jamsPreviewMaxActiveRuns string = '2'
 
+// Scale-out ceilings and usage limits (docs/design/abuse-and-scale-hardening.md). Strings so azd
+// can substitute them from environment values; resources.bicep converts and range-checks them.
+@description('WEB_MIN_REPLICAS: 0 (scale to zero) or 1.')
+param webMinReplicas string = '0'
+@description('WEB_MAX_REPLICAS: 1 or 2 (Postgres connection budget).')
+param webMaxReplicas string = '1'
+@description('WEB_HTTP_CONCURRENCY: concurrent requests per web replica before scaling out.')
+param webHttpConcurrency string = '10'
+@description('WORKER_MAX_EXECUTIONS: 0 to 8 concurrent worker executions (0 pauses analysis).')
+param workerMaxExecutions string = '3'
+@description('WORKER_PARALLELISM: 1 or 2 replicas per execution.')
+param workerParallelism string = '1'
+@description('WORKER_REPLICA_TIMEOUT_SECONDS: 600 to 7200.')
+param workerReplicaTimeoutSeconds string = '3600'
+@description('WORKER_POLLING_INTERVAL_SECONDS: 10 to 300.')
+param workerPollingIntervalSeconds string = '30'
+@description('WORKER_DRAIN_MODE: true makes each execution exit when the queue is empty.')
+param workerDrainMode string = 'true'
+param jamsLimitUploadMaxBytes string = '2147483648'
+param jamsLimitUploadMaxDurationMs string = '1200000'
+param jamsLimitOrgStorageBytes string = '10737418240'
+param jamsLimitOrgActiveAnalyses string = '5'
+param jamsLimitOrgAnalysesPerWindow string = '50'
+param jamsLimitGlobalActiveAnalyses string = '30'
+param jamsLimitGlobalUploadBytesPerDay string = '214748364800'
+
 @description('Full jams-web image reference, e.g. ghcr.io/<org>/jams-web:<tag>. `azd deploy web` overwrites this after building apps/web/Dockerfile.')
 param webImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
@@ -90,6 +116,21 @@ module resources 'resources.bicep' = {
     jamsPreviewMaxActiveRuns: jamsPreviewMaxActiveRuns
     webImage: webImage
     workerImage: workerImage
+    webMinReplicas: int(webMinReplicas)
+    webMaxReplicas: int(webMaxReplicas)
+    webHttpConcurrency: int(webHttpConcurrency)
+    workerMaxExecutions: int(workerMaxExecutions)
+    workerParallelism: int(workerParallelism)
+    workerReplicaTimeoutSeconds: int(workerReplicaTimeoutSeconds)
+    workerPollingIntervalSeconds: int(workerPollingIntervalSeconds)
+    workerDrainMode: bool(workerDrainMode)
+    jamsLimitUploadMaxBytes: jamsLimitUploadMaxBytes
+    jamsLimitUploadMaxDurationMs: jamsLimitUploadMaxDurationMs
+    jamsLimitOrgStorageBytes: jamsLimitOrgStorageBytes
+    jamsLimitOrgActiveAnalyses: jamsLimitOrgActiveAnalyses
+    jamsLimitOrgAnalysesPerWindow: jamsLimitOrgAnalysesPerWindow
+    jamsLimitGlobalActiveAnalyses: jamsLimitGlobalActiveAnalyses
+    jamsLimitGlobalUploadBytesPerDay: jamsLimitGlobalUploadBytesPerDay
   }
 }
 

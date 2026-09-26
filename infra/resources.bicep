@@ -32,6 +32,62 @@ param jamsPreviewMaxActiveRuns string
 param webImage string
 param workerImage string
 
+// ---------------------------------------------------------------------------
+// Scale-out ceilings (docs/design/abuse-and-scale-hardening.md). Defaults are the values this
+// template shipped with. The bounds keep a typo from deploying an unbounded fleet, and they are
+// sized to the B1ms Postgres budget of 35 user connections: each web replica holds up to 13
+// (web pool 10 + admin pool 3) and each worker replica about 2, so keep
+// 13 x webMaxReplicas + 2 x workerMaxExecutions x workerParallelism <= 35.
+// ---------------------------------------------------------------------------
+
+@minValue(0)
+@maxValue(1)
+@description('Web replicas kept warm. 0 scales to zero (cold starts); 1 removes them for about $10-15/month.')
+param webMinReplicas int = 0
+
+@minValue(1)
+@maxValue(2)
+@description('Hard ceiling on web replicas. Capped at 2 by the Postgres connection budget.')
+param webMaxReplicas int = 1
+
+@minValue(1)
+@maxValue(100)
+@description('Concurrent HTTP requests per web replica before another replica is added (the Container Apps default is 10).')
+param webHttpConcurrency int = 10
+
+@minValue(0)
+@maxValue(8)
+@description('Hard ceiling on concurrent worker executions, which bounds worker spend at about $0.43 per execution-hour. 0 pauses analysis (messages wait in the queue).')
+param workerMaxExecutions int = 3
+
+@minValue(1)
+@maxValue(2)
+@description('Replicas per worker execution. Each replica drains the same queue, so this multiplies concurrency like workerMaxExecutions does.')
+param workerParallelism int = 1
+
+@minValue(600)
+@maxValue(7200)
+@description('Seconds before a worker execution is killed. A 20-minute recording takes up to about 40 minutes.')
+param workerReplicaTimeoutSeconds int = 3600
+
+@minValue(10)
+@maxValue(300)
+@description('Seconds between KEDA queue checks when the worker is scaled to zero.')
+param workerPollingIntervalSeconds int = 30
+
+@description('Run the worker with --drain so an execution exits once the queue is empty instead of polling until replicaTimeout (and billing) runs out.')
+param workerDrainMode bool = true
+
+// Usage limits read by apps/web/src/lib/limits.ts (and the shared media limits by the worker).
+// Strings, like the preview limits above, because they are passed through as env values.
+param jamsLimitUploadMaxBytes string = '2147483648'
+param jamsLimitUploadMaxDurationMs string = '1200000'
+param jamsLimitOrgStorageBytes string = '10737418240'
+param jamsLimitOrgActiveAnalyses string = '5'
+param jamsLimitOrgAnalysesPerWindow string = '50'
+param jamsLimitGlobalActiveAnalyses string = '30'
+param jamsLimitGlobalUploadBytesPerDay string = '214748364800'
+
 // Short, readable names for anything scoped only to this resource group.
 // A short uniqueness suffix is added only to the two resources with
 // globally-unique naming requirements (storage account, Postgres server).
@@ -316,6 +372,13 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'JAMS_PREVIEW_MAX_STORAGE_BYTES', value: jamsPreviewMaxStorageBytes }
             { name: 'JAMS_PREVIEW_MAX_ANALYSES', value: jamsPreviewMaxAnalyses }
             { name: 'JAMS_PREVIEW_MAX_ACTIVE_RUNS', value: jamsPreviewMaxActiveRuns }
+            { name: 'JAMS_LIMIT_UPLOAD_MAX_BYTES', value: jamsLimitUploadMaxBytes }
+            { name: 'JAMS_LIMIT_UPLOAD_MAX_DURATION_MS', value: jamsLimitUploadMaxDurationMs }
+            { name: 'JAMS_LIMIT_ORG_STORAGE_BYTES', value: jamsLimitOrgStorageBytes }
+            { name: 'JAMS_LIMIT_ORG_ACTIVE_ANALYSES', value: jamsLimitOrgActiveAnalyses }
+            { name: 'JAMS_LIMIT_ORG_ANALYSES_PER_WINDOW', value: jamsLimitOrgAnalysesPerWindow }
+            { name: 'JAMS_LIMIT_GLOBAL_ACTIVE_ANALYSES', value: jamsLimitGlobalActiveAnalyses }
+            { name: 'JAMS_LIMIT_GLOBAL_UPLOAD_BYTES_PER_DAY', value: jamsLimitGlobalUploadBytesPerDay }
           ]
           probes: [
             {
@@ -331,8 +394,18 @@ resource webApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 0
-        maxReplicas: 1
+        minReplicas: webMinReplicas
+        maxReplicas: webMaxReplicas
+        rules: [
+          {
+            name: 'http-concurrency'
+            http: {
+              metadata: {
+                concurrentRequests: string(webHttpConcurrency)
+              }
+            }
+          }
+        ]
       }
     }
   }
@@ -351,15 +424,15 @@ resource workerJob 'Microsoft.App/jobs@2024-03-01' = {
     workloadProfileName: 'Consumption'
     configuration: {
       triggerType: 'Event'
-      replicaTimeout: 3600
+      replicaTimeout: workerReplicaTimeoutSeconds
       replicaRetryLimit: 1
       eventTriggerConfig: {
-        parallelism: 1
-        replicaCompletionCount: 1
+        parallelism: workerParallelism
+        replicaCompletionCount: workerParallelism
         scale: {
           minExecutions: 0
-          maxExecutions: 3
-          pollingInterval: 30
+          maxExecutions: workerMaxExecutions
+          pollingInterval: workerPollingIntervalSeconds
           rules: [
             {
               name: 'analysis-jobs-queue'
@@ -398,6 +471,7 @@ resource workerJob 'Microsoft.App/jobs@2024-03-01' = {
         {
           name: 'jams-worker'
           image: workerImage
+          args: workerDrainMode ? [ '--drain' ] : []
           resources: {
             cpu: json('4.0')
             memory: '8Gi'
@@ -405,6 +479,8 @@ resource workerJob 'Microsoft.App/jobs@2024-03-01' = {
           env: [
             { name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'azure-storage-connection-string' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
+            { name: 'JAMS_LIMIT_UPLOAD_MAX_BYTES', value: jamsLimitUploadMaxBytes }
+            { name: 'JAMS_LIMIT_UPLOAD_MAX_DURATION_MS', value: jamsLimitUploadMaxDurationMs }
           ]
         }
       ]
