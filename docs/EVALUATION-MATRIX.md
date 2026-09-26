@@ -22,7 +22,7 @@ JEM recordings and deterministic fixtures are the primary evaluation system for 
 | Context switch | AdaptiveDetector plus motion/scroll post-filter | adaptive parameters and dHash fallback; a run can now record an explicit `context_switch.params` variant |
 | Physical activity | `physical.clicks`, `physical.keypresses`, and `physical.scrolls` providers are registered in the worker and emit canonical physical measures | detector parameter variants can be evaluated once JEM sessions include suitable event labels; current controlled-journey reports explicitly exclude these kinds |
 | Transcription | faster-whisper `distil-small.en`, CTranslate2 INT8 | model selection must first become per-run configuration; compare `distil-small.en`, `small.en`, and `base.en` against WER and runtime |
-| Sentiment | Xenova DistilBERT SST-2 INT8 ONNX | deterministic VADER fallback already supported by per-run config |
+| Sentiment | Xenova Xenova twitter-roberta-base-sentiment-latest (three-class: negative/neutral/positive) INT8 ONNX INT8 ONNX | deterministic VADER fallback already supported by per-run config |
 | Segmentation and score | deterministic rules and arithmetic | parameter/config variants, measured against fixed annotations and parity checks |
 
 ## Evaluation rules
@@ -52,3 +52,4 @@ production default. The low-floor variant recovered the two weak controlled
 transitions during diagnostic replay, but it also produced a website-scroll
 candidate in the IANA holdout. It is therefore a candidate to label and compare,
 not the selected production default.
+

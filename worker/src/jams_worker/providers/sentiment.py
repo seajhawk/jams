@@ -14,9 +14,11 @@ import numpy as np
 from jams_worker.pipeline import PipelineContext
 
 PROVIDER_ID = "sentiment"
-PROVIDER_VERSION = "1.0.0"
-MODEL_REPO = "Xenova/distilbert-base-uncased-finetuned-sst-2-english"
-MODEL_REVISION = "0b6928efcb76139cae2c6881d49cda67fe119f42"
+PROVIDER_VERSION = "1.1.0"
+# Three-class (negative/neutral/positive). The two-class SST-2 model it replaced had no neutral
+# class and scored plain narration ("All right, let's stop") as strongly negative.
+MODEL_REPO = "Xenova/twitter-roberta-base-sentiment-latest"
+MODEL_REVISION = "f3ec4d0925f90c3ca7ee7814f52d6ee7cf180445"
 MODEL_FILE = "onnx/model_int8.onnx"
 MAX_TOKENS = 256
 DEFAULT_MODEL_CACHE = Path.home() / ".cache" / "jams-worker" / "sentiment"
@@ -147,6 +149,13 @@ def _onnx_runtime() -> tuple[Any, Any, dict[int, str]]:
     return session, tokenizer, id_to_label
 
 
+def _label_index(id_to_label: dict[int, str], prefix: str) -> int:
+    for index, label in id_to_label.items():
+        if label.lower().startswith(prefix):
+            return index
+    raise RuntimeError(f"sentiment model has no label starting with {prefix!r}: {id_to_label}")
+
+
 def classify_onnx(texts: list[str]) -> list[SentimentPrediction]:
     session, tokenizer, id_to_label = _onnx_runtime()
     input_names = [item.name for item in session.get_inputs()]
@@ -175,13 +184,14 @@ def classify_onnx(texts: list[str]) -> list[SentimentPrediction]:
 
         logits = np.asarray(session.run(None, inputs)[0], dtype=np.float64)
         probabilities = _softmax(logits)[0]
-        negative = float(probabilities[0])
-        positive = float(probabilities[1])
+        negative = float(probabilities[_label_index(id_to_label, "neg")])
+        positive = float(probabilities[_label_index(id_to_label, "pos")])
         label_index = int(np.argmax(probabilities))
         predictions.append(
             SentimentPrediction(
+                # Neutral probability mass pulls the value toward 0 rather than to either pole.
                 value=round(positive - negative, 4),
-                confidence=round(max(negative, positive), 4),
+                confidence=round(float(probabilities[label_index]), 4),
                 label=id_to_label.get(label_index, str(label_index)),
                 negative_probability=round(negative, 6),
                 positive_probability=round(positive, 6),

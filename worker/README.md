@@ -35,8 +35,8 @@ Sentiment model cache:
   `~/.cache/jams-worker/sentiment` elsewhere.
 - Override with `JAMS_SENTIMENT_MODEL_CACHE`.
 - The provider downloads the pinned
-  `Xenova/distilbert-base-uncased-finetuned-sst-2-english` revision
-  `0b6928efcb76139cae2c6881d49cda67fe119f42` on first use and runs
+  `Xenova/twitter-roberta-base-sentiment-latest (three-class: negative/neutral/positive)` revision
+  `f3ec4d0925f90c3ca7ee7814f52d6ee7cf180445` on first use and runs
   `onnx/model_int8.onnx` with ONNX Runtime CPU. Build images may pre-warm this
   cache by importing `jams_worker.providers.sentiment` and calling
   `classify_onnx(["cache warmup"])`.
@@ -82,3 +82,4 @@ Golden fixture generation:
   `scripts/make_fixtures.py`. Transcript/VAD artifacts are generated through the
   real faster-whisper provider only when `JAMS_RUN_WHISPER_TESTS=1` and cached
   weights exist; normal tests record those artifacts as pending.
+

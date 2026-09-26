@@ -42,7 +42,7 @@ Design validated by a 7-agent research + judge-panel workflow (verified Azure pr
 
 **Multi-tenancy:** every tenant row carries `org_id` (Clerk org id). One chokepoint: `withOrg()` wrapper resolves the active org from session claims (never client input) and injects it into every query; worker stamps org_id from the run row. Clerk webhooks (svix-verified) mirror orgs/users into Postgres through a `webhook_events` idempotency ledger. Postgres RLS is a scheduled hardening slice (F9), not MVP.
 
-**Runtime AI cost engineered to $0:** transcription = faster-whisper `distil-small.en` (CTranslate2 INT8, weights baked into image); context switches = PySceneDetect **AdaptiveDetector** (not ContentDetector — fixed thresholds misread scrolling as cuts); sentiment = ONNX-quantized DistilBERT-SST2 on CPU. Exactly **one** optional LLM call in the whole system: feature-flagged Claude Haiku segment-naming (~$0.02/video, default off, always off in CI), which only merges/names deterministically-derived boundaries.
+**Runtime AI cost engineered to $0:** transcription = faster-whisper `distil-small.en` (CTranslate2 INT8, weights baked into image); context switches = PySceneDetect **AdaptiveDetector** (not ContentDetector — fixed thresholds misread scrolling as cuts); sentiment = Xenova twitter-roberta-base-sentiment-latest (three-class: negative/neutral/positive) INT8 ONNX on CPU. Exactly **one** optional LLM call in the whole system: feature-flagged Claude Haiku segment-naming (~$0.02/video, default off, always off in CI), which only merges/names deterministically-derived boundaries.
 
 ### Azure resources
 
@@ -90,7 +90,7 @@ records cleanup intent, returning 202 with storage cleanup queued.
 2. **Probe & normalize** — ffprobe validation, ≤20-min cap with typed errors; **ffmpeg VFR→CFR normalization** (deep-link timestamp integrity is the patent promise); extract 16 kHz mono WAV; poster frame
 3. **Context switches** — PySceneDetect AdaptiveDetector (min_scene_len≈1s, tuned on golden fixtures incl. heavy-scroll and long-idle clips) → `measures kind='context_switch'` + keyframe thumbnail per cut; fallback behind same interface: dHash frame-diff w/ hysteresis
 4. **Transcription** — faster-whisper distil-small.en INT8, Silero VAD, word_timestamps=True → transcript artifact + `utterance` + `spoken_word` measures; no audio → skip dependent stages, finish `partial`. **Hard gate: benchmark on the real 2 vCPU ACA SKU before any latency promise ships**
-5. **Sentiment** — DistilBERT-SST2 ONNX INT8 per utterance → `sentiment` measures (value −1..+1)
+5. **Sentiment** — Xenova twitter-roberta-base-sentiment-latest (three-class: negative/neutral/positive) INT8 ONNX per utterance → `sentiment` measures (value −1..+1)
 6. **Task segmentation** — regex cue pass ("let's get started", "okay next", "done") ∪ context-switch boundaries, rule-merged (min 10s, snap cues to switches within 3s) → `segments` + `time_segment` measures; optional flagged Haiku call only names/merges candidates
 7. **Scoring** — normalize per default weight profile (physical: words/min; cognitive: switch rate + negative-sentiment density + segment count; time: durations) → `effort_scores` snapshot; same formula in TS and Python, parity-tested
 8. **Finalize & failure handling** — delete-then-insert per (run_id, provider_id) = idempotent retries; per-provider try/except → `partial` report with honest banner + one-click retry, never a dead end; crash → queue visibility-timeout redelivery; dequeue_count>3 → poison queue; watchdog for stuck runs
