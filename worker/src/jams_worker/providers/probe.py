@@ -12,12 +12,12 @@ from azure.core.exceptions import ResourceExistsError
 
 from jams_worker import ffmpeg as ffmpeg_tools
 from jams_worker.errors import PipelineError
+from jams_worker.limits import MediaLimits, media_limits
 from jams_worker.media import MediaMetadata
 from jams_worker.pipeline import PipelineContext, log_event
 
 VIDEOS_CONTAINER = "videos"
 DERIVED_CONTAINER = "derived"
-MAX_DURATION_SECONDS = 20 * 60
 
 ProbeResult = MediaMetadata
 
@@ -60,7 +60,14 @@ def _fps(value: str | None) -> float | None:
         return None
 
 
-def probe_file(path: Path) -> MediaMetadata:
+def _minutes(ms: int) -> str:
+    minutes = ms / 60_000
+    return f"{int(minutes)}" if minutes.is_integer() else f"{minutes:.1f}"
+
+
+def probe_file(path: Path, limits: MediaLimits | None = None) -> MediaMetadata:
+    limits = limits or media_limits()
+    max_duration_seconds = limits.max_duration_ms / 1000
     data = _run_json(
         [
             ffmpeg_tools.ffprobe_path(),
@@ -122,14 +129,22 @@ def probe_file(path: Path) -> MediaMetadata:
     else:
         raise PipelineError("corrupt_file", "Video duration is missing")
 
-    if duration_seconds > MAX_DURATION_SECONDS:
-        raise PipelineError("too_long", "Video exceeds the 20 minute limit")
+    too_long_message = f"Video exceeds the {_minutes(limits.max_duration_ms)} minute limit"
+    if duration_seconds > max_duration_seconds:
+        raise PipelineError("too_long", too_long_message)
 
     try:
         width = int(video_stream["width"])
         height = int(video_stream["height"])
     except (KeyError, TypeError, ValueError) as exc:
         raise PipelineError("corrupt_file", "Video dimensions are missing") from exc
+    if width <= 0 or height <= 0:
+        raise PipelineError("corrupt_file", "Video dimensions are missing")
+    if width * height > limits.max_video_pixels:
+        raise PipelineError(
+            "unsupported_media",
+            f"Video resolution {width}x{height} is larger than the supported maximum",
+        )
 
     has_audio = isinstance(audio_stream, dict)
     audio_codec = str(audio_stream.get("codec_name")) if has_audio else None
@@ -152,8 +167,8 @@ def probe_file(path: Path) -> MediaMetadata:
 
     if not math.isfinite(duration_seconds) or duration_seconds <= 0:
         raise PipelineError("corrupt_file", "Video duration must be finite and positive")
-    if duration_seconds > MAX_DURATION_SECONDS:
-        raise PipelineError("too_long", "Video exceeds the 20 minute limit")
+    if duration_seconds > max_duration_seconds:
+        raise PipelineError("too_long", too_long_message)
 
     duration_ms = round(duration_seconds * 1000)
 
@@ -177,9 +192,16 @@ def probe_file(path: Path) -> MediaMetadata:
     )
 
 
-def _download_blob(context: PipelineContext, target: Path) -> None:
+def _download_blob(
+    context: PipelineContext, target: Path, limits: MediaLimits | None = None
+) -> None:
+    limits = limits or media_limits()
     container = context.blob_service_client.get_container_client(VIDEOS_CONTAINER)
     blob = container.get_blob_client(str(context.run["blob_path"]))
+    # Fail before transferring (and filling the replica's disk with) a file over the limit.
+    size = getattr(blob.get_blob_properties(), "size", None)
+    if isinstance(size, int) and size > limits.max_bytes:
+        raise PipelineError("too_large", "Video file is larger than the upload limit")
     with target.open("wb") as file:
         stream = blob.download_blob()
         stream.readinto(file)

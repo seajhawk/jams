@@ -22,7 +22,7 @@ from azure.storage.blob import BlobServiceClient
 from azure.storage.queue import QueueClient
 
 from jams_worker.db import RunRepository
-from jams_worker.errors import PipelineError, StaleLeaseError
+from jams_worker.errors import TERMINAL_ERROR_CODES, PipelineError, StaleLeaseError
 from jams_worker.pipeline import MeasureProvider, PipelineContext, log_event, run_pipeline
 from jams_worker.providers.clicks import ClicksProvider
 from jams_worker.providers.context_switch import ContextSwitchProvider
@@ -40,7 +40,6 @@ DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 300
 DEFAULT_LEASE_DURATION_SECONDS = 300
 DEFAULT_RENEW_INTERVAL_SECONDS = 60
 MAX_DEQUEUE_ATTEMPTS = 3
-TERMINAL_ERROR_CODES = frozenset({"too_long", "corrupt_file"})
 
 
 @dataclass(frozen=True, slots=True)
