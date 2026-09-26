@@ -56,7 +56,7 @@ Design: `docs/design/customer-journeys-ux.md` §4 and §8 (U2). Builds on U1 (PR
 
 ## Progress
 
-- [ ] Stats: bootstrap interval, verdict, fingerprint filtering (+ unit tests)
+- [x] Stats: bootstrap interval, verdict, fingerprint filtering (+ unit tests)
 - [ ] API: journey compare, goal compare, reanalyze (+ integration tests)
 - [ ] UI: journey compare panel, re-analyze button, goal page and links
 - [ ] Playwright; full suites green; PR opened against `u1-hierarchy` (not merged)

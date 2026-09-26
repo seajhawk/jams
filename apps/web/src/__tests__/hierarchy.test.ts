@@ -30,7 +30,7 @@ describe("journeyStats", () => {
     created_at: new Date(0).toISOString(),
     participant: null,
     variant: null,
-    analysis: total === null && hash === null ? null : { id: "r", status: "succeeded", total, fingerprint_hash: hash },
+    analysis: total === null && hash === null ? null : { id: "r", status: "succeeded", total, fingerprint_hash: hash, created_at: new Date(0).toISOString() },
   })
 
   it("ignores unscored sessions and flags mixed definitions", () => {

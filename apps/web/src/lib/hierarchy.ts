@@ -111,6 +111,7 @@ export type JourneySession = {
     status: string
     total: number | null
     fingerprint_hash: string | null
+    created_at: string
   } | null
 }
 
@@ -150,6 +151,7 @@ export async function loadJourneySessions(
           videoId: analysisRuns.videoId,
           status: analysisRuns.status,
           fingerprintHash: analysisRuns.fingerprintHash,
+          createdAt: analysisRuns.createdAt,
         })
         .from(analysisRuns)
         .where(
@@ -197,6 +199,7 @@ export async function loadJourneySessions(
             status: run.status,
             total: totals.get(run.id) ?? null,
             fingerprint_hash: run.fingerprintHash,
+            created_at: run.createdAt.toISOString(),
           }
         : null,
     }
