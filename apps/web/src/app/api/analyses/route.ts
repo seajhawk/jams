@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, ne } from "drizzle-orm"
+import { desc, eq, inArray } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
 import { analysisRuns, videos } from "@/db/schema"
@@ -8,10 +8,8 @@ import {
   serializeAnalysisRun,
   validateAnalysisConfig,
 } from "@/lib/analyses"
-import { dispatchAnalysisRun, recordDispatchIntent } from "@/lib/analysis-dispatch"
-import { PIPELINE_VERSION } from "@/lib/pipeline-version"
-import { assertAnalysisAdmission } from "@/lib/preview-limits"
-import { getOrCreateDefaultProfile } from "@/lib/report-assembly"
+import { dispatchAnalysisRun } from "@/lib/analysis-dispatch"
+import { queueAnalysisInScope } from "@/lib/queue-analysis"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
@@ -57,21 +55,6 @@ export async function POST(request: Request) {
     const body = await parseJsonBody(request, createAnalysisSchema)
 
     const created = await withOrg(async ({ orgId, scopedDb }) => {
-      const [video] = await scopedDb.db
-        .select({ id: videos.id, status: videos.status })
-        .from(videos)
-        .where(scopedDb.orgFilter(videos, eq(videos.id, body.video_id)))
-        .for("update")
-        .limit(1)
-
-      if (!video) {
-        throw new HttpError(404, "Video not found")
-      }
-
-      if (video.status !== "uploaded") {
-        throw new HttpError(400, "Video must be uploaded before analysis")
-      }
-
       const configResult =
         body.config === undefined
           ? null
@@ -80,47 +63,11 @@ export async function POST(request: Request) {
         throw new HttpError(400, configResult.error)
       }
 
-      await assertAnalysisAdmission(scopedDb)
-
-      // A first upload can arrive before the organization webhook provisions
-      // its profile. Commit the scoring prerequisite before dispatching work.
-      await getOrCreateDefaultProfile(orgId, scopedDb)
-
-      const runId = crypto.randomUUID()
-      const [run] = await scopedDb.db
-        .insert(analysisRuns)
-        .values({
-          id: runId,
-          orgId,
-          videoId: body.video_id,
-          config: configResult?.config ?? {},
-          configSource: body.config_source ?? null,
-          pipelineVersion: PIPELINE_VERSION,
-          status: "queued",
-          stage: "queued",
-          progressPct: 0,
-          stageDetail: "Waiting for worker",
-        })
-        .returning()
-
-      await scopedDb.db
-        .update(analysisRuns)
-        .set({ supersededBy: runId })
-        .where(
-          and(
-            eq(analysisRuns.orgId, orgId),
-            eq(analysisRuns.videoId, body.video_id),
-            isNull(analysisRuns.supersededBy),
-            ne(analysisRuns.id, runId)
-          )
-        )
-
-      const outbox = await recordDispatchIntent(scopedDb.db, {
-        runId: run.id,
-        orgId,
+      return queueAnalysisInScope(orgId, scopedDb, {
+        videoId: body.video_id,
+        config: configResult?.config ?? {},
+        configSource: body.config_source ?? null,
       })
-
-      return { run, outboxId: outbox.id }
     })
 
     // Transaction is committed and visible in PostgreSQL. Dispatch outside the transaction.
