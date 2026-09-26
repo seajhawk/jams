@@ -17,6 +17,9 @@ export interface JourneyStats {
   median: number | null
   p25: number | null
   p75: number | null
+  /** The scoring definition the numbers use; sessions on any other are excluded, never averaged. */
+  reference_fingerprint: string | null
+  excluded: number
   fingerprint_count: number
   mixed_definitions: boolean
 }

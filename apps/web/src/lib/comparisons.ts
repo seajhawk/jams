@@ -88,6 +88,7 @@ export function outdatedSessions(sessions: JourneySession[]) {
     if (!analysis) return true
     if (analysis.status === "queued" || analysis.status === "running") return false
     if (analysis.status === "failed") return true
-    return analysis.fingerprint_hash !== reference
+    // With no recorded reference, every scored session is on an unknown definition: re-analyze it.
+    return reference === null || analysis.fingerprint_hash !== reference
   })
 }

@@ -79,6 +79,10 @@ export function ClipPlayer({
             if (event.currentTarget.currentTime >= stopAt && index < moments.length - 1) next()
             else if (event.currentTarget.currentTime >= stopAt) event.currentTarget.pause()
           }}
+          // A moment in a recording's last few seconds ends before stopAt: keep the queue going.
+          onEnded={() => {
+            if (index < moments.length - 1) next()
+          }}
         />
       )}
       {moment.text && <p className="mt-3 text-sm italic">&ldquo;{moment.text}&rdquo;</p>}

@@ -134,9 +134,21 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
       ),
     [summary, cohort, variant]
   )
+  // Filters narrow which sessions count, never which definition: comparable = scored on the
+  // journey's reference definition (the same rule the server applies).
+  const comparableVisible = useMemo(
+    () =>
+      visible.filter(
+        (s) =>
+          s.analysis?.total != null &&
+          summary?.stats.reference_fingerprint != null &&
+          s.analysis.fingerprint_hash === summary.stats.reference_fingerprint
+      ),
+    [visible, summary]
+  )
   const stats = useMemo(
-    () => summarizeTotals(visible.flatMap((s) => (s.analysis?.total != null ? [s.analysis.total] : []))),
-    [visible]
+    () => summarizeTotals(comparableVisible.map((s) => s.analysis!.total as number)),
+    [comparableVisible]
   )
   const colorFor = (session: JourneySession) =>
     session.variant
@@ -261,7 +273,7 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
           )}
         </div>
         <div className="flex flex-col justify-center gap-2">
-          <StripPlot sessions={visible} colorFor={colorFor} />
+          <StripPlot sessions={comparableVisible} colorFor={colorFor} />
           <div className="flex flex-wrap gap-4">
             <FilterChips label="Cohort" options={cohorts} value={cohort} onChange={setCohort} />
             <FilterChips label="Variant" options={variantNames} value={variant} onChange={setVariant} />
@@ -274,8 +286,8 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
           <div className="min-w-0 flex-1 space-y-2">
             <p>
-              {summary.stats.mixed_definitions
-                ? `These sessions were scored with ${summary.stats.fingerprint_count} different scoring definitions (JAMS's models or formula changed between analyses), so their scores are not directly comparable.`
+              {summary.stats.excluded > 0
+                ? `${summary.stats.excluded} scored session${summary.stats.excluded === 1 ? " is" : "s are"} on an older or unrecorded scoring definition (JAMS's models or formula changed since), so ${summary.stats.excluded === 1 ? "it is" : "they are"} left out of these numbers rather than averaged in.`
                 : "Some sessions have no current analysis."}{" "}
               {outdated.length} session{outdated.length === 1 ? " needs" : "s need"} analyzing with
               the current definitions.

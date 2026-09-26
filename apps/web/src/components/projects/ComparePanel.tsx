@@ -60,8 +60,12 @@ export function ComparePanel({
   const options = by === "variant" ? variants : by === "cohort" ? cohorts : []
   const [a, setA] = useState(options[0] ?? "")
   const [b, setB] = useState(options[1] ?? "")
-  const [result, setResult] = useState<CompareResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // Each response is tagged with the selection it answers; only a matching one is ever shown, so
+  // a slow or failed request never puts old numbers under newly chosen group labels.
+  const [response, setResponse] = useState<{ key: string; data: CompareResponse } | null>(null)
+  const [error, setError] = useState<{ key: string; message: string } | null>(null)
+  const selectionKey = `${by}|${a}|${b}`
+  const result = response?.key === selectionKey ? response.data : null
 
   useEffect(() => {
     if (!by || !a || !b || a === b) return
@@ -72,12 +76,9 @@ export function ComparePanel({
         return (await response.json()) as CompareResponse
       })
       .then((data) => {
-        if (!cancelled) {
-          setResult(data)
-          setError(null)
-        }
+        if (!cancelled) setResponse({ key: `${by}|${a}|${b}`, data })
       })
-      .catch((caught: Error) => !cancelled && setError(caught.message))
+      .catch((caught: Error) => !cancelled && setError({ key: `${by}|${a}|${b}`, message: caught.message }))
     return () => {
       cancelled = true
     }
@@ -97,7 +98,7 @@ export function ComparePanel({
     setBy(next)
     setA(nextOptions[0] ?? "")
     setB(nextOptions[1] ?? "")
-    setResult(null)
+    setResponse(null)
   }
   const select = (value: string, onChange: (v: string) => void, label: string) => (
     <select
@@ -140,7 +141,7 @@ export function ComparePanel({
       </div>
 
       {a === b && <p className="text-sm text-muted-foreground">Choose two different groups.</p>}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error?.key === selectionKey && <p className="text-sm text-destructive">{error.message}</p>}
 
       {result && a !== b && (
         <div className="space-y-3">

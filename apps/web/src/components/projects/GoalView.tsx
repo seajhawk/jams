@@ -17,14 +17,23 @@ interface GoalCompare {
   journeys: GoalJourneyResult[]
 }
 
-function Dots({ totals }: { totals: number[] }) {
+function Dots({ totals, name }: { totals: number[]; name: string }) {
+  const sorted = [...totals].sort((x, y) => x - y)
   return (
-    <svg viewBox="0 0 400 20" className="h-5 w-full" aria-hidden>
-      <line x1="10" x2="390" y1="10" y2="10" className="stroke-border" strokeWidth="2" />
-      {totals.map((total, index) => (
-        <circle key={index} cx={10 + total * 3.8} cy={10 + ((index % 3) - 1) * 3} r="4" fill="#2563eb" fillOpacity="0.7" />
-      ))}
-    </svg>
+    <>
+      <svg viewBox="0 0 400 20" className="h-5 w-full" aria-hidden>
+        <line x1="10" x2="390" y1="10" y2="10" className="stroke-border" strokeWidth="2" />
+        {totals.map((total, index) => (
+          <circle key={index} cx={10 + total * 3.8} cy={10 + ((index % 3) - 1) * 3} r="4" fill="#2563eb" fillOpacity="0.7">
+            <title>{`Session score ${total}`}</title>
+          </circle>
+        ))}
+      </svg>
+      {/* The same scores for screen readers, which the drawing hides. */}
+      <span className="sr-only">
+        {sorted.length === 0 ? `${name}: no analyzed sessions.` : `${name} session scores: ${sorted.join(", ")}.`}
+      </span>
+    </>
   )
 }
 
@@ -148,7 +157,7 @@ export function GoalView({ goalId }: { goalId: string }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Dots totals={journey.totals} />
+                  <Dots totals={journey.totals} name={journey.name} />
                   <span className="w-16 shrink-0 text-right text-sm">
                     <span className="font-semibold tabular-nums">{journey.stats.median ?? "–"}</span>
                     <span className="text-xs text-muted-foreground"> n={journey.stats.n}</span>

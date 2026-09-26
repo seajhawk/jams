@@ -27,8 +27,33 @@ export async function loadJourneySteps(
   )
   const { included, excluded } = splitByReferenceFingerprint(filtered)
   const runIds = included.map((session) => session.analysis!.id)
+
+  // Suggestions come from every session's latest analysis that found segments, scored or not, so a
+  // journey with only partial analyses can still start from the names JAMS found.
+  const suggestionRunIds = all.flatMap((session) => (session.analysis ? [session.analysis.id] : []))
+  const suggestionRows = suggestionRunIds.length
+    ? await scopedDb.db
+        .select({ name: segments.name })
+        .from(segments)
+        .where(
+          scopedDb.orgFilter(
+            segments,
+            and(inArray(segments.runId, suggestionRunIds), isNull(segments.parentSegmentId))
+          )
+        )
+    : []
+  const counts = new Map<string, number>()
+  for (const row of suggestionRows) counts.set(row.name, (counts.get(row.name) ?? 0) + 1)
+  const suggestions =
+    journey.steps.length === 0
+      ? [...counts.entries()]
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .slice(0, 8)
+          .map(([name]) => name)
+      : []
+
   if (runIds.length === 0) {
-    return { steps: journey.steps, sessions: [], hotspots: [], ranked: [], estimated: false, excluded, suggestions: [] }
+    return { steps: journey.steps, sessions: [], hotspots: [], ranked: [], estimated: false, excluded, suggestions }
   }
 
   const [videoRows, segmentRows, measureRows] = await Promise.all([
@@ -100,13 +125,6 @@ export async function loadJourneySteps(
   })
 
   const hotspots = computeHotspots(journey.steps, hotspotSessions)
-  // With no declared steps yet, offer the most common segment names as a starting list.
-  const counts = new Map<string, number>()
-  for (const row of segmentRows) counts.set(row.name, (counts.get(row.name) ?? 0) + 1)
-  const suggestions = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .slice(0, 8)
-    .map(([name]) => name)
 
   return {
     steps: journey.steps,
@@ -121,6 +139,6 @@ export async function loadJourneySteps(
     ranked: rankHotspots(hotspots).map((hotspot) => hotspot.index),
     estimated: hotspotSessions.some((session) => session.alignment.source === "even"),
     excluded,
-    suggestions: journey.steps.length === 0 ? suggestions : [],
+    suggestions,
   }
 }

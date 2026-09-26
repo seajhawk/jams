@@ -24,23 +24,41 @@ describe("summarizeTotals", () => {
 })
 
 describe("journeyStats", () => {
-  const session = (total: number | null, hash: string | null): JourneySession => ({
-    video_id: crypto.randomUUID(),
-    title: "s",
-    created_at: new Date(0).toISOString(),
-    participant: null,
-    variant: null,
-    analysis: total === null && hash === null ? null : { id: "r", status: "succeeded", total, fingerprint_hash: hash, created_at: new Date(0).toISOString() },
-  })
+  let clock = 0
+  const session = (total: number | null, hash: string | null): JourneySession => {
+    clock += 1
+    return {
+      video_id: crypto.randomUUID(),
+      title: "s",
+      created_at: new Date(clock * 1000).toISOString(),
+      participant: null,
+      variant: null,
+      analysis:
+        total === null && hash === null
+          ? null
+          : { id: "r", status: "succeeded", total, fingerprint_hash: hash, created_at: new Date(clock * 1000).toISOString() },
+    }
+  }
 
-  it("ignores unscored sessions and flags mixed definitions", () => {
+  it("aggregates one definition and ignores unscored sessions", () => {
     const stats = journeyStats([session(10, "a"), session(30, "a"), session(null, null)])
-    expect(stats).toMatchObject({ session_count: 3, n: 2, median: 20, mixed_definitions: false })
-    expect(journeyStats([session(10, "a"), session(30, "b")]).mixed_definitions).toBe(true)
+    expect(stats).toMatchObject({ session_count: 3, n: 2, median: 20, excluded: 0, mixed_definitions: false })
   })
 
-  it("treats analyses recorded before fingerprints as their own definition", () => {
-    expect(journeyStats([session(10, null), session(30, "a")]).mixed_definitions).toBe(true)
+  it("never averages across definitions: only the newest definition's sessions count", () => {
+    const stats = journeyStats([session(10, "old"), session(90, "old"), session(30, "new")])
+    expect(stats).toMatchObject({ n: 1, median: 30, reference_fingerprint: "new", excluded: 2, mixed_definitions: true })
+  })
+
+  it("never treats analyses without a fingerprint as comparable, even with each other", () => {
+    expect(journeyStats([session(10, null), session(30, "a")])).toMatchObject({ n: 1, median: 30, excluded: 1 })
+    expect(journeyStats([session(10, null), session(30, null)])).toMatchObject({
+      n: 0,
+      median: null,
+      reference_fingerprint: null,
+      excluded: 2,
+      mixed_definitions: true,
+    })
   })
 })
 
