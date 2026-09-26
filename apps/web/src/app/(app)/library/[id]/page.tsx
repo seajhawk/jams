@@ -61,6 +61,7 @@ export default async function VideoDetailPage({
         video: videos,
         taskName: tasks.name,
         goalName: goals.name,
+        goalId: goals.id,
         project: { id: projects.id, name: projects.name },
         participant: {
           label: participants.label,
@@ -91,7 +92,7 @@ export default async function VideoDetailPage({
 
     if (!row) notFound()
 
-    const { video, taskName, goalName, project, participant, variant } = row
+    const { video, taskName, goalName, goalId, project, participant, variant } = row
     const [[latestRun], runRows] = await Promise.all([
       scopedDb.db
         .select()
@@ -160,10 +161,12 @@ export default async function VideoDetailPage({
               </Link>
             </>
           )}
-          {goalName && (
+          {goalName && goalId && (
             <>
               <span>›</span>
-              <span>{goalName}</span>
+              <Link href={`/goals/${goalId}`} className="hover:underline">
+                {goalName}
+              </Link>
             </>
           )}
           <span>›</span>

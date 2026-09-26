@@ -334,7 +334,9 @@ export function CatalogView({ projectId }: { projectId?: string }) {
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <h3 className="flex items-center gap-2 text-sm font-medium">
                       <Target className="size-4 text-muted-foreground" />
-                      {goal.name}
+                      <Link href={`/goals/${goal.id}`} className="hover:underline">
+                        {goal.name}
+                      </Link>
                     </h3>
                     <InlineCreate
                       label="Add journey"

@@ -58,5 +58,5 @@ Design: `docs/design/customer-journeys-ux.md` §4 and §8 (U2). Builds on U1 (PR
 
 - [x] Stats: bootstrap interval, verdict, fingerprint filtering (+ unit tests)
 - [x] API: journey compare, goal compare, reanalyze (+ unit tests of the comparison logic and a Postgres integration test of the shared queue helper)
-- [ ] UI: journey compare panel, re-analyze button, goal page and links
+- [x] UI: journey compare panel, re-analyze button, goal page and links
 - [ ] Playwright; full suites green; PR opened against `u1-hierarchy` (not merged)
