@@ -22,11 +22,13 @@ session without gaps, in step order, where `source` is `manual`, `matched` or `e
 1. **Manual wins.** If the session has stored boundaries (`videos.step_boundaries_ms`, a jsonb array
    of m−1 ascending cut times), use them. `source = "manual"`.
 2. **Matched.** Otherwise, if k ≥ m, choose m−1 cut points among the k−1 segment boundaries so each
-   step is a run of consecutive segments, maximizing the total name similarity between each step
-   and the names of the segments assigned to it. Similarity = Jaccard overlap of lowercased word
-   stems (strip non-letters, drop words ≤ 2 letters and a small stop list, stem by stripping a
-   trailing "ing", "ed", "es", "s"). Dynamic programming over (step, segment), O(m·k²). Accept only
-   if every step's similarity > 0 (each step matched something); `source = "matched"`.
+   step is a run of consecutive segments. Each segment votes for the step whose name it resembles
+   (similarity = Jaccard overlap of lowercased word stems: letters only, words of 3+ letters, a
+   small stop list dropped, then strip a plural "s", then "ing" or "ed", then a trailing "e"); the
+   partition maximizes the sum of votes. (Scoring each step against its whole run instead was
+   tried and rejected: it lets a step swallow an unrelated neighbouring segment.) Dynamic
+   programming over (step, segment), O(m·k²). Accept only if every step receives at least one
+   positive vote; `source = "matched"`.
 3. **Even.** Otherwise split the session duration into m equal spans. `source = "even"`. The UI says
    so ("Steps estimated by time; set them on the session to be exact").
 
@@ -77,7 +79,7 @@ rest of the journey page.
 
 ## Progress
 
-- [ ] Alignment + hotspot core (`lib/steps.ts`, `lib/hotspots.ts`) with unit tests
+- [x] Alignment + hotspot core (`lib/steps.ts`, `lib/hotspots.ts`) with unit tests
 - [ ] Migration 0016 (`videos.step_boundaries_ms`), steps API, boundaries API (+ tests)
 - [ ] UI: steps editor, hotspot table, Play all, report `?t=`, session boundary editor
 - [ ] Playwright; suites green; PR against `u2-group-comparisons`
