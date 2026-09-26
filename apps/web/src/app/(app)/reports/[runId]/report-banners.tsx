@@ -87,6 +87,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   no_audio: "No narration audio was detected in this video.",
   too_long: "This video is over the 20-minute analysis limit.",
   corrupt_file: "The worker could not read this video file.",
+  too_large: "This video file is larger than the upload limit.",
+  unsupported_media:
+    "This video's resolution or format is not supported. Re-export it as an H.264 MP4 at 4K or below.",
   transient: "The worker hit a temporary processing error.",
   unknown: "The worker could not finish this analysis.",
 }

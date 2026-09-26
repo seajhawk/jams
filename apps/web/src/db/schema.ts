@@ -48,6 +48,9 @@ export const analysisErrorCodeEnum = pgEnum("analysis_error_code", [
   "corrupt_file",
   "transient",
   "unknown",
+  // Terminal worker checks that run before heavy work (docs/design/abuse-and-scale-hardening.md).
+  "too_large",
+  "unsupported_media",
 ])
 export const measureCategoryEnum = pgEnum("measure_category", [
   "physical",
@@ -158,10 +161,15 @@ export const videos = pgTable(
     // Hidden from the library when set. Archiving only hides: the recording, its runs, reports and
     // share links all keep working, and it still counts against preview usage limits.
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    // Set once the watchdog has deleted the client-writable upload paths (original and poster)
+    // after the upload SAS expired. The finalized, server-owned copy is untouched.
+    uploadSourcesCleanedAt: timestamp("upload_sources_cleaned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("videos_org_id_created_at_idx").on(table.orgId, table.createdAt.desc()),
+    // Global daily upload circuit breaker and the upload-source cleanup sweep.
+    index("videos_created_at_idx").on(table.createdAt),
     index("videos_org_id_task_id_idx").on(table.orgId, table.taskId),
     check(
       "videos_status_check",
@@ -223,12 +231,37 @@ export const analysisRuns = pgTable(
   (table) => [
     index("analysis_runs_org_id_video_id_idx").on(table.orgId, table.videoId),
     index("analysis_runs_org_id_status_idx").on(table.orgId, table.status),
+    // Rolling-window admission counts runs per organization by creation time.
+    index("analysis_runs_org_id_created_at_idx").on(table.orgId, table.createdAt),
+    // Global in-flight circuit breaker counts queued and running runs across organizations.
+    index("analysis_runs_active_idx")
+      .on(table.status)
+      .where(sql`${table.status} in ('queued', 'running')`),
     index("analysis_runs_superseded_by_idx").on(table.supersededBy),
     index("analysis_runs_lease_expires_at_idx").on(table.leaseExpiresAt),
     check(
       "analysis_runs_progress_pct_check",
       sql`${table.progressPct} >= 0 and ${table.progressPct} <= 100`
     ),
+  ]
+)
+
+/**
+ * Fixed-window request counters for in-app rate limiting (src/lib/rate-limit.ts). Not tenant data:
+ * `bucket` is a SHA-256 of the limit name and subject (user id, share token or client IP), so no
+ * identifier is stored in the clear. Rows expire with their window and the watchdog purges them.
+ */
+export const rateLimitCounters = pgTable(
+  "rate_limit_counters",
+  {
+    bucket: text("bucket").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    hits: integer("hits").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.bucket, table.windowStart] }),
+    index("rate_limit_counters_expires_at_idx").on(table.expiresAt),
   ]
 )
 
