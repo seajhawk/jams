@@ -128,6 +128,8 @@ function analysisRun(overrides: Partial<AnalysisRunRow> = {}): AnalysisRunRow {
     orgId: "org_test",
     videoId: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
     config: {},
+    fingerprint: null,
+    fingerprintHash: null,
     configSource: null,
     pipelineVersion: "f3-worker-spine.1",
     providerVersions: {},

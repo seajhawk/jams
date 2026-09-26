@@ -551,6 +551,9 @@ export function LibraryContent() {
   const taskFilter = searchParams.get("task_id") ?? ""
   const statusFilter = searchParams.get("status") ?? ""
   const newVideoId = searchParams.get("new") ?? ""
+  // A journey page's "Add a session" link opens the upload dialog with that journey chosen.
+  const openUpload = searchParams.get("upload") === "1"
+  const uploadJourneyId = searchParams.get("journey") ?? undefined
   const view = searchParams.get("view") === "archived" ? "archived" : "active"
 
   const [videos, setVideos] = useState<VideoRecord[]>([])
@@ -673,7 +676,11 @@ export function LibraryContent() {
             Your journey recordings and effort analyses.
           </p>
         </div>
-        <UploadDialog onSuccess={handleUploadSuccess} />
+        <UploadDialog
+          onSuccess={handleUploadSuccess}
+          defaultOpen={openUpload}
+          initialJourneyId={uploadJourneyId}
+        />
       </div>
 
       {showViewToggle && (

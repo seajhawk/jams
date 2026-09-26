@@ -373,6 +373,32 @@ class RunRepository:
             )
         self.conn.commit()
 
+    def set_fingerprint(
+        self, run_id: str, fingerprint: dict[str, Any], fingerprint_hash: str
+    ) -> None:
+        params: tuple[Any, ...] = (json.dumps(fingerprint), fingerprint_hash, run_id)
+        fence = ""
+        if self.owner_id is not None and self.lease_token is not None:
+            fence = "and owner_id = %s and lease_token = %s and lease_expires_at > now()"
+            params = (*params, self.owner_id, self.lease_token)
+        cur = self.conn.execute(
+            f"""
+            update analysis_runs
+            set fingerprint = %s::jsonb,
+                fingerprint_hash = %s,
+                updated_at = now()
+            where id = %s
+            {fence}
+            """,
+            params,
+        )
+        rowcount = getattr(cur, "rowcount", None)
+        if fence and rowcount is not None and rowcount == 0:
+            raise StaleLeaseError(
+                f"Write rejected: worker {self.owner_id} lost lease for run {run_id}"
+            )
+        self.conn.commit()
+
     def set_provider_results(self, run_id: str, provider_results: dict[str, Any]) -> None:
         if self.owner_id is not None and self.lease_token is not None:
             cur = self.conn.execute(

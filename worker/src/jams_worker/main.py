@@ -23,6 +23,7 @@ from azure.storage.queue import QueueClient
 
 from jams_worker.db import RunRepository
 from jams_worker.errors import PipelineError, StaleLeaseError
+from jams_worker.fingerprint import build_fingerprint
 from jams_worker.pipeline import MeasureProvider, PipelineContext, log_event, run_pipeline
 from jams_worker.providers.clicks import ClicksProvider
 from jams_worker.providers.context_switch import ContextSwitchProvider
@@ -210,6 +211,12 @@ def process_run(
             result = run_pipeline(context, providers)
             repo.set_provider_versions(run_id, result.provider_versions)
             repo.set_provider_results(run_id, result.provider_summaries)
+            fingerprint, fingerprint_hash = build_fingerprint(
+                result.provider_versions,
+                result.provider_summaries,
+                run.get("config") if isinstance(run.get("config"), dict) else None,
+            )
+            repo.set_fingerprint(run_id, fingerprint, fingerprint_hash)
             partial_reasons = [
                 f"{provider_id}:{summary.get('reason')}"
                 for provider_id, summary in result.provider_summaries.items()

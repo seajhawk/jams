@@ -30,23 +30,89 @@ const ACCEPTED_TYPES = new Set([
   "video/x-m4v",
 ])
 
-interface Task {
-  id: string
-  name: string
-}
-
 type Phase = "idle" | "extracting" | "form" | "uploading"
 
 interface FormState {
   title: string
   taskId: string
   newTaskName: string
+  newJourneyGoalId: string
   subjectLabel: string
+  cohorts: string
   variantLabel: string
+}
+
+interface CatalogJourneyOption {
+  id: string
+  name: string
+}
+
+interface CatalogResponse {
+  projects: {
+    id: string
+    name: string
+    goals: { id: string; name: string; journeys: CatalogJourneyOption[] }[]
+  }[]
+  ungrouped_journeys: CatalogJourneyOption[]
+}
+
+interface ParticipantOption {
+  id: string
+  label: string
+  cohorts: string[]
+}
+
+interface VariantOption {
+  id: string
+  name: string
 }
 
 interface UploadDialogProps {
   onSuccess?: (videoId: string) => void
+  /** Open immediately (the journey page's "Add a session" link). */
+  defaultOpen?: boolean
+  /** Preselect this journey. */
+  initialJourneyId?: string
+}
+
+const EMPTY_FORM: FormState = {
+  title: "",
+  taskId: "",
+  newTaskName: "",
+  newJourneyGoalId: "",
+  subjectLabel: "",
+  cohorts: "",
+  variantLabel: "",
+}
+
+const LAST_JOURNEY_KEY = "jams.upload.lastJourney"
+
+function readLastJourney(): string {
+  try {
+    return window.localStorage.getItem(LAST_JOURNEY_KEY) ?? ""
+  } catch {
+    return ""
+  }
+}
+
+function rememberJourney(id: string) {
+  try {
+    window.localStorage.setItem(LAST_JOURNEY_KEY, id)
+  } catch {
+    // Storage can be unavailable (private windows); remembering is only a convenience.
+  }
+}
+
+async function postJson<T>(url: string, body: unknown, signal: AbortSignal): Promise<T> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  })
+  const payload = (await response.json().catch(() => ({}))) as T & { error?: string }
+  if (!response.ok) throw new Error(payload.error ?? `Request failed (${response.status})`)
+  return payload
 }
 
 function fmt(bytes: number): string {
@@ -65,22 +131,18 @@ function fmtEta(remaining: number, bps: number): string {
   return `${Math.floor(s / 60)}m ${s % 60}s`
 }
 
-export function UploadDialog({ onSuccess }: UploadDialogProps) {
-  const [open, setOpen] = useState(false)
+export function UploadDialog({ onSuccess, defaultOpen = false, initialJourneyId }: UploadDialogProps) {
+  const [open, setOpen] = useState(defaultOpen)
   const [phase, setPhase] = useState<Phase>("idle")
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [metadata, setMetadata] = useState<VideoMetadata | null>(null)
   const [posterObjectUrl, setPosterObjectUrl] = useState<string | null>(null)
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [form, setForm] = useState<FormState>({
-    title: "",
-    taskId: "",
-    newTaskName: "",
-    subjectLabel: "",
-    variantLabel: "",
-  })
+  const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
+  const [participantOptions, setParticipantOptions] = useState<ParticipantOption[]>([])
+  const [variantOptions, setVariantOptions] = useState<VariantOption[]>([])
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [progress, setProgress] = useState(0)
   const [transferred, setTransferred] = useState(0)
   const [speedBps, setSpeedBps] = useState(0)
@@ -101,14 +163,9 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
       if (prev) URL.revokeObjectURL(prev)
       return null
     })
-    setTasks([])
-    setForm({
-      title: "",
-      taskId: "",
-      newTaskName: "",
-      subjectLabel: "",
-      variantLabel: "",
-    })
+    setCatalog(null)
+    setVariantOptions([])
+    setForm(EMPTY_FORM)
     setProgress(0)
     setTransferred(0)
     setSpeedBps(0)
@@ -118,14 +175,49 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
     lastTimeRef.current = 0
   }, [])
 
-  // Load org tasks when the form phase opens
+  // Load projects/goals/journeys and participants when the form phase opens, and preselect the
+  // requested journey (or the last one used on this browser).
   useEffect(() => {
     if (!open || phase !== "form") return
-    fetch("/api/tasks")
-      .then((r) => r.json() as Promise<{ tasks: Task[] }>)
-      .then(({ tasks: t }) => setTasks(t))
+    fetch("/api/catalog")
+      .then((r) => r.json() as Promise<CatalogResponse>)
+      .then((data) => {
+        setCatalog(data)
+        const known = new Set([
+          ...data.projects.flatMap((p) => p.goals.flatMap((g) => g.journeys.map((j) => j.id))),
+          ...data.ungrouped_journeys.map((j) => j.id),
+        ])
+        const preferred = initialJourneyId ?? readLastJourney()
+        if (preferred && known.has(preferred)) {
+          setForm((f) => (f.taskId ? f : { ...f, taskId: preferred }))
+        }
+      })
       .catch(() => {})
-  }, [open, phase])
+    fetch("/api/participants")
+      .then((r) => r.json() as Promise<{ participants: ParticipantOption[] }>)
+      .then(({ participants }) => setParticipantOptions(participants))
+      .catch(() => {})
+  }, [open, phase, initialJourneyId])
+
+  // Variants belong to a journey; offer the chosen journey's existing ones.
+  useEffect(() => {
+    if (!form.taskId || form.taskId === "__new__") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVariantOptions([])
+      return
+    }
+    fetch(`/api/variants?task_id=${form.taskId}`)
+      .then((r) => r.json() as Promise<{ variants: VariantOption[] }>)
+      .then(({ variants }) => setVariantOptions(variants ?? []))
+      .catch(() => setVariantOptions([]))
+  }, [form.taskId])
+
+  const goalOptions = (catalog?.projects ?? []).flatMap((project) =>
+    project.goals.map((goal) => ({ id: goal.id, label: `${project.name} › ${goal.name}` }))
+  )
+  const knownParticipant = participantOptions.find(
+    (p) => p.label.toLowerCase() === form.subjectLabel.trim().toLowerCase()
+  )
 
   async function processFile(f: File) {
     setError(null)
@@ -192,24 +284,59 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
     abortRef.current = controller
 
     try {
-      // 1. Create a new task if the user chose "create new"
+      // 1. Resolve the journey, creating it (under the chosen goal) if asked
       let resolvedTaskId: string | undefined
       if (form.taskId === "__new__" && form.newTaskName.trim()) {
-        const taskRes = await fetch("/api/tasks", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: form.newTaskName.trim() }),
-          signal: controller.signal,
-        })
-        const taskBody = (await taskRes.json()) as {
-          task?: { id: string }
-          error?: string
-        }
-        if (!taskRes.ok)
-          throw new Error(taskBody.error ?? "Failed to create task")
-        resolvedTaskId = taskBody.task!.id
+        const { task } = await postJson<{ task: { id: string } }>(
+          "/api/tasks",
+          {
+            name: form.newTaskName.trim(),
+            ...(form.newJourneyGoalId ? { goal_id: form.newJourneyGoalId } : {}),
+          },
+          controller.signal
+        )
+        resolvedTaskId = task.id
       } else if (form.taskId && form.taskId !== "__new__") {
         resolvedTaskId = form.taskId
+      }
+      if (resolvedTaskId) rememberJourney(resolvedTaskId)
+
+      // 1b. Resolve the participant and variant, reusing existing records before creating
+      let participantId: string | undefined
+      const participantLabel = form.subjectLabel.trim()
+      if (participantLabel) {
+        const match = participantOptions.find(
+          (p) => p.label.toLowerCase() === participantLabel.toLowerCase()
+        )
+        if (match) {
+          participantId = match.id
+        } else {
+          const cohorts = form.cohorts
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+          const { participant } = await postJson<{ participant: { id: string } }>(
+            "/api/participants",
+            { label: participantLabel, cohorts },
+            controller.signal
+          )
+          participantId = participant.id
+        }
+      }
+      let variantId: string | undefined
+      const variantName = form.variantLabel.trim()
+      if (variantName && resolvedTaskId) {
+        const existing = variantOptions.find((v) => v.name === variantName)
+        if (existing) {
+          variantId = existing.id
+        } else {
+          const { variant } = await postJson<{ variant: { id: string } }>(
+            "/api/variants",
+            { task_id: resolvedTaskId, name: variantName },
+            controller.signal
+          )
+          variantId = variant.id
+        }
       }
 
       // 2. Create the video row + mint SAS URLs
@@ -228,6 +355,8 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
           ...(form.variantLabel.trim()
             ? { variant_label: form.variantLabel.trim() }
             : {}),
+          ...(participantId ? { participant_id: participantId } : {}),
+          ...(variantId ? { variant_id: variantId } : {}),
         }),
         signal: controller.signal,
       })
@@ -452,7 +581,7 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="upload-task">Task</Label>
+                    <Label htmlFor="upload-task">Journey</Label>
                     <select
                       id="upload-task"
                       value={form.taskId}
@@ -461,33 +590,65 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
                       }
                       className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
-                      <option value="">— No task —</option>
-                      <option value="__new__">＋ Create new task…</option>
-                      {tasks.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
+                      <option value="">Not filed under a journey</option>
+                      <option value="__new__">＋ New journey…</option>
+                      {(catalog?.projects ?? []).flatMap((project) =>
+                        project.goals.map((goal) => (
+                          <optgroup key={goal.id} label={`${project.name} › ${goal.name}`}>
+                            {goal.journeys.map((journey) => (
+                              <option key={journey.id} value={journey.id}>
+                                {journey.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))
+                      )}
+                      {(catalog?.ungrouped_journeys.length ?? 0) > 0 && (
+                        <optgroup label="Without a goal">
+                          {catalog!.ungrouped_journeys.map((journey) => (
+                            <option key={journey.id} value={journey.id}>
+                              {journey.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                     {form.taskId === "__new__" && (
-                      <Input
-                        data-testid="new-task-name"
-                        placeholder="New task name"
-                        value={form.newTaskName}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            newTaskName: e.target.value,
-                          }))
-                        }
-                        autoFocus
-                      />
+                      <div className="space-y-1.5">
+                        <Input
+                          data-testid="new-task-name"
+                          placeholder="How they do it, e.g. Deploy from VS Code"
+                          value={form.newTaskName}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              newTaskName: e.target.value,
+                            }))
+                          }
+                          autoFocus
+                        />
+                        {goalOptions.length > 0 && (
+                          <select
+                            aria-label="Goal for the new journey"
+                            value={form.newJourneyGoalId}
+                            onChange={(e) => setForm((f) => ({ ...f, newJourneyGoalId: e.target.value }))}
+                            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                          >
+                            <option value="">No goal yet</option>
+                            {goalOptions.map((goal) => (
+                              <option key={goal.id} value={goal.id}>
+                                {goal.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     )}
                   </div>
 
                   <div className="space-y-1.5">
                     <Label htmlFor="upload-subject">
-                      Subject{" "}
+                      Participant{" "}
                       <span className="font-normal text-muted-foreground">
                         (optional)
                       </span>
@@ -501,8 +662,29 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
                           subjectLabel: e.target.value,
                         }))
                       }
-                      placeholder="Who performed it? e.g. Participant 3"
+                      placeholder="Who performed it? e.g. P03 (no names needed)"
+                      list="upload-participant-options"
                     />
+                    <datalist id="upload-participant-options">
+                      {participantOptions.map((p) => (
+                        <option key={p.id} value={p.label}>
+                          {p.cohorts.join(", ")}
+                        </option>
+                      ))}
+                    </datalist>
+                    {form.subjectLabel.trim() && !knownParticipant && (
+                      <Input
+                        aria-label="Cohorts for the new participant"
+                        value={form.cohorts}
+                        onChange={(e) => setForm((f) => ({ ...f, cohorts: e.target.value }))}
+                        placeholder="Cohorts, comma separated: beginner, admin"
+                      />
+                    )}
+                    {knownParticipant && knownParticipant.cohorts.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Cohorts: {knownParticipant.cohorts.join(", ")}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -521,8 +703,14 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
                           variantLabel: e.target.value,
                         }))
                       }
-                      placeholder="Approach or version being compared. e.g. Redesign B"
+                      placeholder="Version being compared, e.g. B or build 2026.09.2"
+                      list="upload-variant-options"
                     />
+                    <datalist id="upload-variant-options">
+                      {variantOptions.map((v) => (
+                        <option key={v.id} value={v.name} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
               </div>

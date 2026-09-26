@@ -34,7 +34,7 @@ export class ReportNotReadyError extends Error {
   }
 }
 
-async function getOrCreateDefaultProfileInScope(
+export async function getOrCreateDefaultProfileInScope(
   orgId: string,
   scopedDb: OrgContext["scopedDb"]
 ) {

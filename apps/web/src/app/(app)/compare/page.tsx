@@ -1,3 +1,5 @@
+import { GitCompareArrows } from "lucide-react"
+import Link from "next/link"
 import { inArray } from "drizzle-orm"
 import { notFound } from "next/navigation"
 
@@ -10,6 +12,7 @@ import {
 } from "@/lib/report-assembly"
 import { withOrg } from "@/lib/with-org"
 import { CompareShell } from "@/components/compare/CompareShell"
+import { Button } from "@/components/ui/button"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -36,6 +39,24 @@ export default async function ComparePage({
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean)
+
+  if (parts.length === 0) {
+    return (
+      <section className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 px-4 py-20 text-center">
+        <div className="flex size-12 items-center justify-center rounded-md bg-muted">
+          <GitCompareArrows className="size-5 text-muted-foreground" />
+        </div>
+        <h1 className="text-lg font-medium">Choose two sessions to compare</h1>
+        <p className="max-w-md text-sm leading-6 text-muted-foreground">
+          Open a journey, then pick two sessions of it: before and after a fix, a beginner and an
+          expert, or variant A and variant B. JAMS lines them up step by step.
+        </p>
+        <Button variant="outline" nativeButton={false} render={<Link href="/projects" />}>
+          Go to projects
+        </Button>
+      </section>
+    )
+  }
 
   if (
     parts.length !== 2 ||

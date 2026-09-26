@@ -86,7 +86,7 @@ test("uploads a tiny video, opens detail playback, and verifies server truth", a
   await expect(titleInput).toHaveValue("e2e-tiny")
   await titleInput.fill(title)
 
-  await page.getByLabel("Task").selectOption("__new__")
+  await page.getByLabel("Journey", { exact: true }).selectOption("__new__")
   await page.getByTestId("new-task-name").fill(taskName)
   await page.getByRole("button", { name: "Upload", exact: true }).click()
 
@@ -109,7 +109,8 @@ test("uploads a tiny video, opens detail playback, and verifies server truth", a
 
   const detailPlayer = page.getByTestId("video-detail-player")
   await expect(detailPlayer).toHaveAttribute("data-src", /sig=/)
-  await expect(page.getByText(taskName, { exact: true })).toBeVisible()
+  // The journey appears in the breadcrumb and the metadata sidebar; either proves the filing.
+  await expect(page.getByText(taskName, { exact: true }).first()).toBeVisible()
 
   expect(truth.status).toBe("uploaded")
   expect(truth.taskName).toBe(taskName)

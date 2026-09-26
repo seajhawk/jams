@@ -1,14 +1,14 @@
 import { asc } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
-import { tasks } from "@/db/schema"
+import { goals, tasks } from "@/db/schema"
 import {
   handleRouteError,
   isUniqueViolation,
   jsonError,
   parseJsonBody,
 } from "@/lib/api"
-import { createTaskSchema } from "@/lib/videos"
+import { assertInOrg, createJourneySchema } from "@/lib/hierarchy"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
@@ -18,6 +18,9 @@ function serializeTask(task: typeof tasks.$inferSelect) {
     id: task.id,
     name: task.name,
     description: task.description,
+    goal_id: task.goalId,
+    steps: task.steps,
+    status: task.status,
     created_at: task.createdAt.toISOString(),
   }
 }
@@ -40,9 +43,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const body = await parseJsonBody(request, createTaskSchema)
+    const body = await parseJsonBody(request, createJourneySchema)
 
     return await withOrg(async ({ orgId, scopedDb }) => {
+      if (body.goal_id) await assertInOrg(scopedDb, goals, body.goal_id, "Goal")
       try {
         const [task] = await scopedDb.db
           .insert(tasks)
@@ -50,13 +54,15 @@ export async function POST(request: Request) {
             orgId,
             name: body.name,
             description: body.description,
+            goalId: body.goal_id,
+            steps: body.steps ?? [],
           })
           .returning()
 
         return NextResponse.json({ task: serializeTask(task) }, { status: 201 })
       } catch (error) {
         if (isUniqueViolation(error)) {
-          return jsonError("A task with that name already exists", 409)
+          return jsonError("A journey with that name already exists", 409)
         }
 
         throw error

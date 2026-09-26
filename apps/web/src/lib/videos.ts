@@ -52,6 +52,8 @@ export const createVideoSchema = z.object({
   task_id: z.string().uuid().optional(),
   subject_label: z.string().trim().min(1).max(120).optional(),
   variant_label: z.string().trim().min(1).max(120).optional(),
+  participant_id: z.string().uuid().optional(),
+  variant_id: z.string().uuid().optional(),
 })
 
 const videoCompleteMetadataSchema = z.object({
