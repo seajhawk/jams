@@ -17,7 +17,13 @@ interface MeasuresTabProps {
   onSeek: (ms: number) => void
 }
 
+const EXPERIMENTAL_KINDS = new Set<MeasureKind>(['clicks', 'keypresses', 'scrolls'])
+
 export function MeasuresTab({ payload, onSeek }: MeasuresTabProps) {
+  // The physical detectors are experimental (low precision or recall on real footage, weight 0
+  // in the default score), so they stay hidden unless asked for (preview review B6).
+  const [showExperimental, setShowExperimental] = useState(false)
+  const shownKinds = ALL_KINDS.filter(kind => showExperimental || !EXPERIMENTAL_KINDS.has(kind))
   const [activeKinds, setActiveKinds] = useState(new Set<MeasureKind>(ALL_KINDS))
 
   const toggle = (kind: MeasureKind) => {
@@ -33,13 +39,13 @@ export function MeasuresTab({ payload, onSeek }: MeasuresTabProps) {
   }
 
   const visible = payload.measures
-    .filter(m => activeKinds.has(m.kind))
+    .filter(m => activeKinds.has(m.kind) && (showExperimental || !EXPERIMENTAL_KINDS.has(m.kind)))
     .sort((a, b) => a.t_start_ms - b.t_start_ms)
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {ALL_KINDS.map(kind => (
+        {shownKinds.map(kind => (
           <button
             key={kind}
             onClick={() => toggle(kind)}
@@ -52,6 +58,15 @@ export function MeasuresTab({ payload, onSeek }: MeasuresTabProps) {
             {kind.replace(/_/g, ' ')}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setShowExperimental(value => !value)}
+          aria-pressed={showExperimental}
+          className="rounded-full border border-dashed px-3 py-1 text-xs text-muted-foreground hover:bg-muted"
+          title="Clicks, keypresses and scrolls are detected with low accuracy today and do not count toward the Effort Score"
+        >
+          {showExperimental ? 'Hide experimental signals' : 'Show experimental signals'}
+        </button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

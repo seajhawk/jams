@@ -52,8 +52,11 @@ export function ScoreTab({ payload, weights, onWeightsChange, readOnly = false }
         <div className="flex items-center gap-4">
           <EffortScoreDial score={liveScore.total} />
           <div>
-            <div className="text-2xl font-bold">{liveScore.total}</div>
-            <div className="text-sm text-muted-foreground">Effort Score</div>
+            <div className="text-2xl font-bold">{liveScore.total ?? 'Not measured'}</div>
+            <div className="text-sm text-muted-foreground">
+              Effort Score (experimental: a relative indicator for comparing sessions of the same
+              task, not a validated measure of workload)
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">

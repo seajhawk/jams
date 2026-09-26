@@ -18,7 +18,8 @@ PROVIDER_VERSION = "1.0.0"
 
 def _read_video(context: PipelineContext) -> dict[str, Any]:
     duration_ms = get_authoritative_duration_ms(context)
-    return {"duration_ms": duration_ms}
+    # has_audio decides whether speech kinds were measurable at all (None = unknown = measurable).
+    return {"duration_ms": duration_ms, "has_audio": context.run.get("has_audio")}
 
 
 def _read_measures(context: PipelineContext) -> list[dict[str, Any]]:
@@ -107,12 +108,14 @@ def write_effort_score(
                 context.run_id,
                 profile_id,
                 context.org_id,
-                components["physical"],
-                components["cognitive"],
-                components["time"],
-                components["sentiment"],
-                components["speech"],
-                result["total"],
+                # The columns are NOT NULL; "not measured" (None) is stored as 0 and the
+                # breakdown's per-kind `measured` flags tell the report which it really was.
+                components["physical"] or 0,
+                components["cognitive"] or 0,
+                components["time"] or 0,
+                components["sentiment"] or 0,
+                components["speech"] or 0,
+                result["total"] or 0,
                 Jsonb(result["breakdown"]),
             ),
         )

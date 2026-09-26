@@ -69,7 +69,7 @@ export function CompareShell({
         <div className="mx-auto max-w-6xl space-y-4">
           <div className="flex items-center gap-3">
             <h1 className="text-lg font-semibold">{taskName}</h1>
-            {comparison.score.total !== 0 && (
+            {comparison.score.total !== null && comparison.score.total !== 0 && (
               <DeltaChip
                 delta={comparison.score.total}
                 label="Total"

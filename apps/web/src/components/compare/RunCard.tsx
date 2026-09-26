@@ -71,8 +71,8 @@ export function RunCard({
               <div key={cat} className="flex items-center justify-between gap-2 text-sm">
                 <span className="capitalize text-muted-foreground">{cat}</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="tabular-nums font-medium">{val}</span>
-                  {!isBaseline && delta !== undefined && (
+                  <span className="tabular-nums font-medium">{val ?? 'Not measured'}</span>
+                  {!isBaseline && delta !== undefined && delta !== null && (
                     <DeltaChip delta={delta} data-testid={`delta-chip-${cat}`} />
                   )}
                 </div>
@@ -87,8 +87,10 @@ export function RunCard({
         <div className="flex items-center justify-between border-t pt-2">
           <span className="text-sm text-muted-foreground">Total score</span>
           <div className="flex items-center gap-2">
-            <span className="font-semibold tabular-nums">{score.total}</span>
-            <DeltaChip delta={scoreDeltas.total} data-testid="delta-chip-total" />
+            <span className="font-semibold tabular-nums">{score.total ?? 'Not measured'}</span>
+            {scoreDeltas.total !== null && (
+              <DeltaChip delta={scoreDeltas.total} data-testid="delta-chip-total" />
+            )}
           </div>
         </div>
       )}

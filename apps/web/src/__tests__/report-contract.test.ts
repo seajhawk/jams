@@ -106,7 +106,33 @@ describe("effort score", () => {
     });
 
     expect(recomputed.breakdown.map((item) => item.kind)).not.toContain("context_switch");
-    expect(recomputed.components.cognitive).toBe(0);
+    expect(recomputed.components.cognitive).toBeNull();
     expect(recomputed.total).toBe(53);
+  });
+
+  it("files words per minute under speech, not physical", () => {
+    const normalized = normalize(payload.measures, payload.video, payload.score.profile.normalization);
+    const recomputed = score(normalized, payload.score.profile.weights);
+    expect(recomputed.components.physical).toBeNull();
+    expect(recomputed.components.speech).toBe(normalized.spoken_word?.normalized);
+  });
+
+  it("does not score a silent recording as easy (mirrors the worker test)", () => {
+    const speechKinds = new Set(["spoken_word", "utterance", "sentiment"]);
+    const visualOnly = payload.measures.filter((m) => !speechKinds.has(m.kind));
+    const weights = payload.score.profile.weights;
+    const norm = payload.score.profile.normalization;
+    const silent = score(normalize(visualOnly, { ...payload.video, has_audio: false }, norm), weights);
+    const onlyVisualWeights = Object.fromEntries(
+      Object.entries(weights).map(([kind, weight]) => [kind, speechKinds.has(kind) ? 0 : weight]),
+    );
+    const reference = score(normalize(visualOnly, payload.video, norm), onlyVisualWeights);
+
+    expect(silent.total).toBe(reference.total);
+    expect(silent.components.speech).toBeNull();
+    expect(silent.components.sentiment).toBeNull();
+    const notMeasured = silent.breakdown.filter((item) => !item.measured);
+    expect(notMeasured.map((item) => item.kind)).toEqual(expect.arrayContaining(["spoken_word", "sentiment"]));
+    expect(notMeasured.every((item) => item.contribution === 0)).toBe(true);
   });
 });
