@@ -9,6 +9,8 @@ interface PortfolioJourney {
   name: string
   stats: { n: number; median: number | null }
   recent_session_count?: number
+  /** Comparable sessions whose latest analysis has a frustrated moment. */
+  frustrated_sessions?: number
 }
 
 export interface PortfolioProject {
@@ -38,11 +40,18 @@ export function hardestGoal(project: PortfolioProject) {
 
 /** One card per project: recent activity, where it hurts most, and the latest saved finding. */
 export function WorkspaceSummary({ projects }: { projects: PortfolioProject[] }) {
-  const [latest, setLatest] = useState<{ title: string } | null>(null)
+  // Each project's newest finding (the list comes back newest first).
+  const [latestByProject, setLatestByProject] = useState<Map<string, string>>(new Map())
   useEffect(() => {
     fetch("/api/findings")
       .then((response) => (response.ok ? response.json() : { findings: [] }))
-      .then((body: { findings: { title: string }[] }) => setLatest(body.findings[0] ?? null))
+      .then((body: { findings: { title: string; project_id: string | null }[] }) => {
+        const latest = new Map<string, string>()
+        for (const finding of body.findings) {
+          if (finding.project_id && !latest.has(finding.project_id)) latest.set(finding.project_id, finding.title)
+        }
+        setLatestByProject(latest)
+      })
       .catch(() => {})
   }, [])
 
@@ -70,17 +79,14 @@ export function WorkspaceSummary({ projects }: { projects: PortfolioProject[] })
                 <span className="text-muted-foreground">Not enough analyzed sessions yet</span>
               )}
             </p>
+            {latestByProject.get(project.id) && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Bookmark className="size-3.5" /> Latest finding: {latestByProject.get(project.id)}
+              </p>
+            )}
           </Link>
         )
       })}
-      {latest && (
-        <Link href="/findings" className="rounded-lg border border-dashed bg-card p-4 hover:bg-muted/40">
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Bookmark className="size-3.5" /> Latest finding
-          </p>
-          <p className="mt-1 text-sm font-medium">{latest.title}</p>
-        </Link>
-      )}
     </div>
   )
 }
@@ -110,6 +116,16 @@ export function ProjectHeatmap({ project }: { project: PortfolioProject }) {
                   <span className="tabular-nums">
                     {journey.stats.median ?? "–"} · n={journey.stats.n}
                   </span>
+                  {(journey.frustrated_sessions ?? 0) > 0 && (
+                    <span
+                      className="ml-1 inline-flex items-center gap-0.5 text-rose-700 dark:text-rose-300"
+                      aria-label={`Frustration in ${journey.frustrated_sessions} of ${journey.stats.n} sessions`}
+                      title={`Frustration in ${journey.frustrated_sessions} of ${journey.stats.n} sessions`}
+                    >
+                      <Flame className="size-3" aria-hidden />
+                      {journey.frustrated_sessions}/{journey.stats.n}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

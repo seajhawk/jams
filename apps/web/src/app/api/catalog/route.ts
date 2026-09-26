@@ -1,9 +1,10 @@
-import { asc } from "drizzle-orm"
+import { and, asc, inArray, lte, eq } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
-import { goals, projects, tasks } from "@/db/schema"
+import { goals, measures, projects, tasks } from "@/db/schema"
 import { handleRouteError } from "@/lib/api"
-import { journeyStats, loadJourneySessions } from "@/lib/hierarchy"
+import { isComparable, journeyStats, loadJourneySessions, referenceFingerprint } from "@/lib/hierarchy"
+import { FRUSTRATED_THRESHOLD } from "@/lib/report-moments"
 import { withOrg } from "@/lib/with-org"
 
 export const dynamic = "force-dynamic"
@@ -29,6 +30,34 @@ export async function GET() {
         journeyRows.map((row) => row.id)
       )
 
+      // Frustration indicator: comparable sessions whose latest analysis has a frustrated moment.
+      // One grouped query for the whole catalog; step-level detail lives on the journey page.
+      const comparableRunIds = [...sessions.values()].flatMap((journeySessions) => {
+        const reference = referenceFingerprint(journeySessions)
+        return journeySessions.flatMap((session) =>
+          isComparable(session, reference) ? [session.analysis!.id] : []
+        )
+      })
+      const frustratedRuns = new Set(
+        comparableRunIds.length
+          ? (
+              await scopedDb.db
+                .selectDistinct({ runId: measures.runId })
+                .from(measures)
+                .where(
+                  scopedDb.orgFilter(
+                    measures,
+                    and(
+                      inArray(measures.runId, comparableRunIds),
+                      eq(measures.kind, "sentiment"),
+                      lte(measures.valueNum, FRUSTRATED_THRESHOLD)
+                    )
+                  )
+                )
+            ).map((row) => row.runId)
+          : []
+      )
+
       const journey = (row: (typeof journeyRows)[number]) => {
         const journeySessions = sessions.get(row.id) ?? []
         return {
@@ -38,6 +67,9 @@ export async function GET() {
           status: row.status,
           steps: row.steps,
           stats: journeyStats(journeySessions),
+          frustrated_sessions: journeySessions.filter(
+            (session) => session.analysis && frustratedRuns.has(session.analysis.id)
+          ).length,
           last_session_at: journeySessions[0]?.created_at ?? null,
           recent_session_count: journeySessions.filter(
             (session) => Date.parse(session.created_at) >= Date.now() - RECENT_WINDOW_MS

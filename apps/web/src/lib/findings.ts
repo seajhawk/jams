@@ -103,8 +103,10 @@ export async function buildSnapshot(
       headline: `${hotspot.step}: frustration in ${hotspot.frustrated_sessions} of ${hotspot.sessions} sessions${
         hotspot.mean_duration_ms !== null ? `, ${Math.round(hotspot.mean_duration_ms / 1000)} s on average` : ""
       }.`,
-      key: `${worstStep ? "worst" : "not-worst"}`,
-      reference_fingerprint: null,
+      // The claim is "people struggle at this step": it holds while that step still shows
+      // frustration, whether or not it is currently the worst-ranked step.
+      key: hotspot.frustrated_sessions > 0 ? "struggle" : "no-struggle",
+      reference_fingerprint: view.reference_fingerprint,
       details: {
         step: hotspot.step,
         frustrated_sessions: hotspot.frustrated_sessions,
@@ -159,4 +161,18 @@ export async function buildSnapshot(
 /** True when today's result no longer supports what was saved. */
 export function findingChanged(saved: FindingSnapshot, live: FindingSnapshot | null): boolean {
   return !live || live.key !== saved.key
+}
+
+/**
+ * True when the live result was computed under a different scoring definition than the saved one
+ * (the journey was re-analyzed after JAMS's models or formula changed). The claim may still hold;
+ * the page says it was recomputed rather than implying the numbers are directly comparable.
+ */
+export function findingRedefined(saved: FindingSnapshot, live: FindingSnapshot | null): boolean {
+  return (
+    !!live &&
+    saved.reference_fingerprint !== null &&
+    live.reference_fingerprint !== null &&
+    saved.reference_fingerprint !== live.reference_fingerprint
+  )
 }

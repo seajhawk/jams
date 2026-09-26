@@ -25,7 +25,7 @@ export async function loadJourneySteps(
       (!filters.cohort || session.participant?.cohorts.includes(filters.cohort)) &&
       (!filters.variant || session.variant?.name === filters.variant)
   )
-  const { included, excluded } = splitByReferenceFingerprint(filtered)
+  const { reference, included, excluded } = splitByReferenceFingerprint(filtered)
   const runIds = included.map((session) => session.analysis!.id)
 
   // Suggestions come from every session's latest analysis that found segments, scored or not, so a
@@ -53,7 +53,7 @@ export async function loadJourneySteps(
       : []
 
   if (runIds.length === 0) {
-    return { steps: journey.steps, sessions: [], hotspots: [], ranked: [], estimated: false, excluded, suggestions }
+    return { steps: journey.steps, sessions: [], hotspots: [], ranked: [], estimated: false, excluded, suggestions, reference_fingerprint: reference }
   }
 
   const [videoRows, segmentRows, measureRows] = await Promise.all([
@@ -140,5 +140,6 @@ export async function loadJourneySteps(
     estimated: hotspotSessions.some((session) => session.alignment.source === "even"),
     excluded,
     suggestions,
+    reference_fingerprint: reference,
   }
 }

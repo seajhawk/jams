@@ -17,7 +17,7 @@ interface Finding {
   source: { journey_id?: string; goal_id?: string }
   snapshot: FindingSnapshot
   created_at: string
-  live: { headline: string; changed: boolean } | null
+  live: { headline: string; changed: boolean; redefined: boolean } | null
 }
 
 const KIND_LABEL = { comparison: "Comparison", hotspot: "Friction hotspot", leaderboard: "Easiest way" }
@@ -32,6 +32,7 @@ function liveHref(finding: Finding) {
 export function FindingsView() {
   const [items, setItems] = useState<Finding[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setError(null)
@@ -50,8 +51,15 @@ export function FindingsView() {
   }, [load])
 
   const remove = async (id: string) => {
-    await fetch(`/api/findings/${id}`, { method: "DELETE" })
-    setItems((current) => current?.filter((item) => item.id !== id) ?? null)
+    setDeleteError(null)
+    try {
+      const response = await fetch(`/api/findings/${id}`, { method: "DELETE" })
+      if (!response.ok) throw new Error()
+      // Only drop it from the list once the server confirms it is gone.
+      setItems((current) => current?.filter((item) => item.id !== id) ?? null)
+    } catch {
+      setDeleteError("That finding could not be deleted. Check your connection and try again.")
+    }
   }
 
   if (error) {
@@ -86,6 +94,11 @@ export function FindingsView() {
 
   return (
     <ul className="space-y-3">
+      {deleteError && (
+        <li role="alert" className="text-sm text-destructive">
+          {deleteError}
+        </li>
+      )}
       {items.map((finding) => {
         const href = liveHref(finding)
         return (
@@ -118,6 +131,7 @@ export function FindingsView() {
                 <span className="inline-flex items-center gap-1 text-emerald-600">
                   <CheckCircle2 className="size-3.5" />
                   Still holds
+                  {finding.live.redefined && " (recomputed with JAMS's newer scoring definition)"}
                 </span>
               )}
               {href && (

@@ -1,12 +1,13 @@
-import { desc } from "drizzle-orm"
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { NextResponse } from "next/server"
 
-import { findings } from "@/db/schema"
+import { findings, goals, tasks } from "@/db/schema"
 import { HttpError, handleRouteError, parseJsonBody } from "@/lib/api"
 import {
   buildSnapshot,
   createFindingSchema,
   findingChanged,
+  findingRedefined,
   findingSourceSchema,
   type FindingSnapshot,
 } from "@/lib/findings"
@@ -24,6 +25,27 @@ export async function GET() {
         .where(scopedDb.orgFilter(findings))
         .orderBy(desc(findings.createdAt))
         .limit(50)
+      // Which project each finding belongs to, so summaries can show findings per project.
+      const sources = rows.map((row) => row.source as { journey_id?: string; goal_id?: string })
+      const journeyIds = [...new Set(sources.flatMap((s) => (s.journey_id ? [s.journey_id] : [])))]
+      const goalIds = [...new Set(sources.flatMap((s) => (s.goal_id ? [s.goal_id] : [])))]
+      const [journeyProjects, goalProjects] = await Promise.all([
+        journeyIds.length
+          ? scopedDb.db
+              .select({ id: tasks.id, projectId: goals.projectId })
+              .from(tasks)
+              .innerJoin(goals, and(eq(goals.id, tasks.goalId), eq(goals.orgId, orgId)))
+              .where(scopedDb.orgFilter(tasks, inArray(tasks.id, journeyIds)))
+          : [],
+        goalIds.length
+          ? scopedDb.db
+              .select({ id: goals.id, projectId: goals.projectId })
+              .from(goals)
+              .where(scopedDb.orgFilter(goals, inArray(goals.id, goalIds)))
+          : [],
+      ])
+      const projectOf = new Map([...journeyProjects, ...goalProjects].map((row) => [row.id, row.projectId]))
+
       const results = []
       for (const row of rows) {
         const source = findingSourceSchema.safeParse(row.source)
@@ -37,7 +59,17 @@ export async function GET() {
           source: row.source,
           snapshot: saved,
           created_at: row.createdAt.toISOString(),
-          live: live ? { headline: live.headline, changed: findingChanged(saved, live) } : null,
+          project_id:
+            projectOf.get((row.source as { journey_id?: string }).journey_id ?? "") ??
+            projectOf.get((row.source as { goal_id?: string }).goal_id ?? "") ??
+            null,
+          live: live
+            ? {
+                headline: live.headline,
+                changed: findingChanged(saved, live),
+                redefined: findingRedefined(saved, live),
+              }
+            : null,
         })
       }
       return NextResponse.json({ findings: results })

@@ -38,17 +38,21 @@ export function SaveFindingButton({ source, defaultTitle }: { source: FindingSou
     event.preventDefault()
     setState("saving")
     setError(null)
-    const response = await fetch("/api/findings", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title, source }),
-    })
-    if (!response.ok) {
-      setError(((await response.json().catch(() => ({}))) as { error?: string }).error ?? "Could not save")
+    try {
+      const response = await fetch("/api/findings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, source }),
+      })
+      if (!response.ok) {
+        throw new Error(((await response.json().catch(() => ({}))) as { error?: string }).error ?? "Could not save")
+      }
+      setState("saved")
+    } catch (caught) {
+      // Network failures reject fetch itself; always return to a state the user can retry from.
+      setError(caught instanceof Error ? caught.message : "Could not save")
       setState("idle")
-      return
     }
-    setState("saved")
   }
 
   return (
