@@ -1,0 +1,1 @@
+ALTER TABLE "videos" ADD COLUMN "step_boundaries_ms" jsonb;

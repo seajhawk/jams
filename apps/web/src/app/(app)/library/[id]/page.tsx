@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator"
 import { AnalysisStatusPanel } from "@/components/upload/AnalysisStatusPanel"
 import { DeleteRecordingButton } from "@/components/upload/DeleteRecordingButton"
 import { RunHistoryPanel } from "@/components/upload/RunHistoryPanel"
+import { StepBoundaryEditor } from "@/components/upload/StepBoundaryEditor"
 import { VideoDetailPlayer } from "@/components/upload/VideoDetailPlayer"
 
 const UUID_RE =
@@ -60,6 +61,7 @@ export default async function VideoDetailPage({
       .select({
         video: videos,
         taskName: tasks.name,
+        taskSteps: tasks.steps,
         goalName: goals.name,
         goalId: goals.id,
         project: { id: projects.id, name: projects.name },
@@ -92,7 +94,7 @@ export default async function VideoDetailPage({
 
     if (!row) notFound()
 
-    const { video, taskName, goalName, goalId, project, participant, variant } = row
+    const { video, taskName, taskSteps, goalName, goalId, project, participant, variant } = row
     const [[latestRun], runRows] = await Promise.all([
       scopedDb.db
         .select()
@@ -266,6 +268,18 @@ export default async function VideoDetailPage({
               </MetaRow>
             </dl>
           </div>
+
+          {taskSteps && taskSteps.length >= 2 && video.durationMs && (
+            <div className="rounded-xl border bg-card p-4 ring-1 ring-foreground/10">
+              <h2 className="mb-2 text-sm font-medium">Steps</h2>
+              <StepBoundaryEditor
+                videoId={video.id}
+                steps={taskSteps}
+                durationMs={video.durationMs}
+                boundariesMs={video.stepBoundariesMs ?? null}
+              />
+            </div>
+          )}
 
           {/* Poster preview if available */}
           {posterSas && (

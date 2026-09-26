@@ -24,10 +24,14 @@ export async function generateMetadata({
 
 export default async function ReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ runId: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const { runId } = await params
+  const { t } = await searchParams
+  const seekMs = typeof t === "string" && /^\d{1,9}$/.test(t) ? Number(t) : undefined
   if (!UUID_RE.test(runId)) notFound()
 
   return withOrg(async ({ orgId, scopedDb }) => {
@@ -84,7 +88,7 @@ export default async function ReportPage({
         {run.status === "partial" && (
           <PartialBanner videoId={run.videoId} warnings={payload.run.warnings} />
         )}
-        <ReportShell payload={payload} />
+        <ReportShell payload={payload} initialSeekMs={seekMs} />
       </>
     )
   })
