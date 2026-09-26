@@ -21,9 +21,44 @@ vi.mock("@/lib/clerk/mirror-store", () => ({
   drizzleMirrorStore: {},
 }))
 
+const rateLimit = vi.hoisted(() => ({ consume: vi.fn() }))
+vi.mock("@/lib/rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/rate-limit")>()
+  return { ...actual, consumeRateLimit: rateLimit.consume }
+})
+
 describe("Clerk webhook route handler (POST /api/webhooks/clerk)", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
+    rateLimit.consume.mockResolvedValue({ allowed: true, limit: 300, hits: 1, retryAfterSeconds: 60 })
+  })
+
+  it("refuses a caller over the per-address rate before reading or verifying the body", async () => {
+    rateLimit.consume.mockResolvedValue({ allowed: false, limit: 300, hits: 301, retryAfterSeconds: 42 })
+    const response = await POST(new Request("http://localhost:3000/api/webhooks/clerk", {
+      method: "POST",
+      headers: { "svix-id": "msg_1", "x-forwarded-for": "198.51.100.7" },
+      body: "{}",
+    }))
+    expect(response.status).toBe(429)
+    expect(response.headers.get("Retry-After")).toBe("42")
+    expect(rateLimit.consume).toHaveBeenCalledWith("webhook_ip", "ip:198.51.100.7", expect.anything())
+    expect(mocks.verifyClerkWebhook).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["declared", { "content-length": "2000" }, "x".repeat(10)],
+    ["streamed", {}, "x".repeat(2000)],
+  ])("refuses a %s body over the size cap with 413", async (_label, extraHeaders, body) => {
+    vi.stubEnv("JAMS_WEBHOOK_MAX_BODY_BYTES", "1000")
+    const response = await POST(new Request("http://localhost:3000/api/webhooks/clerk", {
+      method: "POST",
+      headers: { "svix-id": "msg_1", ...extraHeaders },
+      body,
+    }))
+    expect(response.status).toBe(413)
+    expect(mocks.verifyClerkWebhook).not.toHaveBeenCalled()
   })
 
   it("returns 400 when svix-id header is missing", async () => {

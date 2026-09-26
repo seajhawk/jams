@@ -138,6 +138,27 @@ export async function enforceRateLimit(
   }
 }
 
+/**
+ * Public share-page views, limited per client address and per share link. Returns the seconds to
+ * wait when refused, or null when the view may proceed. Bounds how many read SAS URLs a link or a
+ * client can obtain, which is what drives playback egress.
+ */
+export async function shareViewRetryAfter(
+  token: string,
+  requestHeaders: Pick<Headers, "get">,
+  options: { policy?: LimitPolicy; store?: CounterStore } = {}
+): Promise<number | null> {
+  const policy = options.policy ?? resolveLimitPolicy()
+  const byAddress = await consumeRateLimit("share_view_ip", `ip:${clientAddress(requestHeaders)}`, {
+    ...options,
+    policy,
+  })
+  if (!byAddress.allowed) return byAddress.retryAfterSeconds
+  const byLink = await consumeRateLimit("share_view_token", `share:${token}`, { ...options, policy })
+  if (!byLink.allowed) return byLink.retryAfterSeconds
+  return null
+}
+
 /** Deletes counters whose window has ended. Called by the watchdog. */
 export async function purgeExpiredRateLimitCounters(now = new Date()): Promise<number> {
   const deleted = await db

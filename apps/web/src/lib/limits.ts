@@ -34,6 +34,7 @@ export const LIMIT_DEFAULTS = {
   globalActiveAnalyses: 30,
   globalUploadBytesPerDay: 200 * GIB,
   staleUploadMinutes: 60,
+  webhookMaxBodyBytes: 1024 * 1024,
   previewStorageBytes: 10 * GIB,
   previewAnalyses: 100,
   previewActiveRuns: 2,
@@ -85,6 +86,10 @@ export type LimitPolicy = {
   }
   cleanup: {
     staleUploadMinutes: number
+  }
+  requests: {
+    /** Largest webhook body read before signature verification. */
+    webhookMaxBodyBytes: number
   }
   rateLimitsEnabled: boolean
   rates: Record<RateLimitName, RateRule>
@@ -273,6 +278,13 @@ export function resolveLimitPolicy(
         env,
         "JAMS_LIMIT_STALE_UPLOAD_MINUTES",
         LIMIT_DEFAULTS.staleUploadMinutes
+      ),
+    },
+    requests: {
+      webhookMaxBodyBytes: positiveInteger(
+        env,
+        "JAMS_WEBHOOK_MAX_BODY_BYTES",
+        LIMIT_DEFAULTS.webhookMaxBodyBytes
       ),
     },
     rateLimitsEnabled: booleanFlag(env, "JAMS_RATE_LIMITS_ENABLED", true),
