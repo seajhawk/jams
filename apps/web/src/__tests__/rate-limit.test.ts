@@ -8,6 +8,7 @@ import {
   enforceRateLimit,
   rateLimitBucket,
   resetRateLimitCacheForTests,
+  shareViewRetryAfter,
 } from "@/lib/rate-limit"
 
 function memoryStore() {
@@ -88,6 +89,25 @@ describe("fixed-window rate limiter", () => {
       expect((await consumeRateLimit("upload_create", "user:a", { policy: off, store, now: T0 })).allowed).toBe(true)
     }
     expect(store.increment).not.toHaveBeenCalled()
+  })
+})
+
+describe("share view limits", () => {
+  beforeEach(() => resetRateLimitCacheForTests())
+
+  it("limits per client address and, separately, per link", async () => {
+    const limits = resolveLimitPolicy({
+      env: { JAMS_RATE_SHARE_VIEW_IP: "2/600", JAMS_RATE_SHARE_VIEW_TOKEN: "3/86400" },
+    })
+    const store = memoryStore()
+    const from = (ip: string) => new Headers({ "x-forwarded-for": ip })
+    const view = (ip: string) => shareViewRetryAfter("t".repeat(43), from(ip), { policy: limits, store })
+
+    expect(await view("198.51.100.1")).toBeNull()
+    expect(await view("198.51.100.1")).toBeNull()
+    expect(await view("198.51.100.1")).toBeGreaterThan(0) // third view from one address
+    expect(await view("198.51.100.2")).toBeNull() // third view of the link overall
+    expect(await view("198.51.100.3")).toBeGreaterThan(0) // fourth view of the link
   })
 })
 
