@@ -13,7 +13,7 @@ import {
 } from "@/db/schema"
 import { HttpError } from "@/lib/api"
 import { getOrCreateDefaultProfileInScope } from "@/lib/report-assembly"
-import { summarizeTotals } from "@/lib/stats"
+import { splitByReferenceFingerprint, summarizeTotals } from "@/lib/stats"
 import type { OrgContext } from "@/lib/with-org"
 
 export { summarizeTotals }
@@ -215,10 +215,8 @@ export async function loadJourneySessions(
  * treated as comparable, even with each other: their models and score formula are unknown.
  */
 export function referenceFingerprint(sessions: JourneySession[]): string | null {
-  const newest = sessions
-    .filter((session) => session.analysis?.total != null && session.analysis.fingerprint_hash)
-    .sort((a, b) => b.analysis!.created_at.localeCompare(a.analysis!.created_at))[0]
-  return newest?.analysis?.fingerprint_hash ?? null
+  // One rule for the whole app: see splitByReferenceFingerprint.
+  return splitByReferenceFingerprint(sessions).reference
 }
 
 /** True when a session's score is on the given reference definition and may be aggregated. */

@@ -6,10 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { AlertTriangle, GitCompareArrows, RotateCcw, Upload } from "lucide-react"
 
 import type { JourneyStats } from "@/components/projects/CatalogView"
+import { ComparePanel } from "@/components/projects/ComparePanel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LocalTime } from "@/components/ui/local-time"
 import { Skeleton } from "@/components/ui/skeleton"
+import { outdatedSessions } from "@/lib/comparisons"
 import type { JourneySession } from "@/lib/hierarchy"
 import { summarizeTotals } from "@/lib/stats"
 
@@ -93,6 +95,9 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
   const [cohort, setCohort] = useState<string | null>(null)
   const [variant, setVariant] = useState<string | null>(null)
   const [picked, setPicked] = useState<string[]>([])
+  const [confirmReanalyze, setConfirmReanalyze] = useState(false)
+  const [reanalyzeNote, setReanalyzeNote] = useState<string | null>(null)
+  const [reanalyzing, setReanalyzing] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -171,6 +176,36 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
     )
   }
 
+  const outdated = outdatedSessions(summary.sessions)
+  const reanalyze = async () => {
+    setReanalyzing(true)
+    try {
+      const response = await fetch(`/api/journeys/${journeyId}/reanalyze`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ only: "outdated" }),
+      })
+      const body = (await response.json()) as {
+        queued?: unknown[]
+        skipped?: { reason: string }[]
+        error?: string
+      }
+      if (!response.ok) throw new Error(body.error ?? "Re-analysis could not be queued")
+      const skipped = body.skipped ?? []
+      setReanalyzeNote(
+        `Queued ${body.queued?.length ?? 0}.` +
+          (skipped.length ? ` ${skipped.length} not queued: ${skipped[0].reason}.` : "") +
+          " Scores update as each analysis finishes."
+      )
+      setConfirmReanalyze(false)
+      await load()
+    } catch (caught) {
+      setReanalyzeNote(caught instanceof Error ? caught.message : "Re-analysis could not be queued")
+    } finally {
+      setReanalyzing(false)
+    }
+  }
+
   const togglePick = (runId: string) =>
     setPicked((current) =>
       current.includes(runId) ? current.filter((id) => id !== runId) : [...current, runId].slice(-2)
@@ -193,7 +228,9 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
         {summary.goal && (
           <>
             <span>›</span>
-            <span>{summary.goal.name}</span>
+            <Link href={`/goals/${summary.goal.id}`} className="hover:underline">
+              {summary.goal.name}
+            </Link>
           </>
         )}
       </nav>
@@ -243,18 +280,49 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
         </div>
       </section>
 
-      {summary.stats.mixed_definitions && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+      {outdated.length > 0 && (
+        <div className="flex flex-wrap items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-          <p>
-            {summary.stats.excluded} session{summary.stats.excluded === 1 ? " was" : "s were"} scored
-            with an older or unrecorded scoring definition (JAMS&apos;s models or formula changed
-            since), so {summary.stats.excluded === 1 ? "it is" : "they are"} left out of these
-            numbers rather than averaged in. Re-analyze {summary.stats.excluded === 1 ? "it" : "them"}{" "}
-            to include {summary.stats.excluded === 1 ? "it" : "them"}.
-          </p>
+          <div className="min-w-0 flex-1 space-y-2">
+            <p>
+              {summary.stats.excluded > 0
+                ? `${summary.stats.excluded} scored session${summary.stats.excluded === 1 ? " is" : "s are"} on an older or unrecorded scoring definition (JAMS's models or formula changed since), so ${summary.stats.excluded === 1 ? "it is" : "they are"} left out of these numbers rather than averaged in.`
+                : "Some sessions have no current analysis."}{" "}
+              {outdated.length} session{outdated.length === 1 ? " needs" : "s need"} analyzing with
+              the current definitions.
+            </p>
+            {reanalyzeNote && <p className="text-muted-foreground">{reanalyzeNote}</p>}
+            {confirmReanalyze ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span>
+                  Queue {outdated.length} analys{outdated.length === 1 ? "is" : "es"}? Each counts
+                  toward your analysis quota.
+                </span>
+                <Button size="sm" disabled={reanalyzing} onClick={reanalyze}>
+                  {reanalyzing ? "Queuing…" : "Queue them"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmReanalyze(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setConfirmReanalyze(true)}>
+                Re-analyze {outdated.length} session{outdated.length === 1 ? "" : "s"}
+              </Button>
+            )}
+          </div>
         </div>
       )}
+
+      <section className="rounded-lg border bg-card p-5">
+        <h2 className="mb-3 text-sm font-medium">Compare</h2>
+        <ComparePanel
+          key={`${variantNames.join("|")}::${cohorts.join("|")}`}
+          journeyId={summary.journey.id}
+          variants={variantNames}
+          cohorts={cohorts}
+        />
+      </section>
 
       <section className="rounded-lg border bg-card">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
