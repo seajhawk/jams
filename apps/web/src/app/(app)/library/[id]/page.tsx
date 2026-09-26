@@ -12,7 +12,16 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import type React from "react"
 
-import { analysisRuns, effortScores, tasks, videos } from "@/db/schema"
+import {
+  analysisRuns,
+  effortScores,
+  goals,
+  participants,
+  projects,
+  tasks,
+  variants,
+  videos,
+} from "@/db/schema"
 import { mintReadSas } from "@/lib/blob"
 import { formatMs } from "@/lib/format-ms"
 import { serializeAnalysisRun } from "@/lib/analyses"
@@ -48,18 +57,41 @@ export default async function VideoDetailPage({
 
   return withOrg(async ({ scopedDb }) => {
     const [row] = await scopedDb.db
-      .select({ video: videos, taskName: tasks.name })
+      .select({
+        video: videos,
+        taskName: tasks.name,
+        goalName: goals.name,
+        project: { id: projects.id, name: projects.name },
+        participant: {
+          label: participants.label,
+          cohorts: participants.cohorts,
+        },
+        variant: { name: variants.name, build: variants.build },
+      })
       .from(videos)
       .leftJoin(
         tasks,
         and(eq(videos.taskId, tasks.id), eq(tasks.orgId, scopedDb.orgId))
+      )
+      .leftJoin(goals, and(eq(goals.id, tasks.goalId), eq(goals.orgId, scopedDb.orgId)))
+      .leftJoin(
+        projects,
+        and(eq(projects.id, goals.projectId), eq(projects.orgId, scopedDb.orgId))
+      )
+      .leftJoin(
+        participants,
+        and(eq(participants.id, videos.participantId), eq(participants.orgId, scopedDb.orgId))
+      )
+      .leftJoin(
+        variants,
+        and(eq(variants.id, videos.variantId), eq(variants.orgId, scopedDb.orgId))
       )
       .where(scopedDb.orgFilter(videos, eq(videos.id, id)))
       .limit(1)
 
     if (!row) notFound()
 
-    const { video, taskName } = row
+    const { video, taskName, goalName, project, participant, variant } = row
     const [[latestRun], runRows] = await Promise.all([
       scopedDb.db
         .select()
@@ -114,17 +146,43 @@ export default async function VideoDetailPage({
 
     return (
       <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-8">
-      {/* Back link */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2 w-fit"
-        nativeButton={false}
-        render={<Link href="/library" />}
-      >
-        <ArrowLeft data-icon="inline-start" className="size-4" />
-        Back to Library
-      </Button>
+      {/* Where this session lives: Project › Goal › Journey, or back to All sessions */}
+      {video.taskId && taskName ? (
+        <nav className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+          <Link href="/projects" className="hover:underline">
+            Projects
+          </Link>
+          {project?.id && (
+            <>
+              <span>›</span>
+              <Link href={`/projects/${project.id}`} className="hover:underline">
+                {project.name}
+              </Link>
+            </>
+          )}
+          {goalName && (
+            <>
+              <span>›</span>
+              <span>{goalName}</span>
+            </>
+          )}
+          <span>›</span>
+          <Link href={`/journeys/${video.taskId}`} className="hover:underline">
+            {taskName}
+          </Link>
+        </nav>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 w-fit"
+          nativeButton={false}
+          render={<Link href="/library" />}
+        >
+          <ArrowLeft data-icon="inline-start" className="size-4" />
+          Back to All sessions
+        </Button>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         {/* Player */}
@@ -149,8 +207,10 @@ export default async function VideoDetailPage({
 
             <dl className="space-y-2.5 text-sm">
               {taskName && (
-                <MetaRow icon={<Tag className="size-3.5" />} label="Task">
-                  {taskName}
+                <MetaRow icon={<Tag className="size-3.5" />} label="Journey">
+                  <Link href={`/journeys/${video.taskId}`} className="hover:underline">
+                    {taskName}
+                  </Link>
                 </MetaRow>
               )}
               {video.width !== null && video.height !== null && (
@@ -174,16 +234,26 @@ export default async function VideoDetailPage({
                   {video.hasAudio ? "Yes" : "No"}
                 </MetaRow>
               )}
-              {video.subjectLabel && (
+              {(participant?.label || video.subjectLabel) && (
                 <MetaRow
                   icon={<User className="size-3.5" />}
-                  label="Subject"
+                  label="Participant"
                 >
-                  {video.subjectLabel}
+                  <span className="inline-flex flex-wrap items-center justify-end gap-1">
+                    {participant?.label ?? video.subjectLabel}
+                    {participant?.cohorts?.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </span>
                 </MetaRow>
               )}
-              {video.variantLabel && (
-                <MetaRow label="Variant">{video.variantLabel}</MetaRow>
+              {(variant?.name || video.variantLabel) && (
+                <MetaRow label="Variant">
+                  {variant?.name ?? video.variantLabel}
+                  {variant?.build ? ` (${variant.build})` : ""}
+                </MetaRow>
               )}
               <MetaRow
                 icon={<Calendar className="size-3.5" />}

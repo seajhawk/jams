@@ -1,6 +1,6 @@
 import { UserButton } from "@clerk/nextjs"
 import { eq } from "drizzle-orm"
-import { BarChart3, ClipboardList, FolderOpen, Settings } from "lucide-react"
+import { BarChart3, FolderKanban, FolderOpen, GitCompareArrows, Settings } from "lucide-react"
 import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +10,9 @@ import { withOrg } from "@/lib/with-org"
 import { ActiveOrgSync } from "./ActiveOrgSync"
 
 const navItems = [
-  { href: "/library", label: "Library", icon: FolderOpen },
-  { href: "/tasks", label: "Tasks", icon: ClipboardList },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/library", label: "All sessions", icon: FolderOpen },
+  { href: "/compare", label: "Compare", icon: GitCompareArrows },
   { href: "/settings", label: "Settings", icon: Settings },
 ]
 

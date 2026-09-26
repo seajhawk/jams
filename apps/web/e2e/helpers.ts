@@ -37,7 +37,7 @@ export async function signInE2eUser(page: Page) {
 }
 
 export async function expectAppReady(page: Page) {
-  await expect(page.getByRole("link", { name: "Library" }).first()).toBeVisible()
+  await expect(page.getByRole("link", { name: "All sessions" }).first()).toBeVisible()
 }
 
 export async function dockerExec(args: string[]) {

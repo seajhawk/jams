@@ -13,7 +13,10 @@ import {
 } from "@/db/schema"
 import { HttpError } from "@/lib/api"
 import { getOrCreateDefaultProfileInScope } from "@/lib/report-assembly"
+import { summarizeTotals } from "@/lib/stats"
 import type { OrgContext } from "@/lib/with-org"
+
+export { summarizeTotals }
 
 type ScopedDb = OrgContext["scopedDb"]
 
@@ -81,21 +84,6 @@ export const createVariantSchema = z.object({
   name: z.string().trim().min(1).max(120),
   build: z.string().trim().min(1).max(120).optional(),
 })
-
-/** Median and quartiles by linear interpolation (the "type 7" definition spreadsheets use). */
-export function summarizeTotals(values: number[]) {
-  const sorted = [...values].sort((a, b) => a - b)
-  const n = sorted.length
-  const quantile = (q: number) => {
-    if (n === 0) return null
-    const position = (n - 1) * q
-    const lower = Math.floor(position)
-    const upper = Math.ceil(position)
-    const value = sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower)
-    return Math.round(value * 10) / 10
-  }
-  return { n, median: quantile(0.5), p25: quantile(0.25), p75: quantile(0.75) }
-}
 
 /** 404-style guard: the row must exist in the caller's workspace, or the id is treated as unknown. */
 export async function assertInOrg(
