@@ -788,7 +788,7 @@ export function LibraryContent() {
             <CardHeader>
               <CardTitle>Sample report</CardTitle>
               <CardDescription>
-                Review the seeded report while uploads are being built.
+                An example report so you can see what JAMS produces before your first upload.
               </CardDescription>
               <CardAction>
                 <FileVideo className="size-5 text-muted-foreground" />

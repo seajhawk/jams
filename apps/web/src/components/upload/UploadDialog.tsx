@@ -527,6 +527,15 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
                 </div>
               </div>
 
+              <p className="text-xs text-muted-foreground">
+                Upload only recordings you have the right to share, with consent from anyone
+                shown or heard in them. See how recordings are handled on the{" "}
+                <a href="/privacy" target="_blank" rel="noreferrer" className="underline underline-offset-4">
+                  privacy page
+                </a>
+                .
+              </p>
+
               <div className="-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end">
                 <DialogClose render={<Button variant="outline" />}>
                   Cancel

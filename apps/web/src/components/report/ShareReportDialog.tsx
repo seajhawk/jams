@@ -33,6 +33,7 @@ export function ShareReportDialog({ runId }: { runId: string }) {
   const [open, setOpen] = useState(false)
   const [expiryDays, setExpiryDays] = useState("7")
   const [links, setLinks] = useState<ShareLink[]>([])
+  const [audience, setAudience] = useState<"invited_accounts" | "anyone_with_link" | null>(null)
   const [created, setCreated] = useState<CreatedShareLink | null>(null)
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -52,7 +53,11 @@ export function ShareReportDialog({ runId }: { runId: string }) {
     try {
       const response = await fetch(`/api/analyses/${runId}/share`)
       if (!response.ok) throw new Error("Failed to load share links")
-      const body = (await response.json()) as { links: ShareLink[] }
+      const body = (await response.json()) as {
+        links: ShareLink[]
+        audience?: "invited_accounts" | "anyone_with_link"
+      }
+      setAudience(body.audience ?? null)
       setLinks((current) => {
         if (listVersion.current === startedAt) return body.links
         // A link was created or revoked while this request was in flight. That local change is
@@ -145,6 +150,9 @@ export function ShareReportDialog({ runId }: { runId: string }) {
           <DialogTitle>Share report</DialogTitle>
           <DialogDescription>
             Create an expiring read-only link for this report.
+            {audience === "invited_accounts" &&
+              " During the private preview, only people with an invited JAMS account can open it."}
+            {audience === "anyone_with_link" && " Anyone with the link can view the report until it expires or you revoke it."}
           </DialogDescription>
         </DialogHeader>
 

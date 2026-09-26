@@ -89,6 +89,24 @@ describe("/share/[token]", () => {
     expect((await renderShare(VALID_TOKEN)).props.readOnly).toBe(true)
   })
 
+  it("opens a valid share for anyone when public share links are on, without asking who they are", async () => {
+    vi.stubEnv("JAMS_PREVIEW_USER_IDS", "user_invited")
+    vi.stubEnv("JAMS_PUBLIC_SHARE_LINKS", "1")
+    mocks.auth.mockClear()
+    mocks.selectQueue.push([{ runId: RUN_ID, orgId: ORG_ID }])
+    mocks.assembleReportPayloadInScope.mockResolvedValue({ run: { id: RUN_ID } })
+    expect((await renderShare(VALID_TOKEN)).props.readOnly).toBe(true)
+    expect(mocks.auth).not.toHaveBeenCalled()
+  })
+
+  it("still refuses an unknown token when public share links are on", async () => {
+    vi.stubEnv("JAMS_PREVIEW_USER_IDS", "user_invited")
+    vi.stubEnv("JAMS_PUBLIC_SHARE_LINKS", "1")
+    mocks.selectQueue.push([])
+    await expect(renderShare(VALID_TOKEN)).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(mocks.assembleReportPayloadInScope).not.toHaveBeenCalled()
+  })
+
   it("renders a valid token without auth and passes readOnly to ReportShell", async () => {
     mocks.selectQueue.push([{ runId: RUN_ID, orgId: ORG_ID }])
     mocks.assembleReportPayloadInScope.mockResolvedValue({

@@ -234,6 +234,25 @@ describe("share link route handlers", () => {
     expect(body.links[0]).not.toHaveProperty("token")
   })
 
+  it.each([
+    [undefined, undefined, "anyone_with_link"],
+    ["user_invited", undefined, "invited_accounts"],
+    ["user_invited", "1", "anyone_with_link"],
+  ])("tells the dialog who can open links (preview=%s, public=%s)", async (preview, open, audience) => {
+    vi.stubEnv("JAMS_PREVIEW_USER_IDS", preview)
+    vi.stubEnv("JAMS_PUBLIC_SHARE_LINKS", open)
+    const db = new MockDb()
+    db.selectRows.push([{ id: RUN_ID }], [])
+    installContext(db)
+
+    const response = await listShares(
+      new Request(`http://jams.test/api/analyses/${RUN_ID}/share`),
+      { params: Promise.resolve({ id: RUN_ID }) }
+    )
+    expect(((await response.json()) as { audience: string }).audience).toBe(audience)
+    vi.unstubAllEnvs()
+  })
+
   it("revokes links through an org-scoped soft update", async () => {
     const db = new MockDb()
     db.updateRows.push([shareRow({ revokedAt: new Date("2026-07-17T13:00:00.000Z") })])
