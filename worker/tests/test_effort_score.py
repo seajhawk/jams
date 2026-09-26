@@ -44,3 +44,16 @@ def test_zero_weight_kind_drops_out() -> None:
     assert "context_switch" not in [item["kind"] for item in result["breakdown"]]
     assert result["components"]["cognitive"] == 0
     assert result["total"] == 53
+
+
+def test_negative_sentiment_threshold_matches_report_attention_line() -> None:
+    # Shared with apps/web/src/__tests__/effort-score-sentiment.test.ts: both scorers must agree.
+    values = [-0.2, -0.29, -0.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    measures = [
+        {"kind": "sentiment", "t_start_ms": i * 1000, "t_end_ms": i * 1000 + 1000, "value_num": v}
+        for i, v in enumerate(values)
+    ]
+    result = normalize(measures, {"duration_ms": 10_000}, {"sentiment": "neg_density"})
+    # Only -0.3 counts: 1 s of 10 s is 10%, x250 = 25. The old -0.15 cut counted all three (75).
+    assert result["sentiment"]["raw"] == 0.1
+    assert result["sentiment"]["normalized"] == 25

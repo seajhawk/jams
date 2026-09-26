@@ -1,3 +1,4 @@
+import { NEGATIVE_SENTIMENT_THRESHOLD } from "@/lib/effort-score"
 import type { ReportMeasure, ReportPayload } from "@/lib/report-contract"
 
 export type MomentKind = "negative" | "positive" | "switch" | "segment"
@@ -18,7 +19,7 @@ export interface Moment {
 const KIND_ORDER: Record<MomentKind, number> = { segment: 0, switch: 1, negative: 2, positive: 2 }
 
 /** Sentiment at or below this is worth a reviewer's attention; at or below FRUSTRATED we call it frustration. */
-export const NEGATIVE_THRESHOLD = -0.3
+export const NEGATIVE_THRESHOLD = NEGATIVE_SENTIMENT_THRESHOLD
 export const FRUSTRATED_THRESHOLD = -0.5
 export const POSITIVE_THRESHOLD = 0.5
 

@@ -93,13 +93,19 @@ function normalizePerMinute(kind: MeasureKind, measures: ReportMeasure[], video:
   };
 }
 
+/**
+ * An utterance counts toward negative narration time at or below this value; the report's
+ * "worth attention" line uses the same constant. Keep in sync with the worker's effort_score.py.
+ */
+export const NEGATIVE_SENTIMENT_THRESHOLD = -0.3
+
 function normalizeNegativeDensity(measures: ReportMeasure[]) {
   const sentimentMeasures = measuresForKind(measures, "sentiment");
   const narrationMs = sentimentMeasures.reduce((sum, measure) => {
     return sum + Math.max(0, (measure.t_end_ms ?? measure.t_start_ms) - measure.t_start_ms);
   }, 0);
   const negativeMs = sentimentMeasures.reduce((sum, measure) => {
-    if ((measure.value_num ?? 0) >= -0.15) {
+    if ((measure.value_num ?? 0) > NEGATIVE_SENTIMENT_THRESHOLD) {
       return sum;
     }
 
