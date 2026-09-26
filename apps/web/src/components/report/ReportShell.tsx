@@ -29,10 +29,13 @@ export function ReportShell({
   payload,
   demo = false,
   readOnly = false,
+  initialSeekMs,
 }: {
   payload: ReportPayload
   demo?: boolean
   readOnly?: boolean
+  /** Deep link (`?t=` in ms): seek here once the media can play. */
+  initialSeekMs?: number
 }) {
   const mounted = useIsMounted()
   const [currentTimeMs, setCurrentTimeMs] = useState(0)
@@ -64,6 +67,24 @@ export function ReportShell({
   useEffect(() => {
     if (demo) toast.info('Demo report — upload your own video soon')
   }, [demo])
+
+  // A deep link lands on its moment. The player mounts and loads media asynchronously, so wait
+  // (briefly) until it can play; setting currentTime earlier is not reliably honoured.
+  useEffect(() => {
+    if (initialSeekMs === undefined) return
+    let attempts = 0
+    const timer = window.setInterval(() => {
+      attempts += 1
+      const player = playerRef.current
+      if (player?.state.canPlay) {
+        seekTo(initialSeekMs)
+        window.clearInterval(timer)
+      } else if (attempts > 50) {
+        window.clearInterval(timer)
+      }
+    }, 200)
+    return () => window.clearInterval(timer)
+  }, [initialSeekMs, seekTo])
 
   // Keyboard shortcuts
   useEffect(() => {

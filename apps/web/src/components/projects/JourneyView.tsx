@@ -7,6 +7,7 @@ import { AlertTriangle, GitCompareArrows, RotateCcw, Upload } from "lucide-react
 
 import type { JourneyStats } from "@/components/projects/CatalogView"
 import { ComparePanel } from "@/components/projects/ComparePanel"
+import { StepsPanel } from "@/components/projects/StepsPanel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LocalTime } from "@/components/ui/local-time"
@@ -301,6 +302,11 @@ export function JourneyView({ journeyId }: { journeyId: string }) {
           </div>
         </div>
       )}
+
+      <section className="rounded-lg border bg-card p-5">
+        <h2 className="mb-3 text-sm font-medium">Where people struggle</h2>
+        <StepsPanel journeyId={summary.journey.id} cohort={cohort} variant={variant} />
+      </section>
 
       <section className="rounded-lg border bg-card p-5">
         <h2 className="mb-3 text-sm font-medium">Compare</h2>

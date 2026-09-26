@@ -81,5 +81,5 @@ rest of the journey page.
 
 - [x] Alignment + hotspot core (`lib/steps.ts`, `lib/hotspots.ts`) with unit tests
 - [x] Migration 0016 (`videos.step_boundaries_ms`), steps API, boundaries API (+ Postgres integration test: alignment sources, hotspot with linked words, cross-org isolation)
-- [ ] UI: steps editor, hotspot table, Play all, report `?t=`, session boundary editor
-- [ ] Playwright; suites green; PR against `u2-group-comparisons`
+- [x] UI: steps editor, hotspot table, Play all, report `?t=`, session boundary editor
+- [x] Playwright (`steps-hotspots.spec.ts` passes locally with the U1/U2 specs); web 326 tests, type check and lint clean; PR against `u2-group-comparisons`
