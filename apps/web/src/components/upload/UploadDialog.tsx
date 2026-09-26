@@ -18,17 +18,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { formatMs } from "@/lib/format-ms"
-import { MAX_VIDEO_SIZE_BYTES } from "@/lib/videos"
+import {
+  DEFAULT_UPLOAD_LIMITS,
+  uploadLimitsFromApi,
+  validateRecordingFile,
+  validateRecordingMetadata,
+} from "@/lib/upload-validation"
 import { extractVideoMetadata, type VideoMetadata } from "./useVideoMetadata"
-
-const MAX_DURATION_MS = 20 * 60 * 1000 // 20 min
-
-const ACCEPTED_TYPES = new Set([
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "video/x-m4v",
-])
 
 interface Task {
   id: string
@@ -84,6 +80,8 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
   const [progress, setProgress] = useState(0)
   const [transferred, setTransferred] = useState(0)
   const [speedBps, setSpeedBps] = useState(0)
+  // Server-configured limits; the defaults match the server's until the request returns.
+  const [limits, setLimits] = useState(DEFAULT_UPLOAD_LIMITS)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -118,6 +116,14 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
     lastTimeRef.current = 0
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    fetch("/api/limits")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => setLimits(uploadLimitsFromApi(body) ?? DEFAULT_UPLOAD_LIMITS))
+      .catch(() => {})
+  }, [open])
+
   // Load org tasks when the form phase opens
   useEffect(() => {
     if (!open || phase !== "form") return
@@ -130,22 +136,18 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
   async function processFile(f: File) {
     setError(null)
 
-    if (!ACCEPTED_TYPES.has(f.type)) {
-      setError("Unsupported file type. Please use MP4, MOV, WebM, or M4V.")
-      return
-    }
-    if (f.size > MAX_VIDEO_SIZE_BYTES) {
-      setError("File exceeds the 2 GiB limit. Please compress or trim it first.")
+    const fileProblem = validateRecordingFile(f, limits)
+    if (fileProblem) {
+      setError(fileProblem)
       return
     }
 
     setPhase("extracting")
     try {
       const meta = await extractVideoMetadata(f)
-      if (meta.durationMs > MAX_DURATION_MS) {
-        setError(
-          "Video exceeds the 20-minute limit. Please trim it before uploading."
-        )
+      const metadataProblem = validateRecordingMetadata(meta, limits)
+      if (metadataProblem) {
+        setError(metadataProblem)
         setPhase("idle")
         return
       }
@@ -221,6 +223,7 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
           filename: file.name,
           content_type: file.type,
           size_bytes: file.size,
+          duration_ms: metadata.durationMs,
           ...(resolvedTaskId ? { task_id: resolvedTaskId } : {}),
           ...(form.subjectLabel.trim()
             ? { subject_label: form.subjectLabel.trim() }
@@ -283,8 +286,9 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
 
       setProgress(100)
 
-      // 5. Mark as complete with client-extracted metadata
-      await fetch(`/api/videos/${video_id}/complete`, {
+      // 5. Mark as complete with client-extracted metadata. The server verifies the stored size
+      // here and can still refuse the recording, so its answer decides success.
+      const completeRes = await fetch(`/api/videos/${video_id}/complete`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -295,6 +299,10 @@ export function UploadDialog({ onSuccess }: UploadDialogProps) {
           poster_uploaded: true,
         }),
       })
+      if (!completeRes.ok) {
+        const completeBody = (await completeRes.json().catch(() => ({}))) as { error?: string }
+        throw new Error(completeBody.error ?? "The upload could not be finalized. Please try again.")
+      }
 
       toast.success("Video uploaded — it will appear in your library shortly.")
       const vid = video_id

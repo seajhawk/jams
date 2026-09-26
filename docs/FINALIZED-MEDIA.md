@@ -16,11 +16,14 @@ Concurrent completion requests serialize on the video row. Failed uploads requir
 a new upload rather than reviving the old row.
 
 Storage and PostgreSQL do not share a transaction. Failed copies or rolled-back
-database transactions can leave unused destination blobs. Upload sources also
-remain until cleanup; their credentials may be reused until the original 15-minute
-expiry. Cleanup and complete recording deletion are the next milestone. The
-declared-original quota is not a physical storage cap: it excludes these copies,
-posters and derived artifacts. Existing accepted rows are not migrated by this
+database transactions can leave unused destination blobs. Upload sources remain
+until the watchdog's upload sweep (`src/lib/upload-cleanup.ts`) deletes them, once
+their credentials can no longer be reused (15-minute expiry plus a 5-minute
+margin); it never deletes a recording's current `blob_path` or poster, so legacy
+rows accepted in place are safe. Completion also deletes an uploaded blob whose
+size does not match the declared size or exceeds the upload limit. The
+declared-original quota is not a physical storage cap: it excludes orphaned
+destination copies, posters and derived artifacts. Existing accepted rows are not migrated by this
 change; the new guarantee applies to recordings completed through this code.
 
 The pipeline E2E overwrites the old upload source after acceptance, compares the
