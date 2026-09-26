@@ -27,7 +27,7 @@ interface TimelineProps {
 }
 
 function sentimentLabel(v: number): string {
-  return `${v <= -0.5 ? 'Frustrated' : v < -0.15 ? 'Negative' : v >= 0.5 ? 'Positive' : v > 0.15 ? 'Mildly positive' : 'Neutral'} (${v > 0 ? '+' : ''}${v.toFixed(2)})`
+  return `Narration: ${v <= -0.5 ? 'strongly negative' : v < -0.15 ? 'negative' : v >= 0.5 ? 'positive' : v > 0.15 ? 'mildly positive' : 'neutral'} (${v > 0 ? '+' : ''}${v.toFixed(2)})`
 }
 
 export function Timeline({ payload, currentTimeMs, onSeek, onPlayMoment }: TimelineProps) {

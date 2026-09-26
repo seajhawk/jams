@@ -65,7 +65,12 @@ export function buildMoments(payload: ReportPayload): Moment[] {
         id: m.id,
         kind: negative ? "negative" : "positive",
         tMs: m.t_start_ms,
-        title: negative ? (value <= FRUSTRATED_THRESHOLD ? "Frustrated" : "Negative") : "Positive",
+        // Narration sentiment is what was said, not a measured feeling (preview review B6).
+        title: negative
+          ? value <= FRUSTRATED_THRESHOLD
+            ? "Strongly negative narration"
+            : "Negative narration"
+          : "Positive narration",
         detail: quote,
         score: value,
       })

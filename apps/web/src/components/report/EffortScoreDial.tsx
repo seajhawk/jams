@@ -3,12 +3,14 @@
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 
 interface EffortScoreDialProps {
-  score: number
+  /** null = nothing weighted was measured for this recording. */
+  score: number | null
   /** Optional data-testid override (default: "score-dial") */
   testId?: string
 }
 
-function dialColor(value: number): string {
+function dialColor(value: number | null): string {
+  if (value === null) return 'text-muted-foreground/40'
   if (value <= 33) return 'text-green-500'
   if (value <= 66) return 'text-amber-500'
   return 'text-red-500'
@@ -20,12 +22,12 @@ export function EffortScoreDial({ score, testId = 'score-dial' }: EffortScoreDia
   const cy = 60
   const circumference = 2 * Math.PI * r
   const arcLength = (270 / 360) * circumference
-  const filled = (score / 100) * arcLength
+  const filled = ((score ?? 0) / 100) * arcLength
 
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger render={<svg data-testid={testId} width={80} height={80} viewBox="0 0 120 120" aria-label={`Effort score: ${score}`} />}>
+        <TooltipTrigger render={<svg data-testid={testId} width={80} height={80} viewBox="0 0 120 120" aria-label={score === null ? 'Effort score: not measured' : `Effort score: ${score}`} />}>
           {/* Background arc */}
           <circle
             cx={cx}
@@ -62,7 +64,7 @@ export function EffortScoreDial({ score, testId = 'score-dial' }: EffortScoreDia
             fontSize={22}
             fontWeight="bold"
           >
-            {score}
+            {score ?? '–'}
           </text>
           <text
             x={60}
@@ -75,7 +77,11 @@ export function EffortScoreDial({ score, testId = 'score-dial' }: EffortScoreDia
           </text>
         </TooltipTrigger>
         <TooltipContent>
-          <span>Lower is easier</span>
+          <span>
+            {score === null
+              ? 'Not measured: this recording had none of the signals the score uses'
+              : 'Lower is easier. Experimental: compare sessions of the same task.'}
+          </span>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

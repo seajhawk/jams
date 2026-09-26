@@ -99,7 +99,7 @@ describe("buildMoments", () => {
   it("quotes what was said for a sentiment moment, and calls strong negatives frustration", () => {
     const frustrated = buildMoments(payload).find((m) => m.tMs === 10_000)!
 
-    expect(frustrated.title).toBe("Frustrated")
+    expect(frustrated.title).toBe("Strongly negative narration")
     expect(frustrated.detail).toBe("This is so confusing, where is the button?")
     expect(frustrated.score).toBe(-0.82)
   })
@@ -107,7 +107,7 @@ describe("buildMoments", () => {
   it("labels milder negatives as negative and tolerates a sentiment with no matching utterance", () => {
     const mild = buildMoments(payload).find((m) => m.tMs === 50_000)!
 
-    expect(mild.title).toBe("Negative")
+    expect(mild.title).toBe("Negative narration")
     expect(mild.detail).toBeNull()
   })
 
@@ -157,7 +157,7 @@ describe("jumping from the analysis to the video", () => {
     renderShell()
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Play Frustrated at 00:10" }))
+      fireEvent.click(screen.getByRole("button", { name: "Play Strongly negative narration at 00:10" }))
     })
 
     expect(player.instance.currentTime).toBe(8.5)
@@ -204,7 +204,7 @@ describe("jumping from the analysis to the video", () => {
     renderShell()
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Play Frustrated at 00:10" }))
+      fireEvent.click(screen.getByRole("button", { name: "Play Strongly negative narration at 00:10" }))
     })
 
     expect(player.instance.currentTime).toBe(8.5)

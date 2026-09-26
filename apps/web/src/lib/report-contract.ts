@@ -218,19 +218,22 @@ export const reportPayloadSchema = z.object({
       weights: z.partialRecord(measureKindSchema, z.number().min(0)),
       normalization: z.partialRecord(measureKindSchema, normalizationSchema),
     }),
+    // null = not measured for this recording (e.g. no audio), never a zero.
     components: z.object({
-      physical: z.number().min(0).max(100),
-      cognitive: z.number().min(0).max(100),
-      time: z.number().min(0).max(100),
-      sentiment: z.number().min(0).max(100),
-      speech: z.number().min(0).max(100),
+      physical: z.number().min(0).max(100).nullable(),
+      cognitive: z.number().min(0).max(100).nullable(),
+      time: z.number().min(0).max(100).nullable(),
+      sentiment: z.number().min(0).max(100).nullable(),
+      speech: z.number().min(0).max(100).nullable(),
     }),
-    total: z.number().min(0).max(100),
+    total: z.number().min(0).max(100).nullable(),
     breakdown: z.array(z.object({
       kind: measureKindSchema,
       raw: z.number().nonnegative(),
       normalized: z.number().min(0).max(100),
       weight: z.number().min(0),
+      // Absent on rows stored before this flag existed; treat as measured.
+      measured: z.boolean().optional(),
       contribution: z.number().min(0),
     })),
   }),

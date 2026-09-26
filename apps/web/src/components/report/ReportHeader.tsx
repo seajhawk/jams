@@ -15,10 +15,20 @@ import {
 import { FileJson, MoreHorizontal, Table } from 'lucide-react'
 import { ShareReportDialog } from './ShareReportDialog'
 
-function bandColor(value: number): string {
+function bandColor(value: number | null): string {
+  if (value === null) return 'text-muted-foreground'
   if (value <= 33) return 'text-green-500'
   if (value <= 66) return 'text-amber-500'
   return 'text-red-500'
+}
+
+/** Plain words for the run's state (preview review B6: no raw status codes). */
+const RUN_STATUS_LABEL: Record<string, string> = {
+  succeeded: 'Complete',
+  partial: 'Complete (some signals unavailable)',
+  running: 'Analyzing',
+  queued: 'Waiting to analyze',
+  failed: 'Analysis failed',
 }
 
 interface ReportHeaderProps {
@@ -53,17 +63,27 @@ export function ReportHeader({
         {new Date(payload.run.finished_at).toLocaleString()}
       </span>
       <Badge variant={payload.run.status === 'succeeded' ? 'default' : 'outline'}>
-        {payload.run.status}
+        {RUN_STATUS_LABEL[payload.run.status] ?? payload.run.status}
       </Badge>
       <div className="flex-1" />
       {(['physical', 'cognitive', 'time', 'sentiment'] as const).map(cat => (
         <div key={cat} className="flex items-center gap-1 text-sm">
           <span className="text-muted-foreground capitalize">{cat}</span>
-          <span className={bandColor(liveScore.components[cat])}>{liveScore.components[cat]}</span>
+          <span className={bandColor(liveScore.components[cat])}>
+            {liveScore.components[cat] ?? 'Not measured'}
+          </span>
         </div>
       ))}
       <span className="text-muted-foreground text-xs font-mono">{formatMs(currentTimeMs)}</span>
-      <EffortScoreDial score={liveScore.total} />
+      <div className="flex items-center gap-2">
+        <EffortScoreDial score={liveScore.total} />
+        <Badge
+          variant="outline"
+          title="A relative indicator for comparing sessions of the same task. Not a validated measure of workload."
+        >
+          Experimental
+        </Badge>
+      </div>
       {!demo && !readOnly && (
         <>
           <ShareReportDialog runId={payload.run.id} />

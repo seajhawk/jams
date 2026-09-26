@@ -10,7 +10,7 @@ import {
   weightProfiles,
 } from "@/db/schema"
 import { mintReadSas } from "@/lib/blob"
-import { normalize, score } from "@/lib/effort-score"
+import { KIND_CATEGORY, normalize, score } from "@/lib/effort-score"
 import type { MeasureKind, Normalization } from "@/lib/report-contract"
 import { reportPayloadSchema, type ReportPayload } from "@/lib/report-contract"
 import {
@@ -352,6 +352,14 @@ export async function assembleReportPayloadInScope(
   if (storedScore) {
     // Breakdown is written by the worker in the same format as the contract
     const breakdown = storedScore.breakdown as ReportPayload["score"]["breakdown"]
+    // The NOT NULL columns hold 0 for "not measured"; the breakdown's per-kind `measured` flags say
+    // which it really was. Rows stored before the flag existed render as before.
+    const flagged = breakdown.some((item) => item.measured !== undefined)
+    const measuredIn = (category: keyof ReportPayload["score"]["components"]) =>
+      !flagged ||
+      breakdown.some((item) => item.measured !== false && KIND_CATEGORY[item.kind] === category)
+    const orNull = (category: keyof ReportPayload["score"]["components"], value: number) =>
+      measuredIn(category) ? value : null
     scoreBlock = {
       profile: {
         id: defaultProfile.id,
@@ -360,13 +368,13 @@ export async function assembleReportPayloadInScope(
         normalization: profileNormalization,
       },
       components: {
-        physical: storedScore.physical,
-        cognitive: storedScore.cognitive,
-        time: storedScore.time,
-        sentiment: storedScore.sentiment,
-        speech: storedScore.speech,
+        physical: orNull("physical", storedScore.physical),
+        cognitive: orNull("cognitive", storedScore.cognitive),
+        time: orNull("time", storedScore.time),
+        sentiment: orNull("sentiment", storedScore.sentiment),
+        speech: orNull("speech", storedScore.speech),
       },
-      total: storedScore.total,
+      total: !flagged || breakdown.some((item) => item.measured !== false) ? storedScore.total : null,
       breakdown,
     }
   } else {

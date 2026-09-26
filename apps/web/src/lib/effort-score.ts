@@ -11,29 +11,34 @@ export type NormalizedKindScore = {
   kind: MeasureKind;
   raw: number;
   normalized: number;
+  /** Whether this recording could measure the kind at all. Unmeasured is not zero. */
+  measured: boolean;
 };
 
 export type NormalizedScores = Partial<Record<MeasureKind, NormalizedKindScore>>;
 
 export type ScoreResult = {
-  components: Record<MeasureCategory, number>;
-  total: number;
+  /** null = nothing in the category was measured for this recording. */
+  components: Record<MeasureCategory, number | null>;
+  total: number | null;
   breakdown: Array<{
     kind: MeasureKind;
     raw: number;
     normalized: number;
     weight: number;
+    measured: boolean;
     contribution: number;
   }>;
 };
 
-const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
+export const KIND_CATEGORY: Record<MeasureKind, MeasureCategory> = {
   clicks: "physical",
   context_switch: "cognitive",
   keypresses: "physical",
   sentiment: "sentiment",
   scrolls: "physical",
-  spoken_word: "physical",
+  // Words per minute is speech, not physical effort (preview review B6).
+  spoken_word: "speech",
   time_segment: "time",
   utterance: "speech",
 };
@@ -128,6 +133,19 @@ function normalizeRawMinutes(video: ReportVideo) {
   };
 }
 
+/**
+ * Whether this recording could measure the kind at all (mirrors is_measured in the worker).
+ * Speech kinds need audio (audio with silence is a real zero); sentiment needs speech to classify;
+ * context switches and time come from the video; the experimental physical detectors count only
+ * when they produced something.
+ */
+export function isMeasured(kind: MeasureKind, measures: ReportMeasure[], video: ReportVideo): boolean {
+  if (kind === "spoken_word" || kind === "utterance") return video.has_audio !== false;
+  if (kind === "sentiment") return measuresForKind(measures, "sentiment").length > 0;
+  if (kind === "context_switch" || kind === "time_segment") return true;
+  return measuresForKind(measures, kind).length > 0;
+}
+
 export function normalize(
   measures: ReportMeasure[],
   video: ReportVideo,
@@ -140,17 +158,19 @@ export function normalize(
       return scores;
     }
 
+    const measured = isMeasured(kind, measures, video);
+
     if (mode === "per_minute") {
-      scores[kind] = { kind, ...normalizePerMinute(kind, measures, video) };
+      scores[kind] = { kind, ...normalizePerMinute(kind, measures, video), measured };
       return scores;
     }
 
     if (mode === "neg_density") {
-      scores[kind] = { kind, ...normalizeNegativeDensity(measures) };
+      scores[kind] = { kind, ...normalizeNegativeDensity(measures), measured };
       return scores;
     }
 
-    scores[kind] = { kind, ...normalizeRawMinutes(video) };
+    scores[kind] = { kind, ...normalizeRawMinutes(video), measured };
     return scores;
   }, {});
 }
@@ -159,7 +179,10 @@ export function score(
   normalized: NormalizedScores,
   weights: WeightProfile["weights"],
 ): ScoreResult {
-  const activeKinds = SCORE_KIND_ORDER.filter((kind) => (weights[kind] ?? 0) > 0);
+  const weightedKinds = SCORE_KIND_ORDER.filter((kind) => (weights[kind] ?? 0) > 0);
+  // Only kinds this recording could measure take part, in numerator and denominator alike, so a
+  // missing signal never drags the score toward zero. A kind with no normalization is missing.
+  const activeKinds = weightedKinds.filter((kind) => normalized[kind]?.measured ?? false);
   const totalWeight = activeKinds.reduce((sum, kind) => sum + (weights[kind] ?? 0), 0);
 
   const weightedSum = activeKinds.reduce((sum, kind) => {
@@ -176,30 +199,36 @@ export function score(
 
       componentScores[category] = categoryWeight > 0
         ? roundWhole(categoryWeightedSum / categoryWeight)
-        : 0;
+        : null;
 
       return componentScores;
     },
     {
-      physical: 0,
-      cognitive: 0,
-      time: 0,
-      sentiment: 0,
-      speech: 0,
-    } satisfies Record<MeasureCategory, number>,
+      physical: null,
+      cognitive: null,
+      time: null,
+      sentiment: null,
+      speech: null,
+    } as Record<MeasureCategory, number | null>,
   );
 
   return {
     components,
-    total: totalWeight > 0 ? roundWhole(weightedSum / totalWeight) : 0,
-    breakdown: activeKinds.map((kind) => ({
-      kind,
-      raw: normalized[kind]?.raw ?? 0,
-      normalized: normalized[kind]?.normalized ?? 0,
-      weight: weights[kind] ?? 0,
-      contribution: totalWeight > 0
-        ? roundTenth(((normalized[kind]?.normalized ?? 0) * (weights[kind] ?? 0)) / totalWeight)
-        : 0,
-    })),
+    total: totalWeight > 0 ? roundWhole(weightedSum / totalWeight) : null,
+    // Weighted kinds that were not measured stay listed (measured: false) so the report can say
+    // what is missing rather than implying a zero.
+    breakdown: weightedKinds.map((kind) => {
+      const measured = activeKinds.includes(kind);
+      return {
+        kind,
+        raw: normalized[kind]?.raw ?? 0,
+        normalized: normalized[kind]?.normalized ?? 0,
+        weight: weights[kind] ?? 0,
+        measured,
+        contribution: totalWeight > 0 && measured
+          ? roundTenth(((normalized[kind]?.normalized ?? 0) * (weights[kind] ?? 0)) / totalWeight)
+          : 0,
+      };
+    }),
   };
 }

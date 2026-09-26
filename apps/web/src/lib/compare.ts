@@ -1,14 +1,19 @@
 import type { ReportPayload } from "./report-contract"
 
+/** b minus a; null when either side was not measured (never a difference against a zero). */
 export interface ScoreDeltas {
   components: {
-    physical: number
-    cognitive: number
-    time: number
-    sentiment: number
-    speech: number
+    physical: number | null
+    cognitive: number | null
+    time: number | null
+    sentiment: number | null
+    speech: number | null
   }
-  total: number
+  total: number | null
+}
+
+function delta(a: number | null, b: number | null): number | null {
+  return a === null || b === null ? null : b - a
 }
 
 export interface KindDelta {
@@ -87,13 +92,13 @@ export function computeComparison(
   // ── Score deltas (b − a) ──────────────────────────────────────────────────
   const score: ScoreDeltas = {
     components: {
-      physical: b.score.components.physical - a.score.components.physical,
-      cognitive: b.score.components.cognitive - a.score.components.cognitive,
-      time: b.score.components.time - a.score.components.time,
-      sentiment: b.score.components.sentiment - a.score.components.sentiment,
-      speech: b.score.components.speech - a.score.components.speech,
+      physical: delta(a.score.components.physical, b.score.components.physical),
+      cognitive: delta(a.score.components.cognitive, b.score.components.cognitive),
+      time: delta(a.score.components.time, b.score.components.time),
+      sentiment: delta(a.score.components.sentiment, b.score.components.sentiment),
+      speech: delta(a.score.components.speech, b.score.components.speech),
     },
-    total: b.score.total - a.score.total,
+    total: delta(a.score.total, b.score.total),
   }
 
   // ── Per-kind deltas from score breakdowns ─────────────────────────────────
