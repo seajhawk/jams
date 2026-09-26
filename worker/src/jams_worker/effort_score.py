@@ -13,7 +13,8 @@ KIND_CATEGORY = {
     "keypresses": "physical",
     "sentiment": "sentiment",
     "scrolls": "physical",
-    "spoken_word": "physical",
+    # Words per minute is speech, not physical effort (preview review B6).
+    "spoken_word": "speech",
     "time_segment": "time",
     "utterance": "speech",
 }
@@ -94,8 +95,7 @@ def _measure_end(measure: Measure) -> int:
 def _normalize_negative_density(measures: list[Measure]) -> dict[str, Any]:
     sentiment_measures = _measures_for_kind(measures, "sentiment")
     narration_ms = sum(
-        max(0, _measure_end(measure) - int(measure["t_start_ms"]))
-        for measure in sentiment_measures
+        max(0, _measure_end(measure) - int(measure["t_start_ms"])) for measure in sentiment_measures
     )
     negative_ms = sum(
         max(0, _measure_end(measure) - int(measure["t_start_ms"]))
@@ -117,6 +117,23 @@ def _normalize_raw_minutes(video: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def is_measured(kind: str, measures: list[Measure], video: dict[str, Any]) -> bool:
+    """Whether this recording could measure the kind at all. Unmeasured is not zero.
+
+    Speech kinds need audio (audio with silence is a real zero); sentiment needs speech to
+    classify; context switches and time always come from the video; the experimental physical
+    detectors count only when they produced something. Unknown audio is treated as present so
+    older rows score as before.
+    """
+    if kind in {"spoken_word", "utterance"}:
+        return video.get("has_audio") is not False
+    if kind == "sentiment":
+        return bool(_measures_for_kind(measures, "sentiment"))
+    if kind in {"context_switch", "time_segment"}:
+        return True
+    return bool(_measures_for_kind(measures, kind))
+
+
 def normalize(
     measures: list[Measure],
     video: dict[str, Any],
@@ -133,23 +150,31 @@ def normalize(
             scores[kind] = {"kind": kind, **_normalize_negative_density(measures)}
         else:
             scores[kind] = {"kind": kind, **_normalize_raw_minutes(video)}
+        scores[kind]["measured"] = is_measured(kind, measures, video)
     return scores
 
 
 def score(normalized: dict[str, dict[str, Any]], weights: dict[str, float]) -> dict[str, Any]:
-    active_kinds = [kind for kind in SCORE_KIND_ORDER if float(weights.get(kind) or 0) > 0]
+    weighted_kinds = [kind for kind in SCORE_KIND_ORDER if float(weights.get(kind) or 0) > 0]
+    # Only kinds this recording could measure take part, in numerator and denominator alike, so a
+    # missing signal never drags the score toward zero. A kind with no normalization is missing.
+    active_kinds = [
+        kind
+        for kind in weighted_kinds
+        if normalized.get(kind, {}).get("measured", kind in normalized)
+    ]
     total_weight = sum(float(weights.get(kind) or 0) for kind in active_kinds)
     weighted_sum = sum(
         float(normalized.get(kind, {}).get("normalized") or 0) * float(weights.get(kind) or 0)
         for kind in active_kinds
     )
 
-    components = {
-        "physical": 0,
-        "cognitive": 0,
-        "time": 0,
-        "sentiment": 0,
-        "speech": 0,
+    components: dict[str, int | None] = {
+        "physical": None,
+        "cognitive": None,
+        "time": None,
+        "sentiment": None,
+        "speech": None,
     }
     for category in components:
         category_kinds = [kind for kind in active_kinds if KIND_CATEGORY[kind] == category]
@@ -159,18 +184,19 @@ def score(normalized: dict[str, dict[str, Any]], weights: dict[str, float]) -> d
             for kind in category_kinds
         )
         components[category] = (
-            round_whole(category_weighted_sum / category_weight) if category_weight > 0 else 0
+            round_whole(category_weighted_sum / category_weight) if category_weight > 0 else None
         )
 
     return {
         "components": components,
-        "total": round_whole(weighted_sum / total_weight) if total_weight > 0 else 0,
+        "total": round_whole(weighted_sum / total_weight) if total_weight > 0 else None,
         "breakdown": [
             {
                 "kind": kind,
                 "raw": normalized.get(kind, {}).get("raw") or 0,
                 "normalized": normalized.get(kind, {}).get("normalized") or 0,
                 "weight": weights.get(kind) or 0,
+                "measured": kind in active_kinds,
                 "contribution": (
                     round_tenth(
                         (
@@ -179,10 +205,12 @@ def score(normalized: dict[str, dict[str, Any]], weights: dict[str, float]) -> d
                         )
                         / total_weight
                     )
-                    if total_weight > 0
+                    if total_weight > 0 and kind in active_kinds
                     else 0
                 ),
             }
-            for kind in active_kinds
+            # Weighted kinds that were not measured stay listed (measured: false) so stored rows
+            # can tell the report what is missing rather than implying a zero.
+            for kind in weighted_kinds
         ],
     }

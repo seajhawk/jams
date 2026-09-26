@@ -3160,11 +3160,11 @@
       }
     },
     "components": {
-      "physical": 45,
+      "physical": null,
       "cognitive": 63,
       "time": 47,
       "sentiment": 58,
-      "speech": 0
+      "speech": 45
     },
     "total": 56,
     "breakdown": [
@@ -3173,6 +3173,7 @@
         "raw": 24,
         "normalized": 63,
         "weight": 3,
+        "measured": true,
         "contribution": 18.9
       },
       {
@@ -3180,6 +3181,7 @@
         "raw": 0.2,
         "normalized": 58,
         "weight": 4,
+        "measured": true,
         "contribution": 23.2
       },
       {
@@ -3187,13 +3189,15 @@
         "raw": 255,
         "normalized": 45,
         "weight": 1,
+        "measured": true,
         "contribution": 4.5
       },
       {
         "kind": "time_segment",
-        "raw": 14,
+        "raw": 14.0,
         "normalized": 47,
         "weight": 2,
+        "measured": true,
         "contribution": 9.4
       }
     ]

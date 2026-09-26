@@ -42,7 +42,7 @@ def test_zero_weight_kind_drops_out() -> None:
     result = score(normalized, weights)
 
     assert "context_switch" not in [item["kind"] for item in result["breakdown"]]
-    assert result["components"]["cognitive"] == 0
+    assert result["components"]["cognitive"] is None
     assert result["total"] == 53
 
 
@@ -57,3 +57,47 @@ def test_negative_sentiment_threshold_matches_report_attention_line() -> None:
     # Only -0.3 counts: 1 s of 10 s is 10%, x250 = 25. The old -0.15 cut counted all three (75).
     assert result["sentiment"]["raw"] == 0.1
     assert result["sentiment"]["normalized"] == 25
+
+
+def test_words_per_minute_is_speech_not_physical() -> None:
+    payload = _demo_report()
+    normalized = normalize(
+        payload["measures"], payload["video"], payload["score"]["profile"]["normalization"]
+    )
+    result = score(normalized, payload["score"]["profile"]["weights"])
+    assert result["components"]["physical"] is None
+    assert result["components"]["speech"] == normalized["spoken_word"]["normalized"]
+
+
+def test_silent_recording_is_not_scored_as_easy() -> None:
+    """Missing speech must drop out of the score, not count as zero effort."""
+    payload = _demo_report()
+    weights = payload["score"]["profile"]["weights"]
+    norm = payload["score"]["profile"]["normalization"]
+    visual_only = [
+        m for m in payload["measures"] if m["kind"] not in {"spoken_word", "utterance", "sentiment"}
+    ]
+    silent_video = {**payload["video"], "has_audio": False}
+
+    silent = score(normalize(visual_only, silent_video, norm), weights)
+    only_visual_weights = {
+        k: (v if k not in {"spoken_word", "utterance", "sentiment"} else 0)
+        for k, v in weights.items()
+    }
+    reference = score(normalize(visual_only, payload["video"], norm), only_visual_weights)
+
+    assert silent["total"] == reference["total"]
+    assert silent["components"]["speech"] is None
+    assert silent["components"]["sentiment"] is None
+    not_measured = {item["kind"] for item in silent["breakdown"] if not item["measured"]}
+    assert {"spoken_word", "sentiment"} <= not_measured
+    assert all(item["contribution"] == 0 for item in silent["breakdown"] if not item["measured"])
+
+
+def test_audio_with_silence_is_a_real_zero() -> None:
+    payload = _demo_report()
+    norm = payload["score"]["profile"]["normalization"]
+    visual_only = [m for m in payload["measures"] if m["kind"] not in {"spoken_word", "utterance"}]
+    normalized = normalize(visual_only, {**payload["video"], "has_audio": True}, norm)
+    assert normalized["spoken_word"]["measured"] is True
+    assert normalized["spoken_word"]["normalized"] == 0
