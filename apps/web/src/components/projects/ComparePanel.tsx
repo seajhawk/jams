@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 
+import { SaveFindingButton } from "@/components/projects/SaveFindingButton"
 import type { GroupComparison } from "@/lib/stats"
 
 type CompareBy = "variant" | "cohort"
@@ -153,6 +154,10 @@ export function ComparePanel({
             <DotRow label={`${a} (n=${result.comparison.a.n})`} points={result.points.a} color="#64748b" />
             <DotRow label={`${b} (n=${result.comparison.b.n})`} points={result.points.b} color="#2563eb" />
           </div>
+          <SaveFindingButton
+            source={{ kind: "comparison", journey_id: journeyId, by: by!, a, b }}
+            defaultTitle={result.comparison.verdict.text.split(":")[0]}
+          />
           <p className="text-xs text-muted-foreground">
             Medians {result.comparison.a.median ?? "–"} vs {result.comparison.b.median ?? "–"}.
             {result.excluded > 0 &&
