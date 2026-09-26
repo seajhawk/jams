@@ -83,3 +83,34 @@ Per `docs/PLAN.md`, Postgres and other Azure spend are expected to land on
 Azure sponsorship credits, not cash — but this is close enough to the
 explicit $20/mo check-in threshold that it should be confirmed before
 running `azd provision`, not assumed.
+
+## Scale-out ceilings and usage limits
+
+Every knob below is a Bicep parameter mapped to an azd environment value in
+`main.parameters.json` (`azd env set WORKER_MAX_EXECUTIONS 2`, then provision). Defaults are
+the values the template shipped with; the ranges are enforced by `@minValue`/`@maxValue` in
+`resources.bicep` and sized to the B1ms Postgres budget of 35 user connections
+(13 per web replica, about 2 per worker replica). Worst-case spend per day and the reasoning
+are in `docs/design/abuse-and-scale-hardening.md`.
+
+| azd value | Default | Range | What it bounds |
+|---|---:|---|---|
+| `WEB_MIN_REPLICAS` | 0 | 0-1 | Scale to zero, or one warm replica |
+| `WEB_MAX_REPLICAS` | 1 | 1-2 | Web compute ($1.30 per replica-day) |
+| `WEB_HTTP_CONCURRENCY` | 10 | 1-100 | Requests per replica before scaling out |
+| `WORKER_MAX_EXECUTIONS` | 3 | 0-8 | Worker compute ($0.43 per execution-hour); 0 pauses analysis |
+| `WORKER_PARALLELISM` | 1 | 1-2 | Replicas per execution |
+| `WORKER_REPLICA_TIMEOUT_SECONDS` | 3600 | 600-7200 | Longest single execution |
+| `WORKER_POLLING_INTERVAL_SECONDS` | 30 | 10-300 | Queue check interval |
+| `WORKER_DRAIN_MODE` | true | true/false | Execution exits when the queue is empty |
+| `JAMS_LIMIT_UPLOAD_MAX_BYTES` | 2147483648 | up to 2 GiB | One recording (web and worker) |
+| `JAMS_LIMIT_UPLOAD_MAX_DURATION_MS` | 1200000 | | One recording's length (web and worker) |
+| `JAMS_LIMIT_ORG_STORAGE_BYTES` | 10737418240 | | Declared bytes per workspace |
+| `JAMS_LIMIT_ORG_ACTIVE_ANALYSES` | 5 | | Queued plus running per workspace |
+| `JAMS_LIMIT_ORG_ANALYSES_PER_WINDOW` | 50 | | Analyses per workspace per day |
+| `JAMS_LIMIT_GLOBAL_ACTIVE_ANALYSES` | 30 | | Circuit breaker across all workspaces |
+| `JAMS_LIMIT_GLOBAL_UPLOAD_BYTES_PER_DAY` | 214748364800 | | Circuit breaker on new upload bytes |
+
+The remaining knobs (request rates, poster size, stale-upload age, preview limits) are read
+from the web app's environment with safe defaults; add them here if they ever need a
+non-default value in Azure, because env values set by hand are replaced on the next deploy.

@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("@/lib/blob", () => ({
   BlobFinalizationError: class extends Error {
-    constructor(message: string, readonly status: number) { super(message) }
+    constructor(message: string, readonly status: number, readonly rejected = false) { super(message) }
   },
   finalizeBlob: mocks.finalizeBlob,
   blobStats: mocks.blobStats,
@@ -151,6 +151,7 @@ function videoRow(overrides: Partial<VideoRow> = {}): VideoRow {
     status: "uploading",
     uploadedBy: "user_test",
     archivedAt: null,
+    uploadSourcesCleanedAt: null,
     createdAt: new Date("2026-07-17T12:00:00.000Z"),
     ...overrides,
   }
@@ -179,6 +180,8 @@ function jsonRequest(path: string, body: unknown) {
 describe("videos API route handlers", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Quota logic is covered against real Postgres (preview-limits.integration.test.ts).
+    vi.spyOn(previewLimits, "assertUploadAdmission").mockResolvedValue(undefined)
     mocks.finalizeBlob.mockImplementation(async (path: string) => ({ blobPath: `${path}.finalized` }))
     mocks.blobStats.mockResolvedValue({
       exists: true,
@@ -272,6 +275,99 @@ describe("videos API route handlers", () => {
 
     expect(response.status).toBe(400)
     expect(db.updates).toHaveLength(0)
+  })
+
+  it("marks the video failed when finalization rejected and deleted the uploaded blob", async () => {
+    const db = new MockDb()
+    db.selectRows.push([videoRow({ sizeBytes: 10 })])
+    installContext(db)
+    mocks.finalizeBlob.mockRejectedValueOnce(
+      new BlobFinalizationError("Uploaded blob size does not match requested size", 400, true)
+    )
+
+    const response = await completeVideo(
+      jsonRequest("/api/videos/8c980f72-91f2-4778-bf2c-57c6f72f9b40/complete", {
+          duration_ms: 1_000,
+          width: 1280,
+          height: 720,
+          has_audio: true,
+          poster_uploaded: true,
+        }),
+      { params: Promise.resolve({ id: "8c980f72-91f2-4778-bf2c-57c6f72f9b40" }) }
+    )
+
+    expect(response.status).toBe(400)
+    expect(db.updates).toEqual([{ status: "failed" }])
+    expect(mocks.finalizeBlob).toHaveBeenCalledWith(
+      "org_test/8c980f72-91f2-4778-bf2c-57c6f72f9b40/original.mp4",
+      10,
+      { maxBytes: 2 * 1024 * 1024 * 1024 }
+    )
+  })
+
+  it("finalizes without a poster when the poster breaks its size limit", async () => {
+    const db = new MockDb()
+    db.selectRows.push([videoRow({ sizeBytes: 10 })])
+    db.onUpdate = (input) => videoRow({ ...(input as Partial<VideoRow>) })
+    installContext(db)
+    mocks.finalizeBlob
+      .mockImplementationOnce(async (path: string) => ({ blobPath: `${path}.finalized` }))
+      .mockRejectedValueOnce(new BlobFinalizationError("Uploaded blob is larger than the upload limit", 400, true))
+
+    const response = await completeVideo(
+      jsonRequest("/api/videos/8c980f72-91f2-4778-bf2c-57c6f72f9b40/complete", {
+          duration_ms: 1_000,
+          width: 1280,
+          height: 720,
+          has_audio: true,
+          poster_uploaded: true,
+        }),
+      { params: Promise.resolve({ id: "8c980f72-91f2-4778-bf2c-57c6f72f9b40" }) }
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.finalizeBlob).toHaveBeenLastCalledWith(
+      "org_test/8c980f72-91f2-4778-bf2c-57c6f72f9b40/poster.jpg",
+      null,
+      { maxBytes: 5 * 1024 * 1024 }
+    )
+    expect(db.updates).toEqual([
+      expect.objectContaining({ status: "uploaded", posterBlobPath: null }),
+    ])
+  })
+
+  it("refuses a completion whose measured duration is over the limit and fails the video", async () => {
+    const db = new MockDb()
+    db.selectRows.push([videoRow({ sizeBytes: 10 })])
+    installContext(db)
+
+    const response = await completeVideo(
+      jsonRequest("/api/videos/8c980f72-91f2-4778-bf2c-57c6f72f9b40/complete", {
+        duration_ms: 20 * 60 * 1000 + 1,
+        width: 1280,
+        height: 720,
+        has_audio: true,
+        poster_uploaded: false,
+      }),
+      { params: Promise.resolve({ id: "8c980f72-91f2-4778-bf2c-57c6f72f9b40" }) }
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({ error: "Recording is longer than the 20-minute limit" })
+    expect(db.updates).toEqual([{ status: "failed" }])
+    expect(mocks.finalizeBlob).not.toHaveBeenCalled()
+  })
+
+  it("passes the declared duration to upload admission", async () => {
+    const db = new MockDb()
+    db.onInsert = (input) => videoRow({ ...(input as Partial<VideoRow>) })
+    installContext(db)
+    const guard = vi.spyOn(previewLimits, "assertUploadAdmission")
+    await createVideo(jsonRequest("/api/videos", {
+      title: "Long", filename: "long.mp4", content_type: "video/mp4", size_bytes: 10,
+      duration_ms: 90_000,
+    }))
+    expect(guard).toHaveBeenCalledWith(expect.anything(), 10, { durationMs: 90_000 })
   })
 
   it("sets failed status only on explicit failed completion bodies", async () => {

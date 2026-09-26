@@ -64,6 +64,26 @@ Do not save Azure exception objects, SAS URLs, transcript contents, or video pat
 outside the storage client logs. A cleanup error is retryable; do not manually
 delete the ledger row until the corresponding storage prefixes have been checked.
 
+## Usage limits and emergency levers
+
+Every quota, circuit breaker and request rate is read by `apps/web/src/lib/limits.ts`; the
+knobs, defaults and cost reasoning are in `docs/design/abuse-and-scale-hardening.md`. The ones
+that matter in an incident are Bicep parameters (azd environment values), so they survive the
+next deploy:
+
+| To | Set | Effect |
+| --- | --- | --- |
+| Stop new analyses but keep the site up | `JAMS_LIMIT_GLOBAL_ACTIVE_ANALYSES=1` | New analyses get 429 with `Retry-After`; in-flight work finishes |
+| Pause all analysis spend | `WORKER_MAX_EXECUTIONS=0` | Messages wait in the queue; nothing is lost |
+| Stop new uploads | `JAMS_LIMIT_GLOBAL_UPLOAD_BYTES_PER_DAY=1` | Upload creation gets 429 |
+| Cap web spend | `WEB_MAX_REPLICAS=1` (the default) | One replica at most |
+| Revoke every outstanding SAS (egress runaway) | Rotate the storage account key the app signs with, then redeploy with the new connection string | All upload and playback URLs stop working at once |
+
+`JAMS_RATE_LIMITS_ENABLED=false` turns request rate limiting off (quotas stay on) if it ever
+misfires. The watchdog response now also reports `stale_uploads_failed`,
+`upload_sources_cleaned`, `upload_source_cleanup_failed_count` and
+`rate_limit_counters_purged`; alert when `upload_source_cleanup_failed_count` stays nonzero.
+
 ## Recovery and rollback
 
 If web health fails, stop routing traffic to the new web revision and restore the

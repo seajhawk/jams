@@ -174,6 +174,8 @@ function jsonRequest(path: string, body: unknown) {
 describe("analyses API route handlers", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Quota logic is covered against real Postgres (preview-limits.integration.test.ts).
+    vi.spyOn(previewLimits, "assertAnalysisAdmission").mockResolvedValue(undefined)
     mocks.dispatchAnalysisRun.mockResolvedValue({ dispatched: true })
     mocks.enqueueAnalysisRun.mockResolvedValue(undefined)
     mocks.getOrCreateDefaultProfile.mockResolvedValue({
@@ -197,6 +199,41 @@ describe("analyses API route handlers", () => {
       expect(db.updates).toHaveLength(0)
       expect(mocks.dispatchAnalysisRun).not.toHaveBeenCalled()
     } finally { guard.mockRestore() }
+  })
+
+  it("sends Retry-After when a limit asks the client to wait", async () => {
+    const db = new MockDb()
+    db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
+    installContext(db)
+    vi.spyOn(previewLimits, "assertAnalysisAdmission").mockRejectedValueOnce(
+      new previewLimits.PreviewLimitError("JAMS is busy", "global_active_analyses", 300)
+    )
+    const response = await createAnalysis(jsonRequest("/api/analyses", {
+      video_id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
+    }))
+    expect(response.status).toBe(429)
+    expect(response.headers.get("Retry-After")).toBe("300")
+    expect(await response.json()).toEqual({ error: "JAMS is busy" })
+  })
+
+  it("answers a repeated submit with the run already in flight instead of queueing another", async () => {
+    const db = new MockDb()
+    const existing = analysisRun({ status: "running" })
+    db.selectRows.push([{ id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11", status: "uploaded" }])
+    db.selectRows.push([existing])
+    installContext(db)
+
+    const response = await createAnalysis(jsonRequest("/api/analyses", {
+      video_id: "e9c82777-2cd1-4691-9cf9-2e9f5c6f2a11",
+    }))
+
+    // Same video, no config on either side: the existing run is returned.
+    expect(response.status).toBe(200)
+    expect(((await response.json()) as { analysis: { id: string } }).analysis.id).toBe(existing.id)
+    expect(db.inserts).toHaveLength(0)
+    expect(db.updates).toHaveLength(0)
+    expect(previewLimits.assertAnalysisAdmission).not.toHaveBeenCalled()
+    expect(mocks.dispatchAnalysisRun).not.toHaveBeenCalled()
   })
 
   it("creates a queued run for an uploaded org video and enqueues it", async () => {

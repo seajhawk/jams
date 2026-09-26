@@ -49,6 +49,8 @@ export const createVideoSchema = z.object({
   filename: z.string().trim().min(1).max(500),
   content_type: videoContentTypeSchema,
   size_bytes: z.number().int().positive().max(MAX_VIDEO_SIZE_BYTES),
+  // Optional client-measured length, checked against the duration limit before any upload.
+  duration_ms: z.number().int().positive().optional(),
   task_id: z.string().uuid().optional(),
   subject_label: z.string().trim().min(1).max(120).optional(),
   variant_label: z.string().trim().min(1).max(120).optional(),

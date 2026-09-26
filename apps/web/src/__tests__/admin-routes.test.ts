@@ -28,6 +28,14 @@ vi.mock("@/lib/admin-auth", () => ({
   requireMachineOrPlatformAdminApi: mocks.requireMachineOrPlatformAdminApi,
 }))
 
+vi.mock("@/lib/upload-cleanup", () => ({
+  sweepStaleUploads: vi.fn().mockResolvedValue({ markedFailedCount: 1, cleanedCount: 2, failedCount: 0 }),
+}))
+
+vi.mock("@/lib/rate-limit", () => ({
+  purgeExpiredRateLimitCounters: vi.fn().mockResolvedValue(7),
+}))
+
 vi.mock("@/lib/recording-cleanup", () => ({
   reconcileRecordingCleanup: mocks.reconcileRecordingCleanup,
 }))
@@ -102,6 +110,12 @@ describe("admin run route handlers", () => {
     expect(mocks.requireMachineOrPlatformAdminApi).toHaveBeenCalledWith(request)
     expect(mocks.reconcilePendingDispatches).toHaveBeenCalled()
     expect(mocks.reconcileRecordingCleanup).toHaveBeenCalled()
+    expect(body).toMatchObject({
+      stale_uploads_failed: 1,
+      upload_sources_cleaned: 2,
+      upload_source_cleanup_failed_count: 0,
+      rate_limit_counters_purged: 7,
+    })
   })
 
   it("runs reconcile behind the admin gate", async () => {

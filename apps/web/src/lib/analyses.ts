@@ -21,6 +21,8 @@ export const analysisErrorCodes = [
   "corrupt_file",
   "transient",
   "unknown",
+  "too_large",
+  "unsupported_media",
 ] as const
 
 export type AnalysisStatus = (typeof analysisStatuses)[number]

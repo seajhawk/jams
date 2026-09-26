@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+# Failures that retrying cannot fix: the run fails on its first attempt and the message goes
+# straight to the poison queue instead of costing two more full attempts.
+TERMINAL_ERROR_CODES = frozenset({"too_long", "corrupt_file", "too_large", "unsupported_media"})
+
 
 class PipelineError(Exception):
     """A pipeline failure with an API-visible taxonomy code."""

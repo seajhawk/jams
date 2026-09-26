@@ -1,72 +1,111 @@
 import { sql } from "drizzle-orm"
 
 import { analysisRuns, recordingDeletions, videos } from "@/db/schema"
-import { HttpError } from "@/lib/api"
+import { HttpError } from "@/lib/http-error"
+import {
+  LimitConfigurationError,
+  LimitExceededError,
+  limitPolicyForOrg,
+  type LimitPolicy,
+} from "@/lib/limits"
 import { MAX_VIDEO_SIZE_BYTES } from "@/lib/videos"
 import type { OrgContext } from "@/lib/with-org"
 
-const DEFAULT_MAX_STORAGE_BYTES = 10 * 1024 * 1024 * 1024
-const DEFAULT_MAX_ANALYSES = 100
-const DEFAULT_MAX_ACTIVE_RUNS = 2
+/**
+ * Usage admission: the quota checks that run inside a tenant transaction before new work is
+ * written. The file keeps its preview-era name because callers import it; the limits themselves
+ * now apply in every mode and are resolved by the central policy in `@/lib/limits`.
+ *
+ * Race-freedom: per-organization checks run under a transaction advisory lock on the
+ * organization, global circuit breakers under a second, global lock. Locks are always taken in
+ * that order (organization, then global) and released at commit, so concurrent requests cannot
+ * both claim the last unit and cannot deadlock each other.
+ */
 
-export class PreviewLimitError extends HttpError {
-  constructor(message: string) {
-    super(429, message)
-    this.name = "PreviewLimitError"
-  }
-}
+/** Kept as aliases so existing `instanceof PreviewLimitError` checks see every quota refusal. */
+export { LimitExceededError as PreviewLimitError }
+export { LimitConfigurationError as PreviewLimitConfigurationError }
 
-export class PreviewLimitConfigurationError extends HttpError {
-  constructor(message: string) {
-    super(503, message)
-    this.name = "PreviewLimitConfigurationError"
-  }
-}
+const GLOBAL_ANALYSIS_LOCK = "jams-global-analysis-admission"
+const GLOBAL_UPLOAD_LOCK = "jams-global-upload-admission"
+const GLOBAL_UPLOAD_WINDOW_MS = 24 * 60 * 60 * 1000
 
-function positiveInteger(name: string, fallback: number): number {
-  const raw = process.env[name]
-  if (raw === undefined) return fallback
+/** Seconds a client should wait before retrying after the global circuit breaker trips. */
+export const GLOBAL_ANALYSIS_RETRY_AFTER_SECONDS = 300
+export const GLOBAL_UPLOAD_RETRY_AFTER_SECONDS = 3600
+export const ACTIVE_ANALYSIS_RETRY_AFTER_SECONDS = 60
 
-  if (!/^\d+$/.test(raw)) {
-    throw new PreviewLimitConfigurationError(`Invalid preview limit: ${name}`)
-  }
+type ScopedDb = OrgContext["scopedDb"]
 
-  const value = Number(raw)
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new PreviewLimitConfigurationError(`Invalid preview limit: ${name}`)
-  }
-  return value
-}
-
-function configuredLimits() {
-  return {
-    maxStorageBytes: positiveInteger(
-      "JAMS_PREVIEW_MAX_STORAGE_BYTES",
-      DEFAULT_MAX_STORAGE_BYTES
-    ),
-    maxAnalyses: positiveInteger("JAMS_PREVIEW_MAX_ANALYSES", DEFAULT_MAX_ANALYSES),
-    maxActiveRuns: positiveInteger("JAMS_PREVIEW_MAX_ACTIVE_RUNS", DEFAULT_MAX_ACTIVE_RUNS),
-  }
-}
-
-export async function lockPreviewUsage(scopedDb: OrgContext["scopedDb"]) {
+export async function lockPreviewUsage(scopedDb: ScopedDb) {
   await scopedDb.db.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${"jams-preview-usage:" + scopedDb.orgId}, 0))`
   )
 }
 
-export async function assertUploadAdmission(
-  scopedDb: OrgContext["scopedDb"],
-  sizeBytes: number
-): Promise<void> {
-  if (process.env.JAMS_PREVIEW_USER_IDS === undefined) return
+async function lockGlobal(scopedDb: ScopedDb, key: string) {
+  await scopedDb.db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`)
+}
 
-  const { maxStorageBytes } = configuredLimits()
+function firstNumber(result: unknown, column: string): number {
+  const rows = Array.isArray(result)
+    ? result
+    : (result as { rows?: unknown[] } | null)?.rows ?? []
+  const row = rows[0] as Record<string, unknown> | undefined
+  return Number(row?.[column] ?? 0)
+}
+
+function formatBytes(bytes: number): string {
+  const gib = bytes / (1024 * 1024 * 1024)
+  if (gib >= 1) return `${Number.isInteger(gib) ? gib : gib.toFixed(1)} GiB`
+  return `${Math.round(bytes / (1024 * 1024))} MB`
+}
+
+function formatMinutes(ms: number): string {
+  const minutes = ms / 60_000
+  return `${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)}-minute`
+}
+
+/**
+ * Checks a new recording's declared size (and duration, when the client sends it) against the
+ * per-recording limits. Not a quota: exceeding it is a request error, not a wait.
+ */
+export function assertRecordingWithinLimits(
+  policy: LimitPolicy,
+  recording: { sizeBytes: number; durationMs?: number | null }
+): void {
+  if (recording.sizeBytes > policy.upload.maxBytes) {
+    throw new HttpError(
+      413,
+      `Recording is larger than the ${formatBytes(policy.upload.maxBytes)} upload limit`
+    )
+  }
+  if (recording.durationMs != null && recording.durationMs > policy.upload.maxDurationMs) {
+    throw new HttpError(
+      400,
+      `Recording is longer than the ${formatMinutes(policy.upload.maxDurationMs)} limit`
+    )
+  }
+}
+
+export async function assertUploadAdmission(
+  scopedDb: ScopedDb,
+  sizeBytes: number,
+  options: { durationMs?: number | null; policy?: LimitPolicy } = {}
+): Promise<void> {
+  const policy = options.policy ?? limitPolicyForOrg(scopedDb.orgId)
+  assertRecordingWithinLimits(policy, { sizeBytes, durationMs: options.durationMs })
+
   await lockPreviewUsage(scopedDb)
 
+  // Every recording reserves its declared size, including incomplete and failed uploads (their
+  // client-writable blobs may still exist) and legacy rows of unknown size (the file maximum).
+  // A failed upload stops reserving once the watchdog has verified its blobs are deleted.
   const [usage] = await scopedDb.db
     .select({
-      bytes: sql<string>`coalesce(sum(coalesce(${videos.sizeBytes}, ${MAX_VIDEO_SIZE_BYTES})), 0)`,
+      bytes: sql<string>`coalesce(sum(case
+        when ${videos.status} = 'failed' and ${videos.uploadSourcesCleanedAt} is not null then 0
+        else coalesce(${videos.sizeBytes}, ${MAX_VIDEO_SIZE_BYTES}) end), 0)`,
     })
     .from(videos)
     .where(scopedDb.orgFilter(videos))
@@ -75,36 +114,103 @@ export async function assertUploadAdmission(
     bytes: sql<string>`coalesce(sum(${recordingDeletions.reservedBytes}) filter (where ${recordingDeletions.lastVerifiedAt} is null), 0)`,
   }).from(recordingDeletions).where(scopedDb.orgFilter(recordingDeletions))
   const usedBytes = Number(usage?.bytes ?? 0) + Number(pending?.bytes ?? 0)
-  if (!Number.isSafeInteger(usedBytes) || usedBytes + sizeBytes > maxStorageBytes) {
-    throw new PreviewLimitError("Preview storage limit reached")
+  if (!Number.isSafeInteger(usedBytes) || usedBytes + sizeBytes > policy.storage.maxOrgBytes) {
+    throw new LimitExceededError(
+      policy.preview
+        ? "Preview storage limit reached"
+        : `Storage limit reached (${formatBytes(policy.storage.maxOrgBytes)} per workspace). Delete recordings you no longer need to make room.`,
+      "storage"
+    )
+  }
+
+  await lockGlobal(scopedDb, GLOBAL_UPLOAD_LOCK)
+  const since = new Date(Date.now() - GLOBAL_UPLOAD_WINDOW_MS).toISOString()
+  const globalBytes = firstNumber(
+    await scopedDb.db.execute(
+      sql`select jams_global_upload_bytes_since(${since}::timestamptz) as bytes`
+    ),
+    "bytes"
+  )
+  if (globalBytes + sizeBytes > policy.storage.maxGlobalBytesPerDay) {
+    throw new LimitExceededError(
+      "JAMS is receiving more recordings than it can take right now. Please try again later.",
+      "global_upload",
+      GLOBAL_UPLOAD_RETRY_AFTER_SECONDS
+    )
   }
 }
 
 export async function assertAnalysisAdmission(
-  scopedDb: OrgContext["scopedDb"]
+  scopedDb: ScopedDb,
+  options: { policy?: LimitPolicy } = {}
 ): Promise<void> {
-  if (process.env.JAMS_PREVIEW_USER_IDS === undefined) return
-
-  const { maxAnalyses, maxActiveRuns } = configuredLimits()
+  const policy = options.policy ?? limitPolicyForOrg(scopedDb.orgId)
+  const { analysis } = policy
   await lockPreviewUsage(scopedDb)
 
+  const windowStart = new Date(Date.now() - analysis.windowSeconds * 1000)
+  const windowStartIso = windowStart.toISOString()
   const [usage] = await scopedDb.db
     .select({
       total: sql<string>`count(*)`,
       active: sql<string>`count(*) filter (where ${analysisRuns.status} in ('queued', 'running'))`,
+      inWindow: sql<string>`count(*) filter (where ${analysisRuns.createdAt} >= ${windowStartIso}::timestamptz)`,
+      oldestInWindow: sql<string | null>`min(${analysisRuns.createdAt}) filter (where ${analysisRuns.createdAt} >= ${windowStartIso}::timestamptz)`,
     })
     .from(analysisRuns)
     .where(scopedDb.orgFilter(analysisRuns))
 
+  // Runs of deleted recordings still count, so delete-and-retry cannot reset a limit. A deletion
+  // inside the window counts all of its runs toward the window (conservative).
   const [deleted] = await scopedDb.db.select({
     total: sql<string>`coalesce(sum(${recordingDeletions.analysisCount}), 0)`,
+    inWindow: sql<string>`coalesce(sum(${recordingDeletions.analysisCount}) filter (where ${recordingDeletions.requestedAt} >= ${windowStartIso}::timestamptz), 0)`,
   }).from(recordingDeletions).where(scopedDb.orgFilter(recordingDeletions))
+
   const total = Number(usage?.total ?? 0) + Number(deleted?.total ?? 0)
   const active = Number(usage?.active ?? 0)
-  if (total >= maxAnalyses) {
-    throw new PreviewLimitError("Preview analysis limit reached")
+  const inWindow = Number(usage?.inWindow ?? 0) + Number(deleted?.inWindow ?? 0)
+
+  if (analysis.maxTotalPerOrg !== null && total >= analysis.maxTotalPerOrg) {
+    throw new LimitExceededError(
+      policy.preview ? "Preview analysis limit reached" : "Analysis limit reached for this workspace",
+      "total_analyses"
+    )
   }
-  if (active >= maxActiveRuns) {
-    throw new PreviewLimitError("Preview concurrent analysis limit reached")
+  if (active >= analysis.maxActivePerOrg) {
+    throw new LimitExceededError(
+      policy.preview
+        ? "Preview concurrent analysis limit reached"
+        : `This workspace already has ${analysis.maxActivePerOrg} analyses queued or running. Try again when one finishes.`,
+      "active_analyses",
+      ACTIVE_ANALYSIS_RETRY_AFTER_SECONDS
+    )
+  }
+  if (inWindow >= analysis.maxPerWindow) {
+    const oldest = usage?.oldestInWindow ? new Date(usage.oldestInWindow).getTime() : Date.now()
+    const retryAfter = Math.max(
+      60,
+      Math.ceil((oldest + analysis.windowSeconds * 1000 - Date.now()) / 1000)
+    )
+    throw new LimitExceededError(
+      `This workspace has reached its limit of ${analysis.maxPerWindow} analyses per ${
+        analysis.windowSeconds === 86_400 ? "day" : `${analysis.windowSeconds} seconds`
+      }. Try again later.`,
+      "analysis_window",
+      retryAfter
+    )
+  }
+
+  await lockGlobal(scopedDb, GLOBAL_ANALYSIS_LOCK)
+  const globalActive = firstNumber(
+    await scopedDb.db.execute(sql`select jams_global_active_analysis_count() as active`),
+    "active"
+  )
+  if (globalActive >= analysis.maxGlobalActive) {
+    throw new LimitExceededError(
+      "JAMS is busy analyzing other recordings right now. Please try again in a few minutes.",
+      "global_active_analyses",
+      GLOBAL_ANALYSIS_RETRY_AFTER_SECONDS
+    )
   }
 }

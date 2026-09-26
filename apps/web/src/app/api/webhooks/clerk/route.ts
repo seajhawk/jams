@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { jsonError } from "@/lib/api"
 import { drizzleMirrorStore } from "@/lib/clerk/mirror-store"
 import {
   applyClerkWebhookEvent,
@@ -8,11 +9,24 @@ import {
   WebhookEventInProgressError,
   WebhookVerificationError,
 } from "@/lib/clerk/webhook"
+import { resolveLimitPolicy } from "@/lib/limits"
+import { clientAddress, consumeRateLimit } from "@/lib/rate-limit"
+import { readBodyWithLimit } from "@/lib/request-body"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
-  const payload = await request.text()
+  // Unauthenticated until the signature is checked, so bound the work a caller can cause first.
+  // Svix retries on 429 and 413 is never a legitimate Clerk payload.
+  const policy = resolveLimitPolicy()
+  const limit = await consumeRateLimit("webhook_ip", `ip:${clientAddress(request.headers)}`, { policy })
+  if (!limit.allowed) {
+    return jsonError("Too many webhook requests", 429, limit.retryAfterSeconds)
+  }
+  const payload = await readBodyWithLimit(request, policy.requests.webhookMaxBodyBytes)
+  if (payload === null) {
+    return jsonError("Webhook body too large", 413)
+  }
 
   try {
     const externalId = clerkWebhookId(request.headers)

@@ -35,8 +35,14 @@ const mocks = vi.hoisted(() => {
     notFound: vi.fn(() => {
       throw new Error("NEXT_NOT_FOUND")
     }),
+    shareViewRetryAfter: vi.fn(),
   }
 })
+
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.9" }),
+}))
+vi.mock("@/lib/rate-limit", () => ({ shareViewRetryAfter: mocks.shareViewRetryAfter }))
 
 vi.mock("@/db/client", () => ({ db: mocks.mockDb }))
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }))
@@ -70,6 +76,8 @@ describe("/share/[token]", () => {
     mocks.selectQueue.length = 0
     mocks.assembleReportPayloadInScope.mockReset()
     mocks.notFound.mockClear()
+    mocks.shareViewRetryAfter.mockReset()
+    mocks.shareViewRetryAfter.mockResolvedValue(null)
   })
   afterEach(() => { vi.unstubAllEnvs() })
 
@@ -104,6 +112,20 @@ describe("/share/[token]", () => {
       expect.objectContaining({ orgId: ORG_ID, db: mocks.mockDb })
     )
     expect(element.props.readOnly).toBe(true)
+  })
+
+  it("refuses a rate-limited view before reading the link or minting playback access", async () => {
+    mocks.shareViewRetryAfter.mockResolvedValue(125)
+    const element = await renderShare(VALID_TOKEN)
+    expect(mocks.shareViewRetryAfter).toHaveBeenCalledWith(VALID_TOKEN, expect.any(Headers))
+    expect(element.props.retryAfterSeconds).toBe(125)
+    expect(mocks.mockDb.select).not.toHaveBeenCalled()
+    expect(mocks.assembleReportPayloadInScope).not.toHaveBeenCalled()
+  })
+
+  it("does not count malformed tokens against the link limit", async () => {
+    await expect(renderShare("not-valid")).rejects.toThrow("NEXT_NOT_FOUND")
+    expect(mocks.shareViewRetryAfter).not.toHaveBeenCalled()
   })
 
   it.each([

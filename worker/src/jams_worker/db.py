@@ -12,9 +12,7 @@ from typing import Any
 from psycopg import Connection
 from psycopg.rows import dict_row
 
-from jams_worker.errors import StaleLeaseError
-
-TERMINAL_ERROR_CODES = frozenset({"too_long", "corrupt_file"})
+from jams_worker.errors import TERMINAL_ERROR_CODES, StaleLeaseError
 
 RUN_SELECT = """
 select

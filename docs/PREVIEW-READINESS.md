@@ -88,10 +88,17 @@ counts as active. Rolled-back requests consume no reservation. Deleted run usage
 is retained permanently; deleted byte reservations remain until a post-expiry
 cleanup sweep succeeds.
 
+Since the abuse-hardening change (`docs/design/abuse-and-scale-hardening.md`) the same
+checks, with general `JAMS_LIMIT_*` defaults, also apply when the preview gate is off; the
+preview settings above still take precedence while it is on. Completion now deletes an
+uploaded blob whose size does not match the declaration or exceeds the upload limit, and
+the watchdog deletes client upload paths once their SAS has expired; a failed upload stops
+reserving bytes after that sweep succeeds.
+
 This does **not** cap physical Azure storage: posters/derived artifacts are not
-counted, and upload SAS permissions cannot enforce the declared file size. Completion
-checks original blob size, but oversized or overwritten blobs can exist before that
-check. Infrastructure cost controls and staging storage verification remain
+counted, and upload SAS permissions cannot enforce the declared file size, so oversized
+or overwritten blobs can exist for up to the 15-minute SAS window before completion or
+the sweep removes them. Infrastructure cost controls and staging storage verification remain
 required. The active-run check applies to participant admission; trusted operational
 recovery remains separately controlled. Removing preview configuration disables
 these admission limits along with preview access restrictions.
