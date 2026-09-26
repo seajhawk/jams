@@ -39,10 +39,10 @@ committed and pushed after it is validated, so Chris can pick up from his laptop
 
 - [x] B1 regression test on PR #19 (`e2e/typography.spec.ts`; fails on the old CSS with "Times New Roman", passes with the fix)
 - [x] B6 honest report: PR #20 (branch `honest-report`; worker 203 + web 295 tests pass)
-- [ ] B3 + B4 + B7 access and trust pages (own PR)
+- [x] B3 + B4 + B7 access and trust pages: PR #22 (branch `preview-access-trust`; needs `JAMS_CONTACT_EMAIL`, wording approval, B4 flag decision)
 - [ ] B10 + B2 prep: deploy gating, smoke, CORS parameter (own PR)
 - [ ] B8 deletion on account/org deletion (own PR)
-- [ ] B5 copy fixes (with B3/B7 PR or own)
+- [x] B5 copy fixes (in PR #22); the narrated demo recording still needs Chris
 - [ ] Summary for Chris: what shipped, what needs him (B2, B9, Clerk settings, demo recording, legal wording)
 
 ## Other open work to keep an eye on
